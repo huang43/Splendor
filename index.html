@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>璀燦寶石 Splendor</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #12111e; color: #e8e8f0; min-height: 100vh; user-select: none;
+}
+
+/* ── Setup ──────────────────────────────────── */
+#screen-setup {
+  display:none; flex-direction:column; align-items:center;
+  justify-content:center; min-height:100vh; gap:20px; padding:40px;
+}
+.setup-title {
+  font-size:2.8em; font-weight:900; letter-spacing:5px;
+  background:linear-gradient(135deg,#ffcc44,#ff8844,#cc55ff);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.setup-sub { opacity:.6; letter-spacing:2px; font-size:.95em; }
+.num-row { display:flex; gap:10px; }
+.btn-num {
+  padding:10px 24px; border:2px solid rgba(255,255,255,.2); border-radius:8px;
+  background:rgba(255,255,255,.07); color:white; cursor:pointer; font-size:1em; transition:all .15s;
+}
+.btn-num:hover,.btn-num.active { background:rgba(255,200,50,.25); border-color:#ffcc44; color:#ffcc44; }
+.player-inputs { display:flex; flex-direction:column; gap:12px; width:320px; }
+.p-row { display:flex; align-items:center; gap:10px; }
+.p-row .swatch { width:10px; height:38px; border-radius:4px; flex-shrink:0; }
+.p-row input {
+  flex:1; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+  border-radius:8px; padding:8px 12px; color:white; font-size:.95em;
+}
+.btn-start {
+  background:linear-gradient(135deg,#cc6600,#ffaa22); border:none; border-radius:10px;
+  padding:14px 48px; font-size:1.1em; font-weight:bold; color:white;
+  cursor:pointer; letter-spacing:2px; transition:all .15s;
+}
+.btn-start:hover { filter:brightness(1.2); transform:translateY(-2px); }
+
+/* ── Game layout ─────────────────────────────── */
+#screen-game { display:none; flex-direction:column; min-height:100vh; }
+
+/* Header */
+#g-hdr {
+  background:rgba(0,0,0,.45); border-bottom:1px solid rgba(255,255,255,.08);
+  padding:7px 16px; flex-shrink:0;
+}
+.hdr-logo { font-size:1em; font-weight:bold; color:#ffcc44; letter-spacing:2px; }
+.last-round-flag { font-size:.8em; color:#ff9955; font-weight:bold; }
+
+/* Main */
+#g-main { display:flex; gap:10px; padding:10px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center; }
+
+/* Left panel */
+#g-left { display:flex; flex-direction:column; gap:10px; width:190px; flex-shrink:0; }
+.panel-label { font-size:.68em; text-transform:uppercase; letter-spacing:2px; opacity:.45; margin-bottom:4px; }
+
+/* Nobles */
+.noble-card {
+  background:linear-gradient(135deg,#1c1c22,#202028);
+  border:2px solid #35354a; border-radius:10px; padding:8px 10px; margin-bottom:5px;
+  transition:border-color .45s, box-shadow .45s;
+  position:relative;
+}
+/* 灰掉文字，但不動 gem dot（gem dot 有自己的 background，不受 color 影響） */
+.noble-card .noble-pts { color:#666; }
+.noble-card .req-item span { color:rgba(255,255,255,.4); }
+.noble-pts { font-size:1.2em; font-weight:bold; }
+.noble-info-btn {
+  width:15px; height:15px; border-radius:50%;
+  border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.07);
+  color:rgba(255,255,255,.45); font-size:.58em; font-weight:bold; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:all .15s; flex-shrink:0;
+}
+.noble-info-btn:hover { background:rgba(255,200,50,.2); border-color:#ffcc44; color:#ffcc44; }
+.noble-req { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+.req-item { display:flex; align-items:center; gap:3px; font-size:.78em; font-weight:bold; }
+
+/* Mission cards */
+.mission-card {
+  border-radius:8px; padding:6px 8px; flex:1; min-width:0;
+  border:2px solid rgba(80,120,200,.3);
+  background:linear-gradient(135deg,#1a2a3a,#102030);
+}
+.mission-card.claimed { border-color:rgba(255,200,50,.35); background:linear-gradient(135deg,#2a2810,#1a1a08); opacity:.72; }
+.mission-name { font-size:.68em; font-weight:bold; color:#88aaff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mission-pts  { font-size:.72em; font-weight:bold; color:#ffcc44; flex-shrink:0; }
+.mission-desc { font-size:.6em; opacity:.7; margin-top:2px; line-height:1.3; }
+.mission-winner { font-size:.6em; margin-top:2px; }
+
+/* Gem bank */
+.bank-row {
+  display:flex; align-items:center; gap:7px; padding:4px 5px;
+  border-radius:7px; cursor:pointer; border:2px solid transparent; transition:all .12s;
+}
+.bank-row:hover:not(.no-click) { background:rgba(255,255,255,.07); }
+.bank-row.picked { background:rgba(255,220,50,.13); border-color:rgba(255,220,50,.45); }
+.bank-row.no-click { cursor:default; opacity:.55; }
+.g-circle {
+  border-radius:50%; border:2px solid rgba(255,255,255,.38);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:bold; flex-shrink:0; text-shadow:0 1px 3px rgba(0,0,0,.8);
+}
+.g-name { font-size:.78em; flex:1; }
+.g-cnt  { font-size:.82em; font-weight:bold; opacity:.7; }
+.pick-badge { font-size:.78em; color:#ffcc44; font-weight:bold; }
+
+/* Cards area */
+#g-right { display:flex; flex-direction:column; gap:10px; }
+#g-cards { display:flex; flex-direction:column; gap:8px; }
+.tier-row { display:flex; gap:6px; }
+
+.deck-box {
+  width:110px; min-height:150px; border-radius:10px; flex-shrink:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  border:2px dashed rgba(255,255,255,.18); cursor:pointer; transition:all .15s;
+}
+.deck-box:hover:not(.empty) { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.38); }
+.deck-box.empty { cursor:default; opacity:.28; }
+.deck-tier { font-size:.66em; opacity:.7; margin-bottom:2px; }
+.deck-n { font-size:1.5em; font-weight:bold; }
+.deck-lbl { font-size:.62em; opacity:.55; }
+
+.dev-card {
+  width:110px; min-height:150px; border-radius:10px; flex-shrink:0;
+  display:flex; flex-direction:column; overflow:hidden; cursor:pointer;
+  border:2px solid rgba(255,255,255,.13); transition:transform .15s,box-shadow .15s;
+}
+.dev-card:hover { transform:translateY(-5px); box-shadow:0 8px 22px rgba(0,0,0,.55); }
+.dev-card.dim { opacity:.55; }
+.dev-card.t1 { background:linear-gradient(160deg,#4a3818,#2e2410); }
+.dev-card.t2 { background:linear-gradient(160deg,#1e3858,#101e38); }
+.dev-card.t3 { background:linear-gradient(160deg,#32144a,#180a28); }
+.card-top {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:5px 7px;
+}
+.card-pts { font-size:1.5em; font-weight:900; color:white; text-shadow:0 1px 4px rgba(0,0,0,.9); line-height:1; }
+.card-gem-dot { border-radius:50%; border:2px solid rgba(255,255,255,.55); flex-shrink:0; }
+.card-body {
+  flex:1; padding:3px 5px; display:flex; flex-direction:column;
+  justify-content:flex-end; gap:2px; background:rgba(0,0,0,.28);
+}
+.cost-ln { display:flex; align-items:center; gap:4px; }
+.cost-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
+.cost-n { font-size:.8em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
+.cost-ln.covered { opacity:.35; }
+.card-empty-slot { width:110px; height:150px; flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
+
+/* Bottom — now inline below cards in right column */
+#g-bottom {
+  background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.1);
+  border-radius:12px; padding:10px 14px; display:flex; gap:16px;
+  align-items:flex-start; flex-wrap:wrap; width:100%;
+}
+.cur-area { flex:1; min-width:280px; }
+.cur-name { font-size:1.05em; font-weight:bold; margin-bottom:6px; }
+.cur-gems { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.gem-pile { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.gem-pile span { font-size:.62em; opacity:.65; }
+.cur-bonuses { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:5px; }
+.bonus-chip {
+  display:flex; align-items:center; gap:3px; background:rgba(255,255,255,.08);
+  border-radius:10px; padding:2px 7px; font-size:.78em; font-weight:bold;
+}
+.act-area { min-width:200px; display:flex; flex-direction:column; gap:7px; }
+.act-label { font-size:.7em; text-transform:uppercase; letter-spacing:1.5px; opacity:.45; }
+.pending-row { display:flex; gap:6px; flex-wrap:wrap; min-height:32px; }
+.pending-chip {
+  display:flex; align-items:center; gap:4px; background:rgba(255,215,50,.18);
+  border:1px solid rgba(255,215,50,.42); border-radius:16px; padding:3px 9px;
+  font-size:.82em; font-weight:bold;
+}
+.btn-row { display:flex; gap:7px; flex-wrap:wrap; }
+.btn {
+  padding:7px 15px; border-radius:8px; border:none; font-size:.87em;
+  font-weight:bold; cursor:pointer; transition:all .14s; letter-spacing:.4px;
+}
+.btn:hover { transform:translateY(-1px); filter:brightness(1.15); }
+.btn:active { transform:none; }
+.btn:disabled { opacity:.35; cursor:default; transform:none; filter:none; }
+.btn-go  { background:linear-gradient(135deg,#226622,#44aa44); color:white; }
+.btn-end { background:linear-gradient(135deg,#662222,#aa4444); color:white; }
+.btn-grey { background:rgba(255,255,255,.1); color:white; }
+
+/* All-players strip — left panel vertical stack */
+#g-players {
+  display:flex; flex-direction:column; gap:6px; width:100%;
+}
+.pi-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
+  border-left:4px solid; border-radius:10px; padding:8px 11px; width:100%;
+}
+.pi-card.cur { background:rgba(255,215,50,.07); }
+.pi-card.inactive {
+  background:rgba(0,0,0,.18); border-color:rgba(255,255,255,.06);
+  border-left-color:rgba(255,255,255,.12) !important;
+}
+.pi-card.inactive .pi-name,
+.pi-card.inactive .pi-pts,
+.pi-card.inactive .bonus-chip { color:rgba(255,255,255,.28) !important; }
+.pi-card.inactive .pi-gem-item span { opacity:.3; }
+.pi-card.inactive .pi-mini { opacity:.25; }
+.pi-name { font-size:.82em; font-weight:bold; margin-bottom:4px; opacity:.85; }
+.pi-pts  { font-size:1.55em; font-weight:900; }
+.pi-bonuses { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+.pi-gems { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
+.pi-gem-item { display:flex; align-items:center; gap:2px; font-size:.7em; font-weight:bold; opacity:.85; }
+.pi-mini { font-size:.68em; opacity:.55; margin-top:4px; }
+
+/* Modals */
+.m-overlay {
+  position:fixed; inset:0; background:rgba(0,0,10,.84);
+  display:flex; align-items:center; justify-content:center; z-index:100;
+}
+.m-box {
+  background:linear-gradient(160deg,#1c1c3a,#2a1a3a); border:2px solid rgba(140,90,255,.28);
+  border-radius:18px; padding:26px 30px; max-width:440px; width:92%;
+  box-shadow:0 0 60px rgba(100,50,255,.18);
+}
+.m-title { font-size:1.35em; font-weight:bold; color:#ffcc44; margin-bottom:14px; }
+.cost-detail-row { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:.88em; }
+
+/* Gem colors */
+.gc-w    { background:radial-gradient(circle at 35% 30%,#fff,#c8bca8); color:#333; }
+.gc-u    { background:radial-gradient(circle at 35% 30%,#aaccff,#1d55bb); color:white; }
+.gc-g    { background:radial-gradient(circle at 35% 30%,#aaffcc,#1d9944); color:white; }
+.gc-r    { background:radial-gradient(circle at 35% 30%,#ffaaaa,#cc1e1e); color:white; }
+.gc-k    { background:radial-gradient(circle at 35% 30%,#8899bb,#1e2e44); color:white; }
+.gc-gold { background:radial-gradient(circle at 35% 30%,#ffee88,#cc8800); color:white; }
+
+/* Card header tint by bonus */
+.ch-w { background:rgba(210,200,185,.88); }
+.ch-u { background:rgba(20,65,185,.88); }
+.ch-g { background:rgba(20,120,50,.88); }
+.ch-r { background:rgba(175,20,20,.88); }
+.ch-k { background:rgba(15,25,50,.88); }
+
+/* Player colors */
+.pcol-0{color:#ff9955} .pcol-1{color:#55aaff} .pcol-2{color:#55cc88} .pcol-3{color:#cc88ff}
+
+/* Toast */
+#toast {
+  position:fixed; top:14px; left:50%; transform:translateX(-50%);
+  background:rgba(30,30,60,.95); border:1px solid rgba(255,200,50,.4);
+  border-radius:9px; padding:9px 18px; font-size:.88em; z-index:300;
+  opacity:0; transition:opacity .2s; pointer-events:none; white-space:nowrap; max-width:90vw;
+}
+#toast.on { opacity:1; }
+
+/* Turn notification overlay */
+#turn-notif {
+  position:fixed; inset:0; background:rgba(0,0,15,.82);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:400; cursor:pointer; opacity:0; pointer-events:none;
+  transition:opacity .3s;
+}
+#turn-notif.on { opacity:1; pointer-events:all; }
+#turn-notif .tn-sub  { font-size:.9em; letter-spacing:3px; margin-bottom:12px; opacity:.65; }
+#turn-notif .tn-name { font-size:3.2em; font-weight:900; letter-spacing:4px;
+  text-shadow:0 0 35px currentColor; }
+#turn-notif .tn-hint { font-size:.72em; opacity:.4; margin-top:18px; }
+
+/* Timer badge */
+.timer-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:2px 10px; border-radius:14px; font-size:.88em; font-weight:bold;
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.15);
+  transition:background .3s, border-color .3s, color .3s;
+}
+.timer-badge.warn   { background:rgba(255,140,0,.18); border-color:rgba(255,140,0,.55); color:#ffaa22; }
+.timer-badge.urgent { background:rgba(255,40,40,.22);  border-color:rgba(255,40,40,.65); color:#ff5555;
+  animation:pulse .6s infinite alternate; }
+@keyframes pulse { from{opacity:1} to{opacity:.5} }
+
+@keyframes zone-pulse {
+  0%,100% { box-shadow:0 0 6px 2px rgba(255,210,60,.15); outline-color:rgba(255,210,60,.3); }
+  50%     { box-shadow:0 0 20px 6px rgba(255,210,60,.55); outline-color:rgba(255,210,60,.8); }
+}
+.zone-active {
+  border-radius:10px;
+  outline:1.5px solid rgba(255,210,60,.3);
+  animation:zone-pulse 1.6s ease-in-out infinite;
+}
+
+/* Help button */
+#btn-help {
+  position:fixed; top:10px; right:14px; z-index:450;
+  width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.08); color:rgba(255,255,255,.75);
+  font-size:1em; font-weight:bold; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; backdrop-filter:blur(4px);
+}
+#btn-help:hover { background:rgba(255,200,50,.2); border-color:#ffcc44; color:#ffcc44; }
+
+/* Help modal */
+#m-help {
+  position:fixed; inset:0; background:rgba(0,0,15,.88);
+  display:none; align-items:center; justify-content:center; z-index:460;
+}
+#m-help .hbox {
+  background:linear-gradient(160deg,#1a1a32,#22123a);
+  border:1.5px solid rgba(140,90,255,.3); border-radius:18px;
+  padding:26px 28px; width:min(680px,94vw); max-height:86vh;
+  overflow-y:auto; box-shadow:0 0 60px rgba(100,50,255,.2);
+  scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.15) transparent;
+}
+.h-title { font-size:1.3em; font-weight:900; color:#ffcc44; margin-bottom:18px; letter-spacing:2px; }
+.h-sec { margin-bottom:16px; }
+.h-sec h3 { font-size:.88em; color:#bb99ff; font-weight:bold;
+  letter-spacing:1.5px; text-transform:uppercase; margin-bottom:7px;
+  padding-bottom:4px; border-bottom:1px solid rgba(140,90,255,.2); }
+.h-sec p, .h-sec li { font-size:.83em; line-height:1.7; opacity:.82; }
+.h-sec ul { padding-left:16px; }
+.h-sec li { margin-bottom:3px; }
+.h-tag {
+  display:inline-block; padding:1px 7px; border-radius:8px; font-size:.75em;
+  font-weight:bold; margin-right:4px; vertical-align:middle;
+}
+.h-tag.gem   { background:rgba(100,180,255,.2); color:#88ccff; }
+.h-tag.card  { background:rgba(100,255,150,.15); color:#88ffaa; }
+.h-tag.noble { background:rgba(255,200,50,.18); color:#ffcc44; }
+.h-tag.miss  { background:rgba(180,100,255,.2); color:#cc88ff; }
+
+/* Top bar: missions above card area */
+#g-top-bar { display:flex; justify-content:center; width:100%; }
+#g-missions{ display:flex; gap:6px; flex-wrap:nowrap; justify-content:center; max-width:100%; overflow:hidden; }
+
+/* (removed g-cur-info — merged into player cards)
+#g-cur-info-placeholder {
+}
+
+/* ── Lobby / Wait ──────────────────────────────── */
+#screen-lobby, #screen-wait {
+  display:none; flex-direction:column; align-items:center;
+  justify-content:center; min-height:100vh; gap:18px; padding:40px;
+}
+.online-btns { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+.btn-online {
+  padding:14px 32px; border-radius:12px; border:2px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.07); color:white; cursor:pointer; font-size:1em;
+  font-weight:bold; letter-spacing:1px; transition:all .15s;
+}
+.btn-online:hover { background:rgba(100,160,255,.2); border-color:#88aaff; color:#88aaff; }
+.btn-online.primary { background:linear-gradient(135deg,#cc6600,#ffaa22); border-color:transparent; }
+.btn-online.primary:hover { filter:brightness(1.15); color:white; }
+.lb-input {
+  background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.2);
+  border-radius:10px; padding:10px 16px; color:white; font-size:.95em;
+  width:240px; text-align:center;
+}
+.lb-input:focus { outline:none; border-color:#88aaff; }
+.code-display {
+  font-size:2.8em; font-weight:900; letter-spacing:10px; color:#ffcc44;
+  background:rgba(255,200,50,.1); border:2px solid rgba(255,200,50,.35);
+  border-radius:14px; padding:14px 32px;
+}
+.wait-list { display:flex; flex-direction:column; gap:7px; width:260px; }
+.wait-slot {
+  padding:9px 14px; border-radius:9px; font-size:.9em; font-weight:bold;
+  border:1.5px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04);
+}
+.wait-slot.filled { border-color:rgba(100,255,150,.45); color:#88ffaa; background:rgba(80,200,120,.08); }
+.wait-slot.empty  { opacity:.38; font-weight:normal; }
+.lb-sep { font-size:.78em; opacity:.38; letter-spacing:2px; }
+
+/* Player card timer border wrapper */
+.pi-timer-outer {
+  padding:2px; border-radius:12px; width:100%;
+  transition:background .4s;
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- Lobby -->
+<div id="screen-lobby" style="display:flex">
+  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-sub">Splendor ── 寶石商人</div>
+  <div class="online-btns" style="margin-top:10px">
+    <button class="btn-online primary" onclick="startLocal()">🏠 本機遊玩</button>
+    <button class="btn-online" onclick="showOnlineCreate()">🌐 建立線上房間</button>
+    <button class="btn-online" onclick="showOnlineJoin()">🔗 加入線上房間</button>
+  </div>
+</div>
+
+<!-- Create room -->
+<div id="screen-create" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
+  <div class="setup-title">建立房間</div>
+  <input id="cr-name" class="lb-input" placeholder="你的名字" maxlength="10">
+  <div class="setup-sub" style="margin-top:4px">玩家人數</div>
+  <div class="num-row">
+    <button class="btn-num active" onclick="crSetN(2,this)">2人</button>
+    <button class="btn-num" onclick="crSetN(3,this)">3人</button>
+    <button class="btn-num" onclick="crSetN(4,this)">4人</button>
+  </div>
+  <button class="btn-online primary" onclick="createRoom()" style="margin-top:6px">建立房間</button>
+  <button class="btn-online" onclick="backToLobby()">← 返回</button>
+</div>
+
+<!-- Join room -->
+<div id="screen-join" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
+  <div class="setup-title">加入房間</div>
+  <input id="jn-code" class="lb-input" placeholder="輸入房號" maxlength="6" style="letter-spacing:6px;font-size:1.5em;text-transform:uppercase">
+  <input id="jn-name" class="lb-input" placeholder="你的名字" maxlength="10">
+  <button class="btn-online primary" onclick="joinRoom()">加入</button>
+  <button class="btn-online" onclick="backToLobby()">← 返回</button>
+</div>
+
+<!-- Wait room -->
+<div id="screen-wait">
+  <div class="setup-title" style="font-size:1.8em"><span id="wait-crown" style="display:none">👑 </span>等待玩家加入</div>
+  <div class="setup-sub">把這個房號傳給朋友</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="code-display" id="wait-code">------</div>
+    <button onclick="copyCode()" style="padding:8px 14px;border-radius:10px;border:1.5px solid rgba(255,200,50,.4);background:rgba(255,200,50,.1);color:#ffcc44;cursor:pointer;font-size:.85em;font-weight:bold;transition:all .15s" onmouseover="this.style.background='rgba(255,200,50,.22)'" onmouseout="this.style.background='rgba(255,200,50,.1)'">📋 複製</button>
+  </div>
+  <div class="wait-list" id="wait-list"></div>
+  <button id="wait-ready" class="btn-online" onclick="setReady()" style="display:none;margin-top:4px">✋ 準備</button>
+  <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="margin-top:4px">開始遊戲 ✦</button>
+  <button class="btn-online" onclick="backToLobby()">← 離開房間</button>
+</div>
+
+<!-- Setup -->
+<div id="screen-setup">
+  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-sub">Splendor ── 寶石商人</div>
+  <div class="num-row" id="num-row">
+    <button class="btn-num active" onclick="setN(2)">2人</button>
+    <button class="btn-num" onclick="setN(3)">3人</button>
+    <button class="btn-num" onclick="setN(4)">4人</button>
+  </div>
+  <div class="player-inputs" id="pinputs"></div>
+  <button class="btn-start" onclick="startGame()">開始遊戲 ✦</button>
+  <div style="font-size:.72em;opacity:.38;max-width:300px;text-align:center;line-height:1.6">
+    點擊寶石庫取寶石，點擊寶石卡購買或預留。<br>率先達到 15 聲望點獲勝。
+  </div>
+</div>
+
+<!-- Game -->
+<div id="screen-game">
+  <div id="g-hdr"><span class="hdr-logo">璀燦寶石</span></div>
+  <div id="g-main">
+    <div id="g-left">
+      <div id="g-bank"></div>
+      <div id="g-players"></div>
+    </div>
+    <div id="g-right">
+      <div id="g-top-bar">
+        <div id="g-missions"></div>
+      </div>
+      <div id="g-cards"></div>
+      <div id="g-bottom"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div id="m-card"  class="m-overlay" style="display:none"></div>
+<div id="m-ret"   class="m-overlay" style="display:none"></div>
+<div id="m-over"  class="m-overlay" style="display:none"></div>
+<div id="toast"></div>
+
+<button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="說明書">?</button>
+
+<div id="m-help" onclick="if(event.target===this)this.style.display='none'">
+  <div class="hbox">
+    <div class="h-title">📖 璀燦寶石 — 遊戲說明</div>
+
+    <div class="h-sec">
+      <h3>遊戲目標</h3>
+      <p>率先累積 <strong>15 聲望點</strong>的玩家觸發最終輪，最終輪結束後分數最高者獲勝。同分時，持有寶石卡數量較少者勝。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3>每回合選擇一項行動</h3>
+      <ul>
+        <li><span class="h-tag gem">取寶石</span>從寶石庫取 <strong>3 枚不同色</strong>寶石，或取 <strong>2 枚同色</strong>（該色庫存須 ≥ 4 枚）。金色代幣無法主動取得。</li>
+        <li><span class="h-tag card">購買寶石卡</span>支付牌上標示的寶石費用。已有的<strong>牌加成</strong>可折抵同色費用，不足時可用金色代幣補足。</li>
+        <li><span class="h-tag card">預留寶石卡</span>將場上或牌堆頂部的牌收入手中保留（最多 3 張），並從庫中取得 1 枚金色代幣（若有剩餘）。預留的牌可在之後的回合購買。</li>
+      </ul>
+    </div>
+
+    <div class="h-sec">
+      <h3>寶石上限</h3>
+      <p>任何時候持有寶石不得超過 <strong>10 枚</strong>。若超過，行動後需立即歸還多餘的寶石至庫中。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3>寶石卡加成</h3>
+      <p>購得的寶石卡會提供<strong>永久寶石加成</strong>（牌右上角圓點顏色）。加成不是寶石代幣，不佔上限，但可在購牌時折抵費用。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3><span class="h-tag miss">任務卡</span></h3>
+      <p>場上隨機出現 3 張任務卡，率先達成條件的玩家立即獲得對應分數（2–3 分）。每張任務只能被一位玩家完成。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3>牌堆與場面</h3>
+      <ul>
+        <li>寶石卡分三個等級（Tier 1–3），每級場上維持 4 張，購買或預留後自動補牌。</li>
+        <li>點擊<strong>牌堆</strong>可盲抽一張並預留（無法直接購買盲抽的牌）。</li>
+      </ul>
+    </div>
+
+    <div class="h-sec">
+      <h3>計時器</h3>
+      <p>每位玩家有 <strong>45 秒</strong>操作時間（畫面頂端讀條）。剩餘 10 秒時會發出提示。時間到後請盡快完成行動。</p>
+    </div>
+
+    <div style="text-align:right;margin-top:18px">
+      <button class="btn btn-grey" onclick="document.getElementById('m-help').style.display='none'" style="padding:8px 22px">關閉</button>
+    </div>
+  </div>
+</div>
+<div id="turn-notif" onclick="dismissTurnNotif()">
+  <div class="tn-sub" id="tn-sub">現在回合</div>
+  <div class="tn-name" id="tn-name"></div>
+</div>
+
+<script>
+'use strict';
+
+// ── Firebase ─────────────────────────────────────────────────────────────
+const FB_CONFIG = {
+  apiKey:"AIzaSyDTfjFjZ4hcba5S9oFzjb6PtvfSqA6pE-I",
+  authDomain:"splendor-game-c9256.firebaseapp.com",
+  databaseURL:"https://splendor-game-c9256-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"splendor-game-c9256",
+  storageBucket:"splendor-game-c9256.firebasestorage.app",
+  messagingSenderId:"406914825596",
+  appId:"1:406914825596:web:7c3fc19ac9214c316d78f9"
+};
+let _fbApp = null;
+let db = null;
+function fbInit() {
+  if (!_fbApp) { _fbApp = firebase.initializeApp(FB_CONFIG); }
+  db = firebase.database();
+}
+
+// ── Online mode state ────────────────────────────────────────────────────
+let onlineMode = false;
+let myIdx = -1;
+let roomCode = '';
+let isHost = false;
+let _crNumP = 2;
+
+function isMyTurn() { return !onlineMode || G.cur === myIdx; }
+function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
+
+// ── Lobby navigation ─────────────────────────────────────────────────────
+function showOnly(id) {
+  ['screen-lobby','screen-create','screen-join','screen-wait','screen-setup','screen-game']
+    .forEach(s => document.getElementById(s).style.display = s===id ? 'flex' : 'none');
+}
+function backToLobby() {
+  if (db && roomCode) {
+    // Remove self from room if joining; leave cleanly
+    if (!isHost) db.ref(`rooms/${roomCode}/players/${myIdx}`).remove();
+    db.ref(`rooms/${roomCode}`).off();
+  }
+  roomCode=''; myIdx=-1; isHost=false; onlineMode=false;
+  showOnly('screen-lobby');
+}
+function startLocal()       { showOnly('screen-setup'); }
+function showOnlineCreate() { showOnly('screen-create'); }
+function showOnlineJoin()   { showOnly('screen-join'); }
+function crSetN(n, btn) {
+  _crNumP = n;
+  document.querySelectorAll('#screen-create .btn-num').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Create / Join ─────────────────────────────────────────────────────────
+async function createRoom() {
+  const name = document.getElementById('cr-name').value.trim() || '玩家1';
+  fbInit();
+  const code = genCode();
+  roomCode = code; myIdx = 0; isHost = true; onlineMode = true; numP = _crNumP;
+  await db.ref(`rooms/${code}`).set({ numP:_crNumP, players:{0:name}, state:null });
+  showOnly('screen-wait');
+  document.getElementById('wait-code').textContent = code;
+  document.getElementById('wait-crown').style.display = 'inline';
+  document.getElementById('wait-ready').style.display = 'none';
+  listenWait(code);
+}
+
+async function joinRoom() {
+  const code = (document.getElementById('jn-code').value||'').trim().toUpperCase();
+  const name = document.getElementById('jn-name').value.trim() || '玩家';
+  if (code.length < 4) { alert('請輸入正確房號'); return; }
+  fbInit();
+  const snap = await db.ref(`rooms/${code}`).once('value');
+  const room = snap.val();
+  if (!room)         { alert('找不到房間，請確認房號'); return; }
+  if (room.state)    { alert('遊戲已開始，無法加入'); return; }
+  const taken = Object.keys(room.players||{}).map(Number);
+  let slot = 0; while (taken.includes(slot)) slot++;
+  if (slot >= room.numP) { alert('房間已滿'); return; }
+  roomCode = code; myIdx = slot; isHost = false; onlineMode = true; numP = room.numP;
+  await db.ref(`rooms/${code}/players/${slot}`).set(name);
+  showOnly('screen-wait');
+  document.getElementById('wait-code').textContent = code;
+  document.getElementById('wait-crown').style.display = 'none';
+  document.getElementById('wait-ready').style.display = 'inline-block';
+  listenWait(code);
+}
+
+// ── Wait room listener ────────────────────────────────────────────────────
+function listenWait(code) {
+  db.ref(`rooms/${code}`).on('value', snap => {
+    const room = snap.val(); if (!room) return;
+    if (room.state) {
+      db.ref(`rooms/${code}`).off();
+      applyRemoteState(room.state);
+      showOnly('screen-game');
+      G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null};
+      render();
+      showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{});
+      listenGame(code);
+      return;
+    }
+    const players = room.players||{}, n = room.numP;
+    const ready = room.ready||{};
+    // Build player list with ready indicators
+    let html='';
+    for (let i=0;i<n;i++) {
+      const nm=players[i];
+      if (nm) {
+        const isPlayerHost = (i===0);
+        const isReady = isPlayerHost || ready[i];
+        const badge = isPlayerHost ? ' 👑' : (isReady ? ' ✅' : ' ⏳');
+        html+=`<div class="wait-slot filled">${PC_NAME[i]} ${nm}${badge}</div>`;
+      } else {
+        html+=`<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
+      }
+    }
+    document.getElementById('wait-list').innerHTML = html;
+    // Hide ready button if already ready
+    if (!isHost && ready[myIdx]) {
+      document.getElementById('wait-ready').style.display = 'none';
+    }
+    // Enable start: host only, all joined non-host players must be ready
+    const joinedNonHost = Object.keys(players).map(Number).filter(i=>i!==0);
+    const allReady = joinedNonHost.every(i=>ready[i]);
+    const canStart = isHost && joinedNonHost.length > 0 && allReady;
+    document.getElementById('wait-start').disabled = !canStart;
+  });
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(roomCode).then(()=>{
+    const btn = document.querySelector('#screen-wait button[onclick="copyCode()"]');
+    const orig = btn.textContent;
+    btn.textContent = '✅ 已複製';
+    setTimeout(()=>{ btn.textContent = orig; }, 1500);
+  }).catch(()=>{
+    prompt('複製此房號：', roomCode);
+  });
+}
+
+function setReady() {
+  if (isHost) return;
+  db.ref(`rooms/${roomCode}/ready/${myIdx}`).set(true);
+  document.getElementById('wait-ready').style.display = 'none';
+}
+const PC_NAME = ['🟠','🔵','🟢','🟣'];
+
+function hostStart() {
+  if (!isHost) return;
+  db.ref(`rooms/${roomCode}/players`).once('value', snap => {
+    const players = snap.val()||{};
+    // Only use actually joined players, in slot order
+    const joined = Object.keys(players).map(Number).sort((a,b)=>a-b);
+    const nameList = joined.map(i=>players[i]||`玩家${i+1}`);
+    numP = nameList.length;
+    startGameOnline(nameList);
+  });
+}
+
+// ── Game state sync ────────────────────────────────────────────────────────
+function pushG() {
+  if (!onlineMode || !db || !roomCode) return;
+  const serial = {
+    numP:G.numP, cur:G.cur, lastRound:G.lastRound,
+    lastStarter:G.lastStarter, over:G.over,
+    players: JSON.parse(JSON.stringify(G.players)),
+    bank: {...G.bank},
+    decksJson: JSON.stringify(G.decks),
+    boardJson:  JSON.stringify(G.board),
+    missions: G.missions.map(m=>({
+      missionIdx: MISSION_DB.findIndex(d=>d.name===m.name),
+      claimedBy: m.claimedBy ?? null
+    })),
+  };
+  if (G.winners) serial.winnerIndices = G.winners.map(w=>G.players.indexOf(w));
+  db.ref(`rooms/${roomCode}/state`).set(serial);
+}
+
+function applyRemoteState(data) {
+  const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null};
+  const prevCur = typeof G.cur==='number' ? G.cur : -1;
+  G = {
+    numP:data.numP, cur:data.cur, lastRound:data.lastRound,
+    lastStarter:data.lastStarter, over:data.over,
+    players:data.players, bank:data.bank,
+    decks: JSON.parse(data.decksJson||'{"1":[],"2":[],"3":[]}'),
+    board:  JSON.parse(data.boardJson||'{"1":[null,null,null,null],"2":[null,null,null,null],"3":[null,null,null,null]}'),
+    missions: (data.missions||[]).map(m=>({...MISSION_DB[m.missionIdx], claimedBy:m.claimedBy})),
+  };
+  if (data.winnerIndices) G.winners = data.winnerIndices.map(i=>G.players[i]);
+  G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null} : prevUi;
+}
+
+function listenGame(code) {
+  db.ref(`rooms/${code}/state`).on('value', snap => {
+    const data = snap.val(); if (!data) return;
+    const prevCur = typeof G.cur==='number' ? G.cur : -1;
+    const wasOver = G.over;
+    applyRemoteState(data);
+    render();
+    if (G.over && !wasOver) { stopTimer(); showOverMod(); return; }
+    if (G.cur !== prevCur) {
+      stopTimer();
+      showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{});
+    }
+  });
+}
+
+// ── Constants ────────────────────────────────────────────────────────────
+const CI  = ['w','u','g','r','k'];
+const CN  = {w:'白',u:'藍',g:'綠',r:'紅',k:'黑',gold:'金'};
+const GCC = {w:'gc-w',u:'gc-u',g:'gc-g',r:'gc-r',k:'gc-k',gold:'gc-gold'};
+const CHC = {w:'ch-w',u:'ch-u',g:'ch-g',r:'ch-r',k:'ch-k'};
+const PC  = ['#ff9955','#55aaff','#55cc88','#cc88ff'];
+const GEMCNT = {2:4, 3:5, 4:7};
+
+// ── Card data [tier, pts, bonusIdx, W,U,G,R,K] ───────────────────────────
+const RAW = [
+  [1,0,0, 0,1,1,1,1],[1,0,0, 0,2,0,2,0],[1,0,0, 0,0,2,1,1],[1,0,0, 0,0,3,0,0],
+  [1,0,0, 1,0,1,0,2],[1,0,0, 2,0,0,0,2],[1,0,0, 0,0,2,0,2],[1,1,0, 0,0,0,0,4],
+  [1,0,1, 1,0,1,1,1],[1,0,1, 0,0,2,1,0],[1,0,1, 2,0,2,0,0],[1,0,1, 0,0,0,0,3],
+  [1,0,1, 2,0,0,2,0],[1,0,1, 1,0,0,1,2],[1,0,1, 0,0,1,2,2],[1,1,1, 0,0,4,0,0],
+  [1,0,2, 1,1,0,1,1],[1,0,2, 0,0,0,2,1],[1,0,2, 0,2,0,0,2],[1,0,2, 0,3,0,0,0],
+  [1,0,2, 0,2,0,2,0],[1,0,2, 0,1,0,2,2],[1,0,2, 2,2,0,0,1],[1,1,2, 0,0,0,4,0],
+  [1,0,3, 1,1,1,0,1],[1,0,3, 0,1,0,0,2],[1,0,3, 2,2,0,0,0],[1,0,3, 3,0,0,0,0],
+  [1,0,3, 0,0,1,0,3],[1,0,3, 1,0,2,0,2],[1,0,3, 0,2,1,0,2],[1,1,3, 0,4,0,0,0],
+  [1,0,4, 1,1,1,1,0],[1,0,4, 2,1,0,0,0],[1,0,4, 0,0,2,1,0],[1,0,4, 0,0,0,3,0],
+  [1,0,4, 1,2,0,2,0],[1,0,4, 2,0,1,2,0],[1,0,4, 2,0,0,2,0],[1,1,4, 4,0,0,0,0],
+  [2,1,0, 0,2,2,0,3],[2,1,0, 0,3,0,2,3],[2,2,0, 0,1,4,2,0],[2,2,0, 2,0,0,4,1],
+  [2,2,0, 0,0,5,0,0],[2,3,0, 0,0,6,0,0],
+  [2,1,1, 2,0,0,2,3],[2,1,1, 3,0,2,3,0],[2,2,1, 0,0,3,0,5],[2,2,1, 5,0,0,0,3],
+  [2,2,1, 5,0,0,0,0],[2,3,1, 0,0,6,0,0],
+  [2,1,2, 3,2,0,0,2],[2,1,2, 0,3,0,3,2],[2,2,2, 4,2,0,0,1],[2,2,2, 0,5,0,0,0],
+  [2,2,2, 0,2,0,5,0],[2,3,2, 0,0,0,6,0],
+  [2,1,3, 2,0,2,0,3],[2,1,3, 0,2,3,0,2],[2,2,3, 1,0,5,0,2],[2,2,3, 3,0,0,0,5],
+  [2,2,3, 0,5,0,0,0],[2,3,3, 0,6,0,0,0],
+  [2,1,4, 2,3,0,0,2],[2,1,4, 3,0,3,0,2],[2,2,4, 0,0,1,5,2],[2,2,4, 0,0,5,0,3],
+  [2,2,4, 0,0,0,5,0],[2,3,4, 6,0,0,0,0],
+  [3,3,0, 3,3,3,5,0],[3,4,0, 0,0,3,6,3],[3,4,0, 7,3,0,0,0],[3,5,0, 3,0,0,7,3],
+  [3,3,1, 3,5,3,0,3],[3,4,1, 6,3,0,0,3],[3,4,1, 0,7,0,3,0],[3,5,1, 0,7,3,0,3],
+  [3,3,2, 3,3,0,3,5],[3,4,2, 3,6,3,0,0],[3,4,2, 3,0,7,0,0],[3,5,2, 3,0,7,0,3],
+  [3,3,3, 0,3,3,3,5],[3,4,3, 3,0,0,3,6],[3,4,3, 0,0,3,7,0],[3,5,3, 3,3,0,7,0],
+  [3,3,4, 5,3,3,0,3],[3,4,4, 3,3,6,0,0],[3,4,4, 0,3,0,0,7],[3,5,4, 0,3,3,0,7],
+];
+
+// ── Mission cards ────────────────────────────────────────────────────────
+// check(player) → true if condition met; claimedBy = player index or null
+const MISSION_DB = [
+  {name:'白色收藏家', desc:'率先擁有 3 張白色寶石卡', pts:2, check:p=>(p.bonuses.w||0)>=3},
+  {name:'藍色收藏家', desc:'率先擁有 3 張藍色寶石卡', pts:2, check:p=>(p.bonuses.u||0)>=3},
+  {name:'綠色收藏家', desc:'率先擁有 3 張綠色寶石卡', pts:2, check:p=>(p.bonuses.g||0)>=3},
+  {name:'紅色收藏家', desc:'率先擁有 3 張紅色寶石卡', pts:2, check:p=>(p.bonuses.r||0)>=3},
+  {name:'黑色收藏家', desc:'率先擁有 3 張黑色寶石卡', pts:2, check:p=>(p.bonuses.k||0)>=3},
+  {name:'多彩大師',   desc:'率先擁有 5 種顏色加成各至少 1 張', pts:3, check:p=>CI.filter(c=>(p.bonuses[c]||0)>0).length>=5},
+  {name:'發展巨匠',   desc:'率先擁有合計 8 張寶石卡',       pts:3, check:p=>p.cards.length>=8},
+  {name:'白藍雙璧',   desc:'率先擁有 白×2 + 藍×2 寶石卡', pts:2, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.u||0)>=2},
+  {name:'綠紅雙輝',   desc:'率先擁有 綠×2 + 紅×2 寶石卡', pts:2, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.r||0)>=2},
+  {name:'黑白雙雄',   desc:'率先擁有 黑×2 + 白×2 寶石卡', pts:2, check:p=>(p.bonuses.k||0)>=2&&(p.bonuses.w||0)>=2},
+];
+
+// ── Parse data ───────────────────────────────────────────────────────────
+let _cid = 0;
+const ALL_CARDS  = RAW.map(r => ({id:_cid++, tier:r[0], pts:r[1], bonus:CI[r[2]], cost:{w:r[3],u:r[4],g:r[5],r:r[6],k:r[7]}}));
+
+// ── Game State ───────────────────────────────────────────────────────────
+let G = {};
+
+// ── Setup ────────────────────────────────────────────────────────────────
+let numP = 2;
+function setN(n) {
+  numP = n;
+  document.querySelectorAll('.btn-num').forEach((b,i)=>b.classList.toggle('active',i===n-2));
+  buildInputs();
+}
+function buildInputs() {
+  const el = document.getElementById('pinputs');
+  el.innerHTML = '';
+  ['玩家1','玩家2','玩家3','玩家4'].slice(0,numP).forEach((def,i) => {
+    el.innerHTML += `<div class="p-row">
+      <div class="swatch" style="background:${PC[i]}"></div>
+      <input id="pn${i}" value="${def}" maxlength="10" type="text">
+    </div>`;
+  });
+}
+buildInputs();
+
+function shuffle(a) {
+  for (let i=a.length-1;i>0;i--) { const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function _buildG(names) {
+  const decks={1:[],2:[],3:[]};
+  ALL_CARDS.forEach(c=>decks[c.tier].push({...c,cost:{...c.cost}}));
+  [1,2,3].forEach(t=>shuffle(decks[t]));
+  const board={};
+  [1,2,3].forEach(t=>{board[t]=[decks[t].pop(),decks[t].pop(),decks[t].pop(),decks[t].pop()];});
+  const missions=shuffle([...MISSION_DB]).slice(0,3).map(m=>({...m,claimedBy:null}));
+  const gc=GEMCNT[numP];
+  const bank={w:gc,u:gc,g:gc,r:gc,k:gc,gold:5};
+  return {
+    numP, players:names.map((name,i)=>({
+      name, color:PC[i],
+      gems:{w:0,u:0,g:0,r:0,k:0,gold:0},
+      bonuses:{w:0,u:0,g:0,r:0,k:0},
+      cards:[], reserved:[], points:0,
+    })),
+    bank, decks, board, missions,
+    cur:0, lastRound:false, lastStarter:-1, over:false,
+    ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null},
+  };
+}
+
+function startGame() {
+  // Local mode only
+  const names = Array.from({length:numP},(_,i)=>document.getElementById(`pn${i}`)?.value.trim()||`玩家${i+1}`);
+  G = _buildG(names);
+  showOnly('screen-game');
+  render();
+  showTurnNotification(0, startTimer);
+}
+
+function startGameOnline(names) {
+  // Host only — build G and push to Firebase
+  G = _buildG(names);
+  pushG(); // Triggers listenWait → game starts for all clients
+}
+
+// ── Core helpers ─────────────────────────────────────────────────────────
+function gsum(gems) { return CI.reduce((s,c)=>s+(gems[c]||0),0)+(gems.gold||0); }
+
+function effCost(pl,card) {
+  const e={};
+  CI.forEach(c=>e[c]=Math.max(0,(card.cost[c]||0)-(pl.bonuses[c]||0)));
+  return e;
+}
+
+function canBuy(pl,card) {
+  const e=effCost(pl,card);
+  let need=0;
+  CI.forEach(c=>need+=Math.max(0,(e[c]||0)-(pl.gems[c]||0)));
+  return need<=(pl.gems.gold||0);
+}
+
+// ── Card animation ───────────────────────────────────────────────────────
+function animateCardAcquired(card, playerIdx, label, callback) {
+  const pl = G.players[playerIdx];
+  const W=130, H=175;
+
+  // Dim layer
+  const dim = document.createElement('div');
+  dim.style.cssText='position:fixed;inset:0;background:rgba(0,0,15,.82);z-index:500;pointer-events:none;transition:opacity .4s;';
+  document.body.appendChild(dim);
+
+  // Player label
+  const lbl = document.createElement('div');
+  lbl.textContent = label;
+  lbl.style.cssText=`position:fixed;top:calc(50% - ${H/2+44}px);left:50%;transform:translateX(-50%);
+    color:${pl.color};font-size:1.35em;font-weight:900;z-index:502;pointer-events:none;
+    text-shadow:0 0 20px ${pl.color};white-space:nowrap;transition:opacity .4s;`;
+  document.body.appendChild(lbl);
+
+  // The card itself
+  const fly = document.createElement('div');
+  fly.className=`dev-card t${card.tier}`;
+  const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>
+    `<div class="cost-ln"><div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`
+  ).join('');
+  fly.innerHTML=`
+    <div class="card-top ${CHC[card.bonus]}" style="padding:8px 10px;min-height:50px">
+      <span class="card-pts" style="font-size:2.2em">${card.pts||''}</span>
+      <div class="card-gem-dot ${GCC[card.bonus]}" style="width:28px;height:28px"></div>
+    </div>
+    <div class="card-body" style="padding:8px">${costH}</div>`;
+  const sx=window.innerWidth/2-W/2, sy=window.innerHeight/2-H/2+20;
+  fly.style.cssText=`position:fixed;width:${W}px;min-height:${H}px;left:${sx}px;top:${sy}px;
+    z-index:501;pointer-events:none;box-shadow:0 0 50px ${pl.color},0 0 20px rgba(255,255,255,.3);
+    transition:left .65s cubic-bezier(.4,0,.2,1),top .65s cubic-bezier(.4,0,.2,1),
+               transform .65s,opacity .65s;`;
+  document.body.appendChild(fly);
+
+  // After pause, fly to player tab in header
+  setTimeout(()=>{
+    const tabs=document.querySelectorAll('.p-tab');
+    const tgt=tabs[playerIdx];
+    if (tgt) {
+      const r=tgt.getBoundingClientRect();
+      fly.style.left=(r.left+r.width/2-W*0.05)+'px';
+      fly.style.top=(r.top+r.height/2-H*0.1)+'px';
+      fly.style.transform='scale(0.08)';
+      fly.style.opacity='0';
+    } else { fly.style.opacity='0'; }
+    lbl.style.opacity='0'; dim.style.opacity='0';
+    setTimeout(()=>{ dim.remove(); lbl.remove(); fly.remove(); callback(); }, 700);
+  }, 1250);
+}
+
+// ── Buy / Reserve ─────────────────────────────────────────────────────────
+function execBuy(card, fromRes) {
+  const pl=G.players[G.cur];
+  if (!canBuy(pl,card)) { toast('寶石不足，無法購買'); return false; }
+  const e=effCost(pl,card);
+  let gused=0;
+  CI.forEach(c=>{
+    const have=pl.gems[c]||0, need=e[c]||0;
+    if (have>=need){ pl.gems[c]=have-need; G.bank[c]+=need; }
+    else { G.bank[c]+=have; const s=need-have; pl.gems[c]=0; pl.gems.gold=(pl.gems.gold||0)-s; gused+=s; }
+  });
+  G.bank.gold+=gused;
+  pl.cards.push(card);
+  pl.bonuses[card.bonus]=(pl.bonuses[card.bonus]||0)+1;
+  pl.points+=card.pts;
+  if (fromRes){ pl.reserved=pl.reserved.filter(c=>c.id!==card.id); }
+  else { fillBoard(card); }
+  G.ui.acted=true; G.ui.pendCard=null;
+  closeM('m-card');
+  animateCardAcquired(card, G.cur, `${pl.name} 購得寶石卡！`, ()=>{ afterAct(); render(); });
+  return true;
+}
+
+function execReserve(card, tier, bi) {
+  const pl=G.players[G.cur];
+  if (pl.reserved.length>=3){ toast('最多預留3張牌'); return false; }
+  pl.reserved.push(card);
+  if (G.bank.gold>0){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; }
+  if (tier!==null && bi!==null){ fillBoard(card); }
+  G.ui.acted=true; G.ui.pendCard=null;
+  closeM('m-card');
+  animateCardAcquired(card, G.cur, `${pl.name} 預留寶石卡！`, ()=>{
+    if (gsum(pl.gems)>10){ showRetMod(); }
+    else { afterAct(); render(); }
+  });
+  return true;
+}
+
+function fillBoard(card) {
+  for (const t of [1,2,3]) {
+    const idx=G.board[t].findIndex(c=>c&&c.id===card.id);
+    if (idx!==-1){ G.board[t][idx]=G.decks[t].length>0?G.decks[t].pop():null; return; }
+  }
+}
+
+// ── Take gems ─────────────────────────────────────────────────────────────
+// [Change 4] Block confirmation when player takes fewer gems than possible
+function execTakeGems() {
+  const p=G.ui.pending;
+  const tot=CI.reduce((s,c)=>s+(p[c]||0),0);
+  if (!tot){ toast('請先選擇寶石'); return; }
+
+  const isSame=CI.some(c=>(p[c]||0)===2);
+
+  // Must take 3 different OR 2 same — block suboptimal takes
+  if (!isSame && tot<3) {
+    const moreAvail=CI.filter(c=>(G.bank[c]||0)>0 && !(p[c]||0));
+    if (moreAvail.length>0) {
+      const canAdd=Math.min(3-tot, moreAvail.length);
+      toast(`⚠ 還可以再取 ${canAdd} 枚不同色寶石（必須取足3枚不同色，或改選2枚同色）`);
+      return; // Hard-block
+    }
+  }
+
+  const pl=G.players[G.cur];
+  CI.forEach(c=>{ pl.gems[c]=(pl.gems[c]||0)+(p[c]||0); G.bank[c]-=(p[c]||0); });
+  G.ui.pending={w:0,u:0,g:0,r:0,k:0};
+  G.ui.acted=true;
+  if (gsum(pl.gems)>10){ showRetMod(); }
+  else { afterAct(); render(); }
+}
+
+function afterAct() {
+  deactivateAllZones();
+  checkMissions();
+  advanceTurn();
+}
+
+// ── Mission checking ──────────────────────────────────────────────────────
+function checkMissions() {
+  const pl=G.players[G.cur];
+  G.missions.forEach(m=>{
+    if (m.claimedBy!==null) return;
+    if (m.check(pl)){
+      m.claimedBy=G.cur;
+      pl.points+=m.pts;
+      toast(`🎯 ${pl.name} 完成任務「${m.name}」！獲得 ${m.pts} 分！`);
+    }
+  });
+}
+
+function advanceTurn() {
+  const pl=G.players[G.cur];
+  if (!G.lastRound && pl.points>=15){ G.lastRound=true; G.lastStarter=G.cur; }
+  const next=(G.cur+1)%G.numP;
+  if (G.lastRound && next===G.lastStarter){ endGame(); return; }
+  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null;
+  stopTimer(); render();
+  if (onlineMode) { pushG(); } // listener handles turn notification for all
+  else { showTurnNotification(G.cur, startTimer); }
+}
+
+function endGame() {
+  stopTimer(); G.over=true;
+  let mx=Math.max(...G.players.map(p=>p.points));
+  let w=G.players.filter(p=>p.points===mx);
+  if (w.length>1){ const mn=Math.min(...w.map(p=>p.cards.length)); w=w.filter(p=>p.cards.length===mn); }
+  G.winners=w; render();
+  if (onlineMode) { pushG(); } // listener triggers showOverMod for all
+  else { showOverMod(); }
+}
+
+// ── Gem bank clicking ─────────────────────────────────────────────────────
+function clickBank(col) {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動，請點「結束回合」'); return; }
+  deactivateZone('g-cards');
+  const p=G.ui.pending, b=G.bank, cnt=p[col]||0;
+  const total=CI.reduce((s,c)=>s+(p[c]||0),0);
+  const has2=CI.some(c=>(p[c]||0)===2);
+  const others=CI.filter(c=>c!==col&&(p[c]||0)>0);
+
+  if (cnt===2){ p[col]=0; render(); return; }
+  if (cnt===1) {
+    if (!others.length){
+      if ((b[col]||0)>=4){ p[col]=2; }
+      else { toast(`${CN[col]}寶石不足4枚，無法取2枚同色`); p[col]=0; }
+    } else { p[col]=0; }
+    render(); return;
+  }
+  if ((b[col]||0)<=0){ toast(`${CN[col]}寶石已用盡`); return; }
+  if (has2){ toast('已選2枚同色，無法再選其他'); return; }
+  if (total>=3){ toast('最多選3枚'); return; }
+  p[col]=1; render();
+}
+
+function pendValid() {
+  const p=G.ui.pending, tot=CI.reduce((s,c)=>s+(p[c]||0),0);
+  if (!tot) return false;
+  return CI.some(c=>(p[c]||0)===2) ? tot===2 : tot<=3;
+}
+
+function clearPend(){ G.ui.pending={w:0,u:0,g:0,r:0,k:0}; render(); if(!G.ui.acted) activateZones(); }
+
+function tryEnd() {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (!G.ui.acted){ toast('請先執行行動（取寶石、購買或預留）'); return; }
+  checkMissions();
+  advanceTurn();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function gdot(col, sz=24) {
+  return `<div class="g-circle ${GCC[col]}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px"></div>`;
+}
+
+function render() {
+  rMissions(); rBank(); rCards(); rBottom(); rPlayers();
+}
+
+// Mission card display
+function rMissions() {
+  if (!G.missions||!G.missions.length) return;
+  let h=``;
+  G.missions.forEach((m,i)=>{
+    const claimed=m.claimedBy!==null;
+    const claimer=claimed?G.players[m.claimedBy]:null;
+    h+=`<div class="mission-card ${claimed?'claimed':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="mission-name" style="${claimed?'color:#aa9933':''}">任務${i+1}: ${m.name}</span>
+        <span class="mission-pts">+${m.pts}分</span>
+      </div>
+      <div class="mission-desc">${m.desc}</div>
+      ${claimed?`<div class="mission-winner" style="color:${claimer.color}">✓ ${claimer.name}達成</div>`:''}
+    </div>`;
+  });
+  document.getElementById('g-missions').innerHTML=h;
+}
+
+function rBank() {
+  const pend=G.ui.pending;
+  let h=`<div class="panel-label" style="margin-top:10px">寶石庫</div>`;
+  [...CI,'gold'].forEach(col=>{
+    const cnt=G.bank[col]||0, pk=pend[col]||0, isGold=col==='gold';
+    h+=`<div class="bank-row ${pk?'picked':''} ${isGold?'no-click':''}" ${isGold?'':` onclick="clickBank('${col}')"`}>
+      <div class="${GCC[col]}" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.35)"></div>
+      <span class="g-name">${CN[col]}</span>
+      <span class="g-cnt">${cnt}</span>
+      ${pk?`<span class="pick-badge">+${pk}</span>`:''}
+    </div>`;
+  });
+  document.getElementById('g-bank').innerHTML=h;
+}
+
+function rCards() {
+  const pl=G.players[G.cur];
+  let h='';
+  [3,2,1].forEach(t=>{
+    const tc={3:'#dd88ff',2:'#88aaff',1:'#ffcc88'}[t];
+    const bg={3:'#32144a,#180a28',2:'#1e3858,#101e38',1:'#4a3818,#2e2410'}[t];
+    const dc=G.decks[t].length;
+    h+=`<div class="tier-row">
+      <div class="deck-box ${dc?'':'empty'}" style="border-color:${tc}44;background:linear-gradient(160deg,${bg})">
+        <div class="deck-tier" style="color:${tc}">${{3:'絕密卡',2:'機密卡',1:'普通卡'}[t]}</div>
+        <div class="deck-n">${dc}</div><div class="deck-lbl">張</div>
+      </div>`;
+    G.board[t].forEach((card,bi)=>{
+      if (!card){ h+=`<div class="card-empty-slot"></div>`; return; }
+      const afford=canBuy(pl,card), e=effCost(pl,card);
+      const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
+        const covered=(e[c]||0)===0;
+        return `<div class="cost-ln ${covered?'covered':''}">
+          <div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`;
+      }).join('');
+      h+=`<div class="dev-card t${t} ${afford?'':'dim'}" onclick="openBoardCard(${card.id},${t},${bi})">
+        <div class="card-top ${CHC[card.bonus]}">
+          <span class="card-pts">${card.pts||''}</span>
+          <div class="card-gem-dot ${GCC[card.bonus]}" style="width:20px;height:20px"></div>
+        </div>
+        <div class="card-body">${costH}</div>
+      </div>`;
+    });
+    h+='</div>';
+  });
+  document.getElementById('g-cards').innerHTML=h;
+}
+
+function rBottom() {
+  const pend=G.ui.pending, tot=CI.reduce((s,c)=>s+(pend[c]||0),0);
+  const pendH=CI.filter(c=>(pend[c]||0)>0).map(c=>
+    `<div class="pending-chip">${gdot(c,16)}<span>×${pend[c]}</span></div>`
+  ).join('');
+  document.getElementById('g-bottom').innerHTML=`
+    <div class="act-area" style="width:100%">
+      <div class="act-label">行動</div>
+      ${tot?`<div class="pending-row">${pendH}</div>
+        <div class="btn-row">
+          <button class="btn btn-go" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認取寶石</button>
+          <button class="btn btn-grey" onclick="clearPend()">清除</button>
+        </div>`:''}
+      <div class="btn-row" style="margin-top:6px">
+        <button class="btn btn-end" onclick="tryEnd()" ${G.ui.acted?'':'disabled'}>結束回合 →</button>
+      </div>
+      ${G.lastRound?`<div style="font-size:.72em;color:#ff9955;margin-top:4px">⚠ 最終輪 — ${G.players[G.lastStarter].name}已達15分</div>`:''}
+    </div>`;
+}
+
+function rPlayers() {
+  const pct=(_timerSec/60*100).toFixed(2);
+  const timerCol=_timerSec<=20?'#ff4444':'#55cc88';
+  const h=G.players.map((p,i)=>{
+    const cur=i===G.cur;
+    const bonH=CI.map(c=>{
+      const b=p.bonuses[c]||0; return b?`<div class="bonus-chip"><div style="width:8px;height:8px;border-radius:50%;display:inline-block;" class="${GCC[c]}"></div>×${b}</div>`:'';
+    }).join('');
+    const gemH=[...CI,'gold'].map(c=>{
+      const n=p.gems[c]||0; if(!n) return '';
+      return `<div class="pi-gem-item"><div class="g-circle ${GCC[c]}" style="width:14px;height:14px;border-width:1px"></div><span>${n}</span></div>`;
+    }).join('');
+    let resH='';
+    if(cur && p.reserved.length){
+      resH=`<div style="font-size:.62em;opacity:.45;margin-top:7px;margin-bottom:3px">預留牌</div><div style="display:flex;flex-direction:column;gap:3px">`;
+      p.reserved.forEach((card,ri)=>{
+        const afford=canBuy(p,card);
+        resH+=`<div onclick="openResCard(${ri})" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,${afford?'.2':'.08'})">
+          <div class="card-gem-dot ${GCC[card.bonus]}" style="width:10px;height:10px;flex-shrink:0"></div>
+          <span style="font-size:.68em;opacity:.7;flex:1">${{1:'普通',2:'機密',3:'絕密'}[card.tier]}${card.pts?` +${card.pts}分`:''}</span>
+          ${afford?`<span style="font-size:.6em;color:#55cc88">可買</span>`:''}
+        </div>`;
+      });
+      resH+=`</div>`;
+    }
+    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}">
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <div class="pi-pts" style="color:${p.color}">${p.points}分</div>
+        <div class="pi-name" style="color:${p.color}">${p.name}</div>
+      </div>
+      <div class="pi-bonuses">${bonH||'<span style="opacity:.25;font-size:.68em">無加成</span>'}</div>
+      ${gemH?`<div class="pi-gems">${gemH}</div>`:''}
+      <div class="pi-mini">牌${p.cards.length}${p.reserved.length?` 預留${p.reserved.length}`:''}</div>
+      ${resH}
+    </div>`;
+    if(cur) return `<div id="pi-timer-wrap" class="pi-timer-outer" style="background:conic-gradient(from 0deg,${timerCol} ${pct}%,rgba(255,255,255,.08) ${pct}%)">${inner}</div>`;
+    return inner;
+  }).join('');
+  document.getElementById('g-players').innerHTML=h;
+}
+
+// ── Card modals ───────────────────────────────────────────────────────────
+function openBoardCard(cardId, t, bi) {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  const card=G.board[t].find(c=>c&&c.id===cardId);
+  if (!card) return;
+  G.ui.pendCard={card,t,bi,fromRes:false};
+  showCardMod(card,false);
+}
+
+function openResCard(ri) {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  const card=G.players[G.cur].reserved[ri];
+  if (!card) return;
+  G.ui.pendCard={card,ri,fromRes:true};
+  showCardMod(card,true);
+}
+
+function showCardMod(card, fromRes) {
+  const pl=G.players[G.cur], afford=canBuy(pl,card), e=effCost(pl,card);
+  const canRes=!fromRes && pl.reserved.length<3;
+  const tierN={1:'普通卡',2:'機密卡',3:'絕密卡'}[card.tier];
+  const bonN={w:'白鑽',u:'藍寶石',g:'翡翠',r:'紅寶石',k:'黑玉'}[card.bonus];
+  const costRows=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
+    const disc=(card.cost[c]||0)-(e[c]||0);
+    const short=Math.max(0,(e[c]||0)-(pl.gems[c]||0));
+    return `<div class="cost-detail-row">
+      <div class="g-circle ${GCC[c]}" style="width:18px;height:18px;font-size:9px"></div>
+      <span>${CN[c]} ×${card.cost[c]}</span>
+      ${disc>0?`<span style="color:#88ff88;font-size:.82em">-${disc}折</span>`:''}
+      <span style="margin-left:auto;font-size:.82em;color:${short>0?'#ff8888':'#88ff88'}">${short>0?'缺'+short+'枚':'✓'}</span>
+    </div>`;
+  }).join('');
+  const goldShort=CI.reduce((s,c)=>s+Math.max(0,(e[c]||0)-(pl.gems[c]||0)),0);
+  document.getElementById('m-card').style.display='flex';
+  document.getElementById('m-card').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+    <div class="m-title">${fromRes?'預留牌':'寶石卡'} — ${tierN}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div class="g-circle ${GCC[card.bonus]}" style="width:36px;height:36px;font-size:0"></div>
+      <div>
+        <div style="font-weight:bold">加成：${bonN} ×1</div>
+        ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
+      </div>
+    </div>
+    <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用（持有加成已折抵）：</div>
+    ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
+    ${goldShort>0&&afford?`<div style="font-size:.78em;color:#ffcc44;margin-top:4px">將使用${goldShort}枚金色代幣補足</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">
+      <button class="btn btn-go" onclick="modBuy()" ${afford?'':'disabled'}>${afford?'✓ 購買':'✗ 寶石不足'}</button>
+      ${canRes?`<button class="btn btn-grey" onclick="modReserve()">預留 (取金×1)</button>`:''}
+      <button class="btn btn-grey" onclick="closeM('m-card')">取消</button>
+    </div>
+  </div>`;
+  document.getElementById('m-card').onclick=()=>closeM('m-card');
+}
+
+function modBuy()     { const {card,fromRes}=G.ui.pendCard; execBuy(card,fromRes); }
+function modReserve() { const {card,t,bi}=G.ui.pendCard; execReserve(card,t,bi); }
+function closeM(id)   { document.getElementById(id).style.display='none'; G.ui.pendCard=null; }
+
+// ── Return gems modal ─────────────────────────────────────────────────────
+function showRetMod() {
+  const pl=G.players[G.cur];
+  function draw() {
+    const tot=gsum(pl.gems), ex=tot-10;
+    const gemsH=[...CI,'gold'].map(c=>{
+      const n=pl.gems[c]||0; if(!n) return '';
+      return `<div onclick="retGem('${c}')" style="cursor:pointer;text-align:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.07);transition:background .12s" onmouseover="this.style.background='rgba(255,80,80,.2)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+        ${gdot(c,30)}<div style="font-size:.72em;margin-top:3px">${CN[c]}<br>${n}枚</div></div>`;
+    }).join('');
+    document.getElementById('m-ret').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+      <div class="m-title">歸還寶石</div>
+      <div style="opacity:.8;margin-bottom:12px">持有 <b>${tot}</b> 枚，需歸還 <b style="color:#ff8888">${ex}</b> 枚（點擊寶石歸還）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${gemsH}</div>
+      <button class="btn btn-go" onclick="confRet()" ${tot<=10?'':'disabled'}>
+        ${tot<=10?`確認 (${tot}/10)`:`還需歸還 ${tot-10} 枚`}
+      </button>
+    </div>`;
+  }
+  document.getElementById('m-ret').style.display='flex';
+  document.getElementById('m-ret').onclick=null;
+  draw(); window._retDraw=draw;
+}
+
+function retGem(col) {
+  const pl=G.players[G.cur];
+  if (!(pl.gems[col]||0)) return;
+  pl.gems[col]--; G.bank[col]=(G.bank[col]||0)+1;
+  window._retDraw();
+}
+
+function confRet() {
+  if (gsum(G.players[G.cur].gems)>10) return;
+  document.getElementById('m-ret').style.display='none';
+  afterAct(); render();
+}
+
+// ── Game over ─────────────────────────────────────────────────────────────
+function showOverMod() {
+  const sorted=[...G.players].sort((a,b)=>b.points-a.points||a.cards.length-b.cards.length);
+  const medals=['🥇','🥈','🥉',''];
+  const rows=sorted.map((p,i)=>{
+    const isW=G.winners.includes(p);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1)">
+      <span style="font-size:1.4em">${medals[i]||''}</span>
+      <div style="flex:1">
+        <div style="font-weight:bold;color:${p.color}">${isW?'🏆 ':''}${p.name}</div>
+        <div style="font-size:.75em;opacity:.6">牌${p.cards.length}張 | 任務${G.missions.filter(m=>m.claimedBy!==null&&G.players[m.claimedBy]===p).length}個</div>
+      </div>
+      <div style="font-size:1.9em;font-weight:900;color:${p.color}">${p.points}</div>
+    </div>`;
+  }).join('');
+  const wn=G.winners.map(p=>p.name).join('、');
+  document.getElementById('m-over').style.display='flex';
+  document.getElementById('m-over').innerHTML=`<div class="m-box">
+    <div class="m-title">🎊 遊戲結束！</div>
+    <div style="font-size:1.15em;color:#ffcc44;margin-bottom:14px">🏆 ${wn} 獲勝！</div>
+    ${rows}
+    <button class="btn btn-start" onclick="location.reload()" style="margin-top:18px;width:100%;background:linear-gradient(135deg,#cc6600,#ffaa22);padding:12px">再玩一次</button>
+  </div>`;
+}
+
+// ── Turn Notification ─────────────────────────────────────────────────────
+let _turnNotifCallback = null;
+function showTurnNotification(playerIdx, callback) {
+  const pl = G.players[playerIdx];
+  const el = document.getElementById('turn-notif');
+  document.getElementById('tn-sub').style.color = pl.color;
+  document.getElementById('tn-name').textContent = pl.name;
+  document.getElementById('tn-name').style.color = pl.color;
+  _turnNotifCallback = callback;
+  el.classList.add('on');
+  clearTimeout(window._tndTimer);
+  window._tndTimer = setTimeout(dismissTurnNotif, 1000);
+}
+function dismissTurnNotif() {
+  const el = document.getElementById('turn-notif');
+  if (!el.classList.contains('on')) return;
+  el.classList.remove('on');
+  clearTimeout(window._tndTimer);
+  const cb = _turnNotifCallback;
+  _turnNotifCallback = null;
+  if (cb) cb();
+}
+
+// ── Turn Timer ────────────────────────────────────────────────────────────
+let _timerInterval = null;
+let _timerSec = 60;
+
+function activateZones() {
+  ['g-bank','g-cards'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('zone-active');
+    void el.offsetWidth;
+    el.classList.add('zone-active');
+  });
+}
+function deactivateZone(id) {
+  document.getElementById(id)?.classList.remove('zone-active');
+}
+function deactivateAllZones() {
+  ['g-bank','g-cards'].forEach(id => deactivateZone(id));
+}
+
+function startTimer() {
+  clearInterval(_timerInterval);
+  _timerSec = 60;
+  _updateTimerEl();
+  activateZones();
+  _timerInterval = setInterval(() => {
+    _timerSec--;
+    _updateTimerEl();
+    if (_timerSec === 15) toast('⏰ 剩餘 15 秒！');
+    if (_timerSec <= 0) {
+      clearInterval(_timerInterval);
+      toast('⏰ 時間到！請盡快完成行動');
+    }
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(_timerInterval);
+  _timerInterval = null;
+}
+function _updateTimerEl() {
+  const s = Math.max(0, _timerSec);
+  const color = s <= 20 ? '#ff4444' : '#55cc88';
+  const pct = (s / 60 * 100).toFixed(2);
+  const wrap = document.getElementById('pi-timer-wrap');
+  if (wrap) wrap.style.background = `conic-gradient(from 0deg,${color} ${pct}%,rgba(255,255,255,.08) ${pct}%)`;
+}
+
+// ── Sound Effects ─────────────────────────────────────────────────────────
+let _audioCtx = null;
+function _ac() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+function playClick(type = 'tap') {
+  try {
+    const ctx = _ac(), t = ctx.currentTime;
+
+    // 雜訊爆音輔助（用於撞擊感）
+    const noise = (startT, dur, vol, lpFreq) => {
+      const len = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 6);
+      const src = ctx.createBufferSource();
+      const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = lpFreq;
+      const g = ctx.createGain();
+      src.buffer = buf; src.connect(filt); filt.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(vol, startT); g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+      src.start(startT); src.stop(startT + dur + 0.01);
+    };
+    const tone = (startT, freq, vol, dur, freqEnd) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.connect(g); g.connect(ctx.destination);
+      o.frequency.setValueAtTime(freq, startT);
+      if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, startT + dur);
+      g.gain.setValueAtTime(vol, startT); g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+      o.start(startT); o.stop(startT + dur + 0.01);
+    };
+
+    if (type === 'coin') {
+      // 撲克籌碼：硬塑膠撞擊 + 短暫金屬回響，快速收尾
+      noise(t,       0.018, 0.75, 5500);       // 塑膠撞擊瞬態（高頻脆聲）
+      noise(t,       0.030, 0.35, 900);        // 低頻底部重量感
+      tone(t,        3100, 0.14, 0.07, 2800);  // 金屬回響主音
+      tone(t+0.005,  1550, 0.07, 0.055, 1400); // 泛音層
+    } else if (type === 'tick') {
+      // 機械鐘滴答：乾脆雜訊爆音，無音調感
+      noise(t, 0.018, 0.55, 5000);
+      noise(t, 0.010, 0.30, 1200);
+    } else if (type === 'confirm') {
+      tone(t, 500, 0.13, 0.16, 800);
+    } else if (type === 'end') {
+      tone(t,       420, 0.11, 0.10);
+      tone(t+0.09,  630, 0.11, 0.13);
+    } else {
+      tone(t, 360, 0.07, 0.07);
+    }
+  } catch(e) {}
+}
+// 統一攔截所有按鈕 / 寶石庫列點擊
+document.addEventListener('click', e => {
+  const btn  = e.target.closest('.btn:not(:disabled)');
+  const bank = e.target.closest('.bank-row:not(.no-click)');
+  if (btn) {
+    if (btn.classList.contains('btn-end')) playClick('end');
+    else if (btn.classList.contains('btn-go')) playClick('confirm');
+    else playClick('tap');
+  }
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+let _tt;
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('on'),2800);
+}
+</script>
+</body>
+</html>
