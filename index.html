@@ -238,7 +238,7 @@ body {
 .gc-u    { background:radial-gradient(circle at 35% 30%,#aaccff,#1d55bb); color:white; }
 .gc-g    { background:radial-gradient(circle at 35% 30%,#aaffcc,#1d9944); color:white; }
 .gc-r    { background:radial-gradient(circle at 35% 30%,#ffaaaa,#cc1e1e); color:white; }
-.gc-k    { background:radial-gradient(circle at 35% 30%,#8899bb,#1e2e44); color:white; }
+.gc-k    { background:radial-gradient(circle at 35% 30%,#c8854a,#5c2e0a); color:white; }
 .gc-gold { background:radial-gradient(circle at 35% 30%,#ffee88,#cc8800); color:white; }
 
 /* Card header tint by bonus */
@@ -867,6 +867,57 @@ function listenGame(code) {
 const CI  = ['w','u','g','r','k'];
 const CN  = {w:'白',u:'藍',g:'綠',r:'紅',k:'黑',gold:'金'};
 const GCC = {w:'gc-w',u:'gc-u',g:'gc-g',r:'gc-r',k:'gc-k',gold:'gc-gold'};
+const GEM_FILL = {w:'#c8ecff',u:'#3a7fff',g:'#22cc66',r:'#ff2244',k:'#7a4020'};
+const GEM_NAME = {w:'鑽石',u:'藍寶石',g:'綠寶石',r:'紅寶石',k:'黑曜石'};
+function gemSVG(col, size=18) {
+  const s=size, a=`display:inline-block;vertical-align:middle;flex-shrink:0`;
+  if(col==='w') // 鑽石 — 菱形稜角，半透明
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <polygon points="12,1 21,9 12,23 3,9" fill="#d8f4ff" fill-opacity="0.82"/>
+      <polygon points="12,1 21,9 12,9" fill="rgba(255,255,255,0.62)"/>
+      <polygon points="3,9 12,9 12,23" fill="rgba(180,230,255,0.22)"/>
+      <polygon points="21,9 12,9 12,23" fill="rgba(140,210,255,0.14)"/>
+      <line x1="3" y1="9" x2="21" y2="9" stroke="rgba(255,255,255,0.78)" stroke-width="1"/>
+      <line x1="12" y1="1" x2="3" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
+      <line x1="12" y1="1" x2="21" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
+    </svg>`;
+  if(col==='k') // 黑曜石 — 長方形，咖啡色
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <rect x="5" y="2" width="14" height="20" rx="2" fill="#7a4020"/>
+      <rect x="5" y="2" width="14" height="9" rx="2" fill="rgba(255,220,160,0.22)"/>
+      <rect x="5" y="2" width="14" height="20" rx="2" fill="none" stroke="rgba(255,200,120,0.22)" stroke-width="0.8"/>
+    </svg>`;
+  if(col==='g') // 綠寶石 — 橢圓形
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <ellipse cx="12" cy="12" rx="8.5" ry="10.5" fill="#22cc66"/>
+      <ellipse cx="11" cy="8" rx="4" ry="2.5" fill="rgba(255,255,255,0.32)" transform="rotate(-12,11,8)"/>
+      <ellipse cx="12" cy="12" rx="8.5" ry="10.5" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.8"/>
+    </svg>`;
+  if(col==='r') // 紅寶石 — 六角形
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <polygon points="12,2 20,7 20,17 12,22 4,17 4,7" fill="#ff2244"/>
+      <polygon points="12,2 20,7 12,10 4,7" fill="rgba(255,255,255,0.26)"/>
+      <polygon points="12,2 20,7 20,17 12,22 4,17 4,7" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+    </svg>`;
+  if(col==='u') // 藍寶石 — 正方形
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <rect x="3" y="3" width="18" height="18" rx="2.5" fill="#3a7fff"/>
+      <polygon points="3,3 21,3 17,8 7,8" fill="rgba(255,255,255,0.28)"/>
+      <rect x="3" y="3" width="18" height="18" rx="2.5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+    </svg>`;
+  if(col==='gold') // 金幣 — 圓形硬幣
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <circle cx="12" cy="12" r="10.5" fill="#a86800"/>
+      <circle cx="12" cy="12" r="9.5" fill="#ffcc22"/>
+      <ellipse cx="11" cy="8.5" rx="4" ry="2.2" fill="rgba(255,255,255,0.42)"/>
+      <circle cx="12" cy="12" r="5.5" fill="none" stroke="rgba(160,100,0,0.4)" stroke-width="0.9"/>
+      <circle cx="12" cy="12" r="10.5" fill="none" stroke="rgba(160,100,0,0.35)" stroke-width="0.6"/>
+    </svg>`;
+  const fill=GEM_FILL[col]||'#aaa';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+    <polygon points="12,2 22,9 12,22 2,9" fill="${fill}"/>
+  </svg>`;
+}
 const CHC = {w:'ch-w',u:'ch-u',g:'ch-g',r:'ch-r',k:'ch-k'};
 const PC  = ['#ff9955','#55aaff','#55cc88','#cc88ff'];
 const GEMCNT = {2:4, 3:5, 4:7};
@@ -1026,7 +1077,7 @@ function animateCardAcquired(card, playerIdx, label, callback) {
   fly.innerHTML=`
     <div class="card-top ${CHC[card.bonus]}" style="padding:8px 10px;min-height:50px">
       <span class="card-pts" style="font-size:2.2em">${card.pts||''}</span>
-      <div class="card-gem-dot ${GCC[card.bonus]}" style="width:28px;height:28px"></div>
+      ${gemSVG(card.bonus,28)}
     </div>
     <div class="card-body" style="padding:8px">${costH}</div>`;
   const sx=window.innerWidth/2-W/2, sy=window.innerHeight/2-H/2+20;
@@ -1258,7 +1309,7 @@ function rBank() {
     const goldSel=isGold&&pg;
     const clickFn=isGold?'clickGold()':'clickBank(\''+col+'\')';
     h+=`<div class="bank-row ${pk||goldSel?'picked':''}" data-col="${col}" onclick="${clickFn}">
-      <div class="${GCC[col]}" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.35)"></div>
+      ${gemSVG(col,16)}
       <span class="g-name">${CN[col]}</span>
       <span class="g-cnt">${cnt}</span>
       ${pk?`<span class="pick-badge">+${pk}</span>`:''}
@@ -1316,7 +1367,7 @@ function rCards() {
       h+=`<div class="dev-card t${t} ${afford?'afford':'dim'}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
         <div class="card-top ${CHC[card.bonus]}">
           <span class="card-pts">${card.pts||''}</span>
-          <div class="card-gem-dot ${GCC[card.bonus]}" style="width:20px;height:20px"></div>
+          ${gemSVG(card.bonus,20)}
         </div>
         <div class="card-body">${costH}</div>
       </div>`;
@@ -1329,7 +1380,7 @@ function rCards() {
 function rBottom() {
   const pend=G.ui.pending, tot=CI.reduce((s,c)=>s+(pend[c]||0),0);
   const pendH=CI.filter(c=>(pend[c]||0)>0).map(c=>
-    `<div class="pending-chip">${gdot(c,16)}<span>×${pend[c]}</span></div>`
+    `<div class="pending-chip">${gemSVG(c,16)}<span>×${pend[c]}</span></div>`
   ).join('');
   document.getElementById('g-bottom').innerHTML=`
     <div class="act-area" style="width:100%">
@@ -1352,11 +1403,11 @@ function rPlayers() {
   const h=G.players.map((p,i)=>{
     const cur=i===G.cur;
     const bonH=CI.map(c=>{
-      const b=p.bonuses[c]||0; return b?`<div class="bonus-chip"><div style="width:8px;height:8px;border-radius:50%;display:inline-block;" class="${GCC[c]}"></div>×${b}</div>`:'';
+      const b=p.bonuses[c]||0; return b?`<div class="bonus-chip">${gemSVG(c,13)}<span style="margin-left:1px">×${b}</span></div>`:'';
     }).join('');
     const gemH=[...CI,'gold'].map(c=>{
       const n=p.gems[c]||0; if(!n) return '';
-      return `<div class="pi-gem-item"><div class="g-circle ${GCC[c]}" style="width:14px;height:14px;border-width:1px"></div><span>${n}</span></div>`;
+      return `<div class="pi-gem-item">${gemSVG(c,14)}<span>${n}</span></div>`;
     }).join('');
     let resH='';
     if(p.reserved.length){
@@ -1365,7 +1416,7 @@ function rPlayers() {
         p.reserved.forEach((card,ri)=>{
           const afford=canBuy(p,card);
           resH+=`<div onclick="openResCard(${ri})" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,${afford?'.2':'.08'})">
-            <div class="card-gem-dot ${GCC[card.bonus]}" style="width:10px;height:10px;flex-shrink:0"></div>
+            ${gemSVG(card.bonus,12)}
             <span style="font-size:.68em;opacity:.7;flex:1">${{1:'普通',2:'機密',3:'絕密'}[card.tier]}${card.pts?` +${card.pts}分`:''}</span>
             ${afford?`<span style="font-size:.6em;color:#55cc88">可買</span>`:''}
           </div>`;
@@ -1383,9 +1434,11 @@ function rPlayers() {
         <div class="pi-pts" style="color:${p.color}">${p.points}分</div>
         <div class="pi-name" style="color:${p.color}">${p.name}</div>
       </div>
-      <div class="pi-bonuses">${bonH||'<span style="opacity:.25;font-size:.68em">無加成</span>'}</div>
-      ${gemH?`<div class="pi-gems">${gemH}</div>`:''}
-      <div class="pi-mini">牌${p.cards.length}${p.reserved.length?` 預留${p.reserved.length}`:''}</div>
+      <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
+      <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
+      <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:5px;margin-bottom:1px">寶石代幣</div>
+      <div class="pi-gems">${gemH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
+      <div class="pi-mini" style="margin-top:5px">牌${p.cards.length}${p.reserved.length?` 預留${p.reserved.length}`:''}</div>
       ${resH}
     </div>`;
     if(cur) return `<div id="pi-timer-wrap" class="pi-timer-outer" style="background:conic-gradient(from 0deg,${timerCol} ${pct}%,rgba(255,255,255,.08) ${pct}%)">${inner}</div>`;
@@ -1433,7 +1486,7 @@ function showCardMod(card, fromRes) {
   document.getElementById('m-card').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
     <div class="m-title">${fromRes?'預留牌':'寶石卡'} — ${tierN}</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-      <div class="g-circle ${GCC[card.bonus]}" style="width:36px;height:36px;font-size:0"></div>
+      ${gemSVG(card.bonus,36)}
       <div>
         <div style="font-weight:bold">加成：${bonN} ×1</div>
         ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
@@ -1463,7 +1516,7 @@ function showRetMod() {
     const gemsH=[...CI,'gold'].map(c=>{
       const n=pl.gems[c]||0; if(!n) return '';
       return `<div onclick="retGem('${c}')" style="cursor:pointer;text-align:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.07);transition:background .12s" onmouseover="this.style.background='rgba(255,80,80,.2)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
-        ${gdot(c,30)}<div style="font-size:.72em;margin-top:3px">${CN[c]}<br>${n}枚</div></div>`;
+        ${gemSVG(c,30)}<div style="font-size:.72em;margin-top:3px">${CN[c]}<br>${n}枚</div></div>`;
     }).join('');
     document.getElementById('m-ret').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
       <div class="m-title">歸還寶石</div>
@@ -1681,7 +1734,7 @@ function showResTooltip(el, playerIdx) {
     return `<div class="dev-card t${card.tier}" style="width:90px;min-height:120px;cursor:default;transform:none">
       <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
         <span class="card-pts" style="font-size:1.5em">${card.pts||''}</span>
-        <div class="card-gem-dot ${GCC[card.bonus]}" style="width:16px;height:16px"></div>
+        ${gemSVG(card.bonus,16)}
       </div>
       <div class="card-body" style="padding:6px">${costH}</div>
     </div>`;
