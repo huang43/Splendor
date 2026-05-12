@@ -135,6 +135,10 @@ body {
 }
 .dev-card:hover { transform:translateY(-5px); box-shadow:0 8px 22px rgba(0,0,0,.55); }
 .dev-card.dim { opacity:.55; }
+@keyframes urge-pulse {
+  0%,100% { box-shadow:0 0 14px rgba(255,60,30,.35); }
+  50%     { box-shadow:0 0 28px rgba(255,60,30,.75), 0 0 8px rgba(255,60,30,.4); }
+}
 @keyframes afford-glow {
   0%,100% { box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 6px rgba(120,255,160,.12); }
   50%     { box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 20px rgba(120,255,160,.5), 0 0 8px rgba(120,255,160,.25); }
@@ -496,6 +500,11 @@ body {
 <div id="m-ret"   class="m-overlay" style="display:none"></div>
 <div id="m-over"  class="m-overlay" style="display:none"></div>
 <div id="toast"></div>
+<div id="urge-banner" style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  z-index:8000;padding:10px 28px;border-radius:12px;font-weight:bold;font-size:1em;
+  text-align:center;pointer-events:none;white-space:nowrap;
+  border:2px solid rgba(255,80,60,.7);background:rgba(30,8,4,.88);color:#ff6644;
+  box-shadow:0 0 18px rgba(255,60,30,.4);animation:urge-pulse 1.2s ease-in-out infinite"></div>
 <div id="res-tip"></div>
 
 <button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="說明書">?</button>
@@ -618,6 +627,7 @@ async function createRoom() {
   const code = genCode();
   roomCode = code; myIdx = 0; isHost = true; onlineMode = true; numP = _crNumP;
   await db.ref(`rooms/${code}`).set({ numP:_crNumP, players:{0:name}, state:null });
+  setupPresence(code, 0);
   showOnly('screen-wait');
   document.getElementById('wait-code-text').textContent = code;
   document.getElementById('wait-crown').style.display = 'inline';
@@ -640,6 +650,7 @@ async function joinRoom() {
   if (slot >= room.numP) { alert('房間已滿'); return; }
   roomCode = code; myIdx = slot; isHost = false; onlineMode = true; numP = room.numP;
   await db.ref(`rooms/${code}/players/${slot}`).set(name);
+  setupPresence(code, slot);
   showOnly('screen-wait');
   document.getElementById('wait-code-text').textContent = code;
   document.getElementById('wait-crown').style.display = 'none';
@@ -659,8 +670,10 @@ function listenWait(code) {
       G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
       render();
       showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{});
+      _knownDisc = new Set();
       listenGame(code);
       listenCursor(code);
+      listenPresence(code);
       return;
     }
     const players = room.players||{}, n = room.numP;
@@ -810,8 +823,8 @@ function applyOpponentCursors() {
         }
       });
     }
-    // Card hover highlight
-    if (cursor.hover != null) {
+    // Card hover highlight — only show when it's that player's turn
+    if (cursor.hover != null && Number(idx) === G.cur) {
       const { tier, slot } = cursor.hover;
       const card = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"]`);
       if (card) card.classList.add('opp-hover');
@@ -825,13 +838,16 @@ function applyRemoteState(data) {
   const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
   const prevCur = typeof G.cur==='number' ? G.cur : -1;
   // Firebase can return objects instead of arrays, and empty arrays as null — normalise everything
-  const players = toArr(data.players).map(p=>({
-    ...p,
-    cards:    toArr(p.cards),
-    reserved: toArr(p.reserved),
-    gems:     p.gems    || {w:0,u:0,g:0,r:0,k:0,gold:0},
-    bonuses:  p.bonuses || {w:0,u:0,g:0,r:0,k:0},
-  }));
+  const players = toArr(data.players).map((p,idx)=>{
+    if (p.disconnected) _knownDisc.add(idx);
+    return {
+      ...p,
+      cards:    toArr(p.cards),
+      reserved: toArr(p.reserved),
+      gems:     p.gems    || {w:0,u:0,g:0,r:0,k:0,gold:0},
+      bonuses:  p.bonuses || {w:0,u:0,g:0,r:0,k:0},
+    };
+  });
   const missions = toArr(data.missions).map(m=>({
     ...MISSION_DB[m.missionIdx],
     claimedBy: m.claimedBy ?? null,
@@ -861,6 +877,80 @@ function listenGame(code) {
       showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
     }
   });
+}
+
+// ── Presence / Disconnect ────────────────────────────────────────────────
+let _knownDisc = new Set();
+
+function setupPresence(code, idx) {
+  const ref = db.ref(`rooms/${code}/presence/${idx}`);
+  ref.set(true);
+  ref.onDisconnect().set(false);
+  window.addEventListener('beforeunload', () => { ref.set(false); });
+}
+
+function listenPresence(code) {
+  db.ref(`rooms/${code}/presence`).on('value', snap => {
+    if (!G || !G.players || G.over) return;
+    const presence = snap.val() || {};
+    G.players.forEach((pl, idx) => {
+      if (idx === myIdx) return;
+      if (presence[idx] === false && !_knownDisc.has(idx)) {
+        _knownDisc.add(idx);
+        G.players[idx].disconnected = true;
+        showDisconnectNotif(pl.name);
+        handleDisconnect(idx);
+      }
+    });
+  });
+}
+
+function isLeader() {
+  const idx = G.players.findIndex(p => !p.disconnected);
+  return myIdx === idx;
+}
+
+function handleDisconnect(discIdx) {
+  if (!G || G.over) return;
+  G.players[discIdx].disconnected = true;
+  const active = G.players.filter(p => !p.disconnected);
+
+  if (active.length <= 1) {
+    // Only one player left — instant win
+    G.over = true;
+    G.winners = active.length === 1 ? [active[0]] : [];
+    if (isLeader()) { stopTimer(); pushG(); showOverMod(); }
+    return;
+  }
+
+  // Multiple players remain — if it was disconnected player's turn, skip
+  if (G.cur === discIdx) {
+    let next = (discIdx + 1) % G.numP;
+    while (G.players[next] && G.players[next].disconnected) next = (next + 1) % G.numP;
+    G.cur = next;
+    G.turnCount = (G.turnCount || 0) + 1;
+    G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+    stopTimer();
+    if (isLeader()) {
+      pushG();
+      showTurnNotification(G.cur, G.cur === myIdx ? startTimer : startTimerDisplay);
+    }
+  } else {
+    // Not their turn, just sync the disconnected flag
+    if (isLeader()) { pushG(); render(); }
+  }
+}
+
+function showDisconnectNotif(name) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(20,10,10,.92);border:2px solid #ff5533;border-radius:14px;
+    padding:20px 32px;font-size:1.1em;font-weight:bold;color:#ff8866;
+    z-index:9999;text-align:center;pointer-events:none;
+    animation:fadeIn .3s ease`;
+  el.innerHTML = `⚠ ${name} 已中離`;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .5s'; setTimeout(()=>el.remove(),500); }, 3000);
 }
 
 // ── Constants ────────────────────────────────────────────────────────────
@@ -1031,7 +1121,9 @@ function startGame() {
 function startGameOnline(names) {
   // Host only — build G and push to Firebase
   G = _buildG(names);
+  _knownDisc = new Set();
   pushG(); // Triggers listenWait → game starts for all clients
+  listenPresence(roomCode);
 }
 
 // ── Core helpers ─────────────────────────────────────────────────────────
@@ -1072,7 +1164,7 @@ function animateCardAcquired(card, playerIdx, label, callback) {
   const fly = document.createElement('div');
   fly.className=`dev-card t${card.tier}`;
   const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>
-    `<div class="cost-ln"><div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`
+    `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
   ).join('');
   fly.innerHTML=`
     <div class="card-top ${CHC[card.bonus]}" style="padding:8px 10px;min-height:50px">
@@ -1129,6 +1221,7 @@ function execBuy(card, fromRes) {
 function execReserve(card, tier, bi) {
   const pl=G.players[G.cur];
   if (pl.reserved.length>=3){ toast('最多預留3張牌'); return false; }
+  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...G.ui.pending},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks))};
   pl.reserved.push(card);
   if (G.bank.gold>0){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; }
   if (tier!==null && bi!==null){ fillBoard(card); }
@@ -1168,6 +1261,7 @@ function execTakeGems() {
   }
 
   const pl=G.players[G.cur];
+  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...p},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks))};
   CI.forEach(c=>{ pl.gems[c]=(pl.gems[c]||0)+(p[c]||0); G.bank[c]-=(p[c]||0); });
   G.ui.pending={w:0,u:0,g:0,r:0,k:0};
   G.ui.acted=true;
@@ -1197,7 +1291,8 @@ function checkMissions() {
 function advanceTurn() {
   const pl=G.players[G.cur];
   if (!G.lastRound && pl.points>=15){ G.lastRound=true; G.lastStarter=G.cur; }
-  const next=(G.cur+1)%G.numP;
+  let next=(G.cur+1)%G.numP;
+  while(G.players[next]&&G.players[next].disconnected) next=(next+1)%G.numP;
   if (G.lastRound && next===G.lastStarter){ endGame(); return; }
   G.turnCount=(G.turnCount||0)+1;
   G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false;
@@ -1349,12 +1444,12 @@ function rCards() {
   const pl = (onlineMode && myIdx >= 0) ? G.players[myIdx] : G.players[G.cur];
   let h='';
   [3,2,1].forEach(t=>{
-    const tc={3:'#dd88ff',2:'#88aaff',1:'#ffcc88'}[t];
-    const bg={3:'#32144a,#180a28',2:'#1e3858,#101e38',1:'#4a3818,#2e2410'}[t];
+    const tc={3:'#ffe066',2:'#dd99ff',1:'#88ccff'}[t];
+    const bg={3:'#7a5800,#4a3400',2:'#3a1060,#200840',1:'#1a4a88,#0e2a55'}[t];
     const dc=G.decks[t].length;
     h+=`<div class="tier-row">
       <div class="deck-box ${dc?'':'empty'}" style="border-color:${tc}44;background:linear-gradient(160deg,${bg})">
-        <div class="deck-tier" style="color:${tc}">${{3:'絕密卡',2:'機密卡',1:'普通卡'}[t]}</div>
+        <div class="deck-tier" style="color:${tc}">${{3:'高級卡',2:'中級卡',1:'初級卡'}[t]}</div>
         <div class="deck-n">${dc}</div><div class="deck-lbl">張</div>
       </div>`;
     G.board[t].forEach((card,bi)=>{
@@ -1363,7 +1458,7 @@ function rCards() {
       const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
         const covered=(e[c]||0)===0;
         return `<div class="cost-ln ${covered?'covered':''}">
-          <div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`;
+          ${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`;
       }).join('');
       h+=`<div class="dev-card t${t} ${afford?'afford':'dim'}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
         <div class="card-top ${CHC[card.bonus]}">
@@ -1412,28 +1507,22 @@ function rPlayers() {
     }).join('');
     let resH='';
     if(p.reserved.length){
-      if(cur){
-        resH=`<div style="font-size:.62em;opacity:.45;margin-top:7px;margin-bottom:3px">預留牌</div><div style="display:flex;flex-direction:column;gap:3px">`;
-        p.reserved.forEach((card,ri)=>{
-          const afford=canBuy(p,card);
-          resH+=`<div onclick="openResCard(${ri})" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,${afford?'.2':'.08'})">
-            ${gemSVG(card.bonus,12)}
-            <span style="font-size:.68em;opacity:.7;flex:1">${{1:'普通',2:'機密',3:'絕密'}[card.tier]}${card.pts?` +${card.pts}分`:''}</span>
-            ${afford?`<span style="font-size:.6em;color:#55cc88">可買</span>`:''}
-          </div>`;
-        });
-        resH+=`</div>`;
-      } else {
-        resH=`<div onmouseenter="showResTooltip(this,${i})" onmouseleave="hideResTooltip()"
-          style="font-size:.62em;opacity:.5;margin-top:6px;cursor:default;padding:2px 0;
-          border-bottom:1px dashed rgba(255,255,255,.1)">
-          🂠 預留 ${p.reserved.length} 張（移入查看）</div>`;
-      }
+      resH=`<div style="font-size:.62em;opacity:.45;margin-top:7px;margin-bottom:3px">預留牌</div><div style="display:flex;flex-direction:column;gap:3px">`;
+      p.reserved.forEach((card,ri)=>{
+        const afford=cur&&canBuy(p,card);
+        resH+=`<div onclick="viewResCard(${i},${ri})" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,${afford?'.2':'.08'})">
+          ${gemSVG(card.bonus,12)}
+          <span style="font-size:.68em;opacity:.7;flex:1">${{1:'初級',2:'中級',3:'高級'}[card.tier]}${card.pts?` +${card.pts}分`:''}</span>
+          ${afford?`<span style="font-size:.6em;color:#55cc88">可買</span>`:''}
+        </div>`;
+      });
+      resH+=`</div>`;
     }
-    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}">
+    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}${p.disconnected?';opacity:.45':''}">
       <div style="display:flex;align-items:baseline;gap:6px">
         <div class="pi-pts" style="color:${p.color}">${p.points}分</div>
         <div class="pi-name" style="color:${p.color}">${p.name}</div>
+        ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:''}
       </div>
       <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
       <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
@@ -1467,16 +1556,48 @@ function openResCard(ri) {
   showCardMod(card,true);
 }
 
+function viewResCard(pi, ri) {
+  const p=G.players[pi];
+  const card=p&&p.reserved[ri];
+  if (!card) return;
+  // If it's my own card and it's my turn → allow buy
+  const isMine = onlineMode ? pi===myIdx : pi===G.cur;
+  if (isMine && isMyTurn() && !G.ui.acted) { openResCard(ri); return; }
+  // Read-only view
+  const tierN={1:'初級卡',2:'中級卡',3:'高級卡'}[card.tier];
+  const bonN=GEM_NAME[card.bonus]||card.bonus;
+  const costRows=CI.filter(c=>(card.cost[c]||0)>0).map(c=>
+    `<div class="cost-detail-row">${gemSVG(c,16)}<span>${CN[c]} ×${card.cost[c]}</span></div>`
+  ).join('');
+  document.getElementById('m-card').style.display='flex';
+  document.getElementById('m-card').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+    <div class="m-title">預留牌（${p.name}）— ${tierN}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      ${gemSVG(card.bonus,36)}
+      <div>
+        <div style="font-weight:bold">加成：${bonN} ×1</div>
+        ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
+      </div>
+    </div>
+    <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用：</div>
+    ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn btn-grey" onclick="closeM('m-card')">關閉</button>
+    </div>
+  </div>`;
+  document.getElementById('m-card').onclick=()=>closeM('m-card');
+}
+
 function showCardMod(card, fromRes) {
   const pl=G.players[G.cur], afford=canBuy(pl,card), e=effCost(pl,card);
   const canRes=!fromRes && pl.reserved.length<3;
-  const tierN={1:'普通卡',2:'機密卡',3:'絕密卡'}[card.tier];
+  const tierN={1:'初級卡',2:'中級卡',3:'高級卡'}[card.tier];
   const bonN={w:'白鑽',u:'藍寶石',g:'翡翠',r:'紅寶石',k:'黑玉'}[card.bonus];
   const costRows=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
     const disc=(card.cost[c]||0)-(e[c]||0);
     const short=Math.max(0,(e[c]||0)-(pl.gems[c]||0));
     return `<div class="cost-detail-row">
-      <div class="g-circle ${GCC[c]}" style="width:18px;height:18px;font-size:9px"></div>
+      ${gemSVG(c,18)}
       <span>${CN[c]} ×${card.cost[c]}</span>
       ${disc>0?`<span style="color:#88ff88;font-size:.82em">-${disc}折</span>`:''}
       <span style="margin-left:auto;font-size:.82em;color:${short>0?'#ff8888':'#88ff88'}">${short>0?'缺'+short+'枚':'✓'}</span>
@@ -1511,20 +1632,34 @@ function closeM(id)   { document.getElementById(id).style.display='none'; G.ui.p
 
 // ── Return gems modal ─────────────────────────────────────────────────────
 function showRetMod() {
+  window._retPend = {w:0,u:0,g:0,r:0,k:0,gold:0};
   const pl=G.players[G.cur];
   function draw() {
-    const tot=gsum(pl.gems), ex=tot-10;
+    const orig=gsum(pl.gems);
+    const pendTot=[...CI,'gold'].reduce((s,c)=>s+(window._retPend[c]||0),0);
+    const remain=orig-pendTot, ex=remain-10;
     const gemsH=[...CI,'gold'].map(c=>{
-      const n=pl.gems[c]||0; if(!n) return '';
-      return `<div onclick="retGem('${c}')" style="cursor:pointer;text-align:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.07);transition:background .12s" onmouseover="this.style.background='rgba(255,80,80,.2)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
-        ${gemSVG(c,30)}<div style="font-size:.72em;margin-top:3px">${CN[c]}<br>${n}枚</div></div>`;
+      const avail=(pl.gems[c]||0)-(window._retPend[c]||0); if(!avail) return '';
+      return `<div onclick="retGemStage('${c}')" style="cursor:pointer;text-align:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.07);transition:background .12s" onmouseover="this.style.background='rgba(255,80,80,.18)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+        ${gemSVG(c,30)}<div style="font-size:.72em;margin-top:3px">${CN[c]}<br>${avail}枚</div></div>`;
+    }).join('');
+    const pendH=[...CI,'gold'].map(c=>{
+      const n=window._retPend[c]||0; if(!n) return '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);border-radius:8px">
+        ${gemSVG(c,22)}<span style="font-size:.85em;flex:1">${CN[c]} ×${n}</span>
+        <button onclick="retGemUndo('${c}')" style="background:none;border:none;color:#ff9988;cursor:pointer;font-size:1.1em;line-height:1;padding:0 4px">✕</button>
+      </div>`;
     }).join('');
     document.getElementById('m-ret').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
-      <div class="m-title">歸還寶石</div>
-      <div style="opacity:.8;margin-bottom:12px">持有 <b>${tot}</b> 枚，需歸還 <b style="color:#ff8888">${ex}</b> 枚（點擊寶石歸還）</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${gemsH}</div>
-      <button class="btn btn-go" onclick="confRet()" ${tot<=10?'':'disabled'}>
-        ${tot<=10?`確認 (${tot}/10)`:`還需歸還 ${tot-10} 枚`}
+      <div class="m-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>歸還寶石代幣</span>
+        <button onclick="cancelRet()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.4em;line-height:1;padding:0 4px" title="取消行動">✕</button>
+      </div>
+      <div style="opacity:.8;margin-bottom:10px">持有 <b>${remain}</b> 枚${ex>0?`，需再歸還 <b style="color:#ff8888">${ex}</b> 枚`:'，數量符合上限 ✓'}（點選欲歸還的寶石）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${pendH?'10':'16'}px">${gemsH||'<span style="opacity:.4;font-size:.85em">已無寶石</span>'}</div>
+      ${pendH?`<div style="font-size:.68em;opacity:.55;margin-bottom:6px;letter-spacing:1px">待歸還</div><div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px">${pendH}</div>`:''}
+      <button class="btn btn-go" onclick="confRet()" ${remain<=10?'':'disabled'}>
+        ${remain<=10?`✅ 確認歸還（${remain}/10）`:`還需歸還 ${remain-10} 枚`}
       </button>
     </div>`;
   }
@@ -1533,17 +1668,46 @@ function showRetMod() {
   draw(); window._retDraw=draw;
 }
 
-function retGem(col) {
+function retGemStage(col) {
   const pl=G.players[G.cur];
-  if (!(pl.gems[col]||0)) return;
-  pl.gems[col]--; G.bank[col]=(G.bank[col]||0)+1;
+  if ((pl.gems[col]||0)-(window._retPend[col]||0)<=0) return;
+  window._retPend[col]=(window._retPend[col]||0)+1;
+  window._retDraw();
+}
+
+function retGemUndo(col) {
+  if (!(window._retPend[col]||0)) return;
+  window._retPend[col]--;
   window._retDraw();
 }
 
 function confRet() {
-  if (gsum(G.players[G.cur].gems)>10) return;
+  const pl=G.players[G.cur];
+  const pend=window._retPend||{};
+  const remain=gsum(pl.gems)-[...CI,'gold'].reduce((s,c)=>s+(pend[c]||0),0);
+  if(remain>10) return;
+  for(const c of [...CI,'gold']){
+    const n=pend[c]||0;
+    if(n>0){ pl.gems[c]-=n; G.bank[c]=(G.bank[c]||0)+n; }
+  }
+  window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
   document.getElementById('m-ret').style.display='none';
   afterAct(); render();
+}
+
+function cancelRet() {
+  const snap=window._retSnapshot;
+  if (!snap) return;
+  const pl=G.players[G.cur];
+  pl.gems=snap.gems; G.bank=snap.bank;
+  pl.reserved=snap.reserved;
+  G.board=snap.board; G.decks=snap.decks;
+  G.ui.pending=snap.pending; G.ui.acted=false;
+  G.ui.pendCard=null; G.ui.pendGold=false;
+  window._retSnapshot=null;
+  window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
+  document.getElementById('m-ret').style.display='none';
+  render();
 }
 
 // ── Game over ─────────────────────────────────────────────────────────────
@@ -1618,18 +1782,30 @@ function deactivateAllZones() {
   ['g-bank','g-cards'].forEach(id => deactivateZone(id));
 }
 
+function showUrgeBanner(msg) {
+  const el = document.getElementById('urge-banner');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideUrgeBanner() {
+  const el = document.getElementById('urge-banner');
+  if (el) el.style.display = 'none';
+}
+
 function startTimer() {
   clearInterval(_timerInterval);
   _timerSec = 60;
+  hideUrgeBanner();
   _updateTimerEl();
   activateZones();
   _timerInterval = setInterval(() => {
     _timerSec--;
     _updateTimerEl();
-    if (_timerSec === 15) toast('⏰ 剩餘 15 秒！');
+    if (_timerSec === 15) showUrgeBanner('⌛ 時光不等人');
     if (_timerSec <= 0) {
       clearInterval(_timerInterval);
-      toast('⏰ 時間到！請盡快完成行動');
+      showUrgeBanner('😤 時光不等你嗎的人你是哪個字聽不懂');
     }
   }, 1000);
 }
@@ -1637,6 +1813,7 @@ function stopTimer() {
   clearInterval(_timerInterval);
   _timerInterval = null;
   _timerSec = 60;
+  hideUrgeBanner();
   _updateTimerEl();
 }
 
@@ -1730,7 +1907,7 @@ function showResTooltip(el, playerIdx) {
   const tip = document.getElementById('res-tip');
   tip.innerHTML = p.reserved.map(card => {
     const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
-      `<div class="cost-ln"><div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`
+      `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
     ).join('');
     return `<div class="dev-card t${card.tier}" style="width:90px;min-height:120px;cursor:default;transform:none">
       <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
