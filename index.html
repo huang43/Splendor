@@ -421,13 +421,18 @@ body {
 <div id="screen-wait">
   <div class="setup-title" style="font-size:1.8em"><span id="wait-crown" style="display:none">👑 </span>等待玩家加入</div>
   <div class="setup-sub">把這個房號傳給朋友</div>
-  <div style="display:flex;align-items:center;gap:10px">
-    <div class="code-display" id="wait-code">------</div>
-    <button onclick="copyCode()" style="padding:8px 14px;border-radius:10px;border:1.5px solid rgba(255,200,50,.4);background:rgba(255,200,50,.1);color:#ffcc44;cursor:pointer;font-size:.85em;font-weight:bold;transition:all .15s" onmouseover="this.style.background='rgba(255,200,50,.22)'" onmouseout="this.style.background='rgba(255,200,50,.1)'">📋 複製</button>
+  <div class="code-display" id="wait-code" onclick="copyCode()" title="點擊複製" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+    <span id="wait-code-text">------</span>
+    <svg id="wait-copy-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.85;flex-shrink:0;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">
+      <g transform="scale(-1,1) translate(-24,0)">
+        <rect x="9" y="9" width="13" height="13" rx="2.5" ry="2.5"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </g>
+    </svg>
   </div>
   <div class="wait-list" id="wait-list"></div>
-  <button id="wait-ready" class="btn-online" onclick="setReady()" style="display:none;margin-top:4px">✋ 準備</button>
-  <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="margin-top:4px">開始遊戲 ✦</button>
+  <button id="wait-ready" class="btn-online" onclick="toggleReady()" style="display:none;margin-top:4px">✋ 準備</button>
+  <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="display:none;margin-top:4px">開始遊戲 ✦</button>
   <button class="btn-online" onclick="backToLobby()">← 離開房間</button>
 </div>
 
@@ -590,9 +595,10 @@ async function createRoom() {
   roomCode = code; myIdx = 0; isHost = true; onlineMode = true; numP = _crNumP;
   await db.ref(`rooms/${code}`).set({ numP:_crNumP, players:{0:name}, state:null });
   showOnly('screen-wait');
-  document.getElementById('wait-code').textContent = code;
+  document.getElementById('wait-code-text').textContent = code;
   document.getElementById('wait-crown').style.display = 'inline';
   document.getElementById('wait-ready').style.display = 'none';
+  document.getElementById('wait-start').style.display = 'inline-block';
   listenWait(code);
 }
 
@@ -611,9 +617,10 @@ async function joinRoom() {
   roomCode = code; myIdx = slot; isHost = false; onlineMode = true; numP = room.numP;
   await db.ref(`rooms/${code}/players/${slot}`).set(name);
   showOnly('screen-wait');
-  document.getElementById('wait-code').textContent = code;
+  document.getElementById('wait-code-text').textContent = code;
   document.getElementById('wait-crown').style.display = 'none';
   document.getElementById('wait-ready').style.display = 'inline-block';
+  document.getElementById('wait-start').style.display = 'none';
   listenWait(code);
 }
 
@@ -647,33 +654,44 @@ function listenWait(code) {
       }
     }
     document.getElementById('wait-list').innerHTML = html;
-    // Hide ready button if already ready
-    if (!isHost && ready[myIdx]) {
-      document.getElementById('wait-ready').style.display = 'none';
+    // Update ready button label for non-host
+    if (!isHost) {
+      const btn = document.getElementById('wait-ready');
+      if (ready[myIdx]) {
+        btn.textContent = '❌ 取消準備';
+        btn.style.opacity = '0.7';
+      } else {
+        btn.textContent = '✋ 準備';
+        btn.style.opacity = '1';
+      }
     }
     // Enable start: host only, all joined non-host players must be ready
     const joinedNonHost = Object.keys(players).map(Number).filter(i=>i!==0);
-    const allReady = joinedNonHost.every(i=>ready[i]);
-    const canStart = isHost && joinedNonHost.length > 0 && allReady;
-    document.getElementById('wait-start').disabled = !canStart;
+    const allReady = joinedNonHost.length > 0 && joinedNonHost.every(i=>ready[i]===true);
+    if (isHost) document.getElementById('wait-start').disabled = !allReady;
   });
 }
 
 function copyCode() {
   navigator.clipboard.writeText(roomCode).then(()=>{
-    const btn = document.querySelector('#screen-wait button[onclick="copyCode()"]');
-    const orig = btn.textContent;
-    btn.textContent = '✅ 已複製';
-    setTimeout(()=>{ btn.textContent = orig; }, 1500);
+    const icon = document.getElementById('wait-copy-icon');
+    icon.setAttribute('stroke','#55ff99');
+    setTimeout(()=>{ icon.setAttribute('stroke','white'); }, 1500);
   }).catch(()=>{
     prompt('複製此房號：', roomCode);
   });
 }
 
-function setReady() {
+function toggleReady() {
   if (isHost) return;
-  db.ref(`rooms/${roomCode}/ready/${myIdx}`).set(true);
-  document.getElementById('wait-ready').style.display = 'none';
+  db.ref(`rooms/${roomCode}/ready/${myIdx}`).once('value', snap => {
+    const isReady = snap.val() === true;
+    if (isReady) {
+      db.ref(`rooms/${roomCode}/ready/${myIdx}`).set(false);
+    } else {
+      db.ref(`rooms/${roomCode}/ready/${myIdx}`).set(true);
+    }
+  });
 }
 const PC_NAME = ['🟠','🔵','🟢','🟣'];
 
@@ -708,18 +726,32 @@ function pushG() {
   db.ref(`rooms/${roomCode}/state`).set(serial);
 }
 
+function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values(v); }
+
 function applyRemoteState(data) {
   const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null};
   const prevCur = typeof G.cur==='number' ? G.cur : -1;
+  // Firebase can return objects instead of arrays, and empty arrays as null — normalise everything
+  const players = toArr(data.players).map(p=>({
+    ...p,
+    cards:    toArr(p.cards),
+    reserved: toArr(p.reserved),
+    gems:     p.gems    || {w:0,u:0,g:0,r:0,k:0,gold:0},
+    bonuses:  p.bonuses || {w:0,u:0,g:0,r:0,k:0},
+  }));
+  const missions = toArr(data.missions).map(m=>({
+    ...MISSION_DB[m.missionIdx],
+    claimedBy: m.claimedBy ?? null,
+  }));
   G = {
     numP:data.numP, cur:data.cur, lastRound:data.lastRound,
     lastStarter:data.lastStarter, over:data.over,
-    players:data.players, bank:data.bank,
+    players, bank:data.bank,
     decks: JSON.parse(data.decksJson||'{"1":[],"2":[],"3":[]}'),
     board:  JSON.parse(data.boardJson||'{"1":[null,null,null,null],"2":[null,null,null,null],"3":[null,null,null,null]}'),
-    missions: (data.missions||[]).map(m=>({...MISSION_DB[m.missionIdx], claimedBy:m.claimedBy})),
+    missions,
   };
-  if (data.winnerIndices) G.winners = data.winnerIndices.map(i=>G.players[i]);
+  if (data.winnerIndices) G.winners = toArr(data.winnerIndices).map(i=>G.players[i]);
   G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null} : prevUi;
 }
 
