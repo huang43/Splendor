@@ -135,6 +135,11 @@ body {
 }
 .dev-card:hover { transform:translateY(-5px); box-shadow:0 8px 22px rgba(0,0,0,.55); }
 .dev-card.dim { opacity:.55; }
+@keyframes afford-glow {
+  0%,100% { box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 6px rgba(120,255,160,.12); }
+  50%     { box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 20px rgba(120,255,160,.5), 0 0 8px rgba(120,255,160,.25); }
+}
+.dev-card.afford { animation:afford-glow 2.2s ease-in-out infinite; }
 .dev-card.t1 { background:linear-gradient(160deg,#4a3818,#2e2410); }
 .dev-card.t2 { background:linear-gradient(160deg,#1e3858,#101e38); }
 .dev-card.t3 { background:linear-gradient(160deg,#32144a,#180a28); }
@@ -292,13 +297,19 @@ body {
 
 /* Opponent cursor effects */
 .opp-hover {
-  outline: 2px solid rgba(120,200,255,.75) !important;
-  box-shadow: 0 0 14px rgba(100,180,255,.45) !important;
-  border-radius: 10px;
+  box-shadow: 0 0 0 3px #55ccff, 0 0 20px rgba(85,204,255,.55) !important;
+  transform: translateY(-4px) !important;
 }
 .opp-pick-badge {
   font-size:.62em; font-weight:bold; padding:1px 6px;
   border-radius:8px; margin-left:auto;
+}
+/* Opponent reserved cards tooltip */
+#res-tip {
+  position:fixed; z-index:350; background:#1a1a2a;
+  border:1.5px solid rgba(255,255,255,.15); border-radius:12px;
+  padding:10px; display:none; flex-direction:row; gap:8px;
+  pointer-events:none; box-shadow:0 8px 32px rgba(0,0,0,.65);
 }
 
 /* Help button */
@@ -476,7 +487,6 @@ body {
         <div id="g-missions"></div>
       </div>
       <div id="g-cards"></div>
-      <div id="g-bottom"></div>
     </div>
   </div>
 </div>
@@ -486,6 +496,7 @@ body {
 <div id="m-ret"   class="m-overlay" style="display:none"></div>
 <div id="m-over"  class="m-overlay" style="display:none"></div>
 <div id="toast"></div>
+<div id="res-tip"></div>
 
 <button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="說明書">?</button>
 
@@ -645,7 +656,7 @@ function listenWait(code) {
       db.ref(`rooms/${code}`).off();
       applyRemoteState(room.state);
       showOnly('screen-game');
-      G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null};
+      G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
       render();
       showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{});
       listenGame(code);
@@ -737,7 +748,7 @@ function hostStart() {
 function pushG() {
   if (!onlineMode || !db || !roomCode) return;
   const serial = {
-    numP:G.numP, cur:G.cur, lastRound:G.lastRound,
+    numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
     lastStarter:G.lastStarter, over:G.over,
     players: JSON.parse(JSON.stringify(G.players)),
     bank: {...G.bank},
@@ -811,7 +822,7 @@ function applyOpponentCursors() {
 function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values(v); }
 
 function applyRemoteState(data) {
-  const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null};
+  const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
   const prevCur = typeof G.cur==='number' ? G.cur : -1;
   // Firebase can return objects instead of arrays, and empty arrays as null — normalise everything
   const players = toArr(data.players).map(p=>({
@@ -826,7 +837,7 @@ function applyRemoteState(data) {
     claimedBy: m.claimedBy ?? null,
   }));
   G = {
-    numP:data.numP, cur:data.cur, lastRound:data.lastRound,
+    numP:data.numP, cur:data.cur, turnCount:data.turnCount||0, lastRound:data.lastRound,
     lastStarter:data.lastStarter, over:data.over,
     players, bank:data.bank,
     decks: JSON.parse(data.decksJson||'{"1":[],"2":[],"3":[]}'),
@@ -834,7 +845,7 @@ function applyRemoteState(data) {
     missions,
   };
   if (data.winnerIndices) G.winners = toArr(data.winnerIndices).map(i=>G.players[i]);
-  G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null} : prevUi;
+  G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
 }
 
 function listenGame(code) {
@@ -847,7 +858,7 @@ function listenGame(code) {
     if (G.over && !wasOver) { stopTimer(); showOverMod(); return; }
     if (G.cur !== prevCur) {
       stopTimer();
-      showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{});
+      showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
     }
   });
 }
@@ -952,8 +963,8 @@ function _buildG(names) {
       cards:[], reserved:[], points:0,
     })),
     bank, decks, board, missions,
-    cur:0, lastRound:false, lastStarter:-1, over:false,
-    ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null},
+    cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false,
+    ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
   };
 }
 
@@ -1137,10 +1148,15 @@ function advanceTurn() {
   if (!G.lastRound && pl.points>=15){ G.lastRound=true; G.lastStarter=G.cur; }
   const next=(G.cur+1)%G.numP;
   if (G.lastRound && next===G.lastStarter){ endGame(); return; }
-  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null;
+  G.turnCount=(G.turnCount||0)+1;
+  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false;
   stopTimer(); render();
-  if (onlineMode) { pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null}); pushG(); } // listener handles turn notification for all
-  else { showTurnNotification(G.cur, startTimer); }
+  if (onlineMode) {
+    pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
+    pushG();
+    // listenGame won't fire turn notification for us (G.cur already changed locally), so do it here
+    showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
+  } else { showTurnNotification(G.cur, startTimer); }
 }
 
 function endGame() {
@@ -1156,7 +1172,7 @@ function endGame() {
 // ── Gem bank clicking ─────────────────────────────────────────────────────
 function clickBank(col) {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
-  if (G.ui.acted){ toast('已完成行動，請點「結束回合」'); return; }
+  if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
   deactivateZone('g-cards');
   const p=G.ui.pending, b=G.bank, cnt=p[col]||0;
   const total=CI.reduce((s,c)=>s+(p[c]||0),0);
@@ -1183,7 +1199,18 @@ function pendValid() {
   return CI.some(c=>(p[c]||0)===2) ? tot===2 : tot<=3;
 }
 
-function clearPend(){ G.ui.pending={w:0,u:0,g:0,r:0,k:0}; pushCursor({pending:{w:0,u:0,g:0,r:0,k:0}}); render(); if(!G.ui.acted) activateZones(); }
+function clearPend(){ G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.pendGold=false; pushCursor({pending:{w:0,u:0,g:0,r:0,k:0}}); render(); if(!G.ui.acted) activateZones(); }
+
+function takeGold() {
+  if (!isMyTurn()||G.ui.acted||(G.bank.gold||0)<=0) return;
+  const pl=G.players[G.cur];
+  if (gsum(pl.gems)>=10){ toast('寶石已達上限（10枚）'); return; }
+  G.bank.gold--;
+  pl.gems.gold=(pl.gems.gold||0)+1;
+  G.ui.pendGold=false;
+  G.ui.acted=true;
+  afterAct();
+}
 
 function tryEnd() {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
@@ -1198,7 +1225,7 @@ function gdot(col, sz=24) {
 }
 
 function render() {
-  rMissions(); rBank(); rCards(); rBottom(); rPlayers();
+  rMissions(); rBank(); rCards(); rPlayers();
   if (onlineMode) applyOpponentCursors();
 }
 
@@ -1222,18 +1249,47 @@ function rMissions() {
 }
 
 function rBank() {
-  const pend=G.ui.pending;
+  const pend=G.ui.pending, pg=G.ui.pendGold;
+  const myTurn=isMyTurn()&&!G.ui.acted;
+  const tot=CI.reduce((s,c)=>s+(pend[c]||0),0);
   let h=`<div class="panel-label" style="margin-top:10px">寶石庫</div>`;
   [...CI,'gold'].forEach(col=>{
     const cnt=G.bank[col]||0, pk=pend[col]||0, isGold=col==='gold';
-    h+=`<div class="bank-row ${pk?'picked':''} ${isGold?'no-click':''}" data-col="${col}" ${isGold?'':` onclick="clickBank('${col}')"`}>
+    const goldSel=isGold&&pg;
+    const clickFn=isGold?'clickGold()':'clickBank(\''+col+'\')';
+    h+=`<div class="bank-row ${pk||goldSel?'picked':''}" data-col="${col}" onclick="${clickFn}">
       <div class="${GCC[col]}" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.35)"></div>
       <span class="g-name">${CN[col]}</span>
       <span class="g-cnt">${cnt}</span>
       ${pk?`<span class="pick-badge">+${pk}</span>`:''}
     </div>`;
   });
+  // Action buttons inside bank panel
+  if (myTurn && pg) {
+    h+=`<div style="display:flex;gap:5px;margin-top:8px">
+      <button class="btn btn-go" style="flex:1;font-size:.75em;padding:6px 4px" onclick="takeGold()">✅ 確認領取金幣</button>
+      <button class="btn btn-grey" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">✕</button>
+    </div>`;
+  } else if (myTurn && tot>0) {
+    h+=`<div style="display:flex;gap:5px;margin-top:8px">
+      <button class="btn btn-go" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>✅ 確認取寶石</button>
+      <button class="btn btn-grey" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">✕</button>
+    </div>`;
+  }
+  if (G.lastRound) {
+    h+=`<div style="font-size:.65em;color:#ff9955;margin-top:8px;line-height:1.4">⚠ 最終輪<br>${G.players[G.lastStarter].name}已達15分</div>`;
+  }
   document.getElementById('g-bank').innerHTML=h;
+}
+
+function clickGold() {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動'); return; }
+  if (CI.some(c=>(G.ui.pending[c]||0)>0)){ toast('請先清除已選的寶石'); return; }
+  if ((G.bank.gold||0)<=0){ toast('金幣已用盡'); return; }
+  if (gsum(G.players[G.cur].gems)>=10){ toast('寶石已達上限（10枚）'); return; }
+  G.ui.pendGold = !G.ui.pendGold;
+  render();
 }
 
 function rCards() {
@@ -1257,7 +1313,7 @@ function rCards() {
         return `<div class="cost-ln ${covered?'covered':''}">
           <div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`;
       }).join('');
-      h+=`<div class="dev-card t${t} ${afford?'':'dim'}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
+      h+=`<div class="dev-card t${t} ${afford?'afford':'dim'}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
         <div class="card-top ${CHC[card.bonus]}">
           <span class="card-pts">${card.pts||''}</span>
           <div class="card-gem-dot ${GCC[card.bonus]}" style="width:20px;height:20px"></div>
@@ -1303,17 +1359,24 @@ function rPlayers() {
       return `<div class="pi-gem-item"><div class="g-circle ${GCC[c]}" style="width:14px;height:14px;border-width:1px"></div><span>${n}</span></div>`;
     }).join('');
     let resH='';
-    if(cur && p.reserved.length){
-      resH=`<div style="font-size:.62em;opacity:.45;margin-top:7px;margin-bottom:3px">預留牌</div><div style="display:flex;flex-direction:column;gap:3px">`;
-      p.reserved.forEach((card,ri)=>{
-        const afford=canBuy(p,card);
-        resH+=`<div onclick="openResCard(${ri})" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,${afford?'.2':'.08'})">
-          <div class="card-gem-dot ${GCC[card.bonus]}" style="width:10px;height:10px;flex-shrink:0"></div>
-          <span style="font-size:.68em;opacity:.7;flex:1">${{1:'普通',2:'機密',3:'絕密'}[card.tier]}${card.pts?` +${card.pts}分`:''}</span>
-          ${afford?`<span style="font-size:.6em;color:#55cc88">可買</span>`:''}
-        </div>`;
-      });
-      resH+=`</div>`;
+    if(p.reserved.length){
+      if(cur){
+        resH=`<div style="font-size:.62em;opacity:.45;margin-top:7px;margin-bottom:3px">預留牌</div><div style="display:flex;flex-direction:column;gap:3px">`;
+        p.reserved.forEach((card,ri)=>{
+          const afford=canBuy(p,card);
+          resH+=`<div onclick="openResCard(${ri})" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,${afford?'.2':'.08'})">
+            <div class="card-gem-dot ${GCC[card.bonus]}" style="width:10px;height:10px;flex-shrink:0"></div>
+            <span style="font-size:.68em;opacity:.7;flex:1">${{1:'普通',2:'機密',3:'絕密'}[card.tier]}${card.pts?` +${card.pts}分`:''}</span>
+            ${afford?`<span style="font-size:.6em;color:#55cc88">可買</span>`:''}
+          </div>`;
+        });
+        resH+=`</div>`;
+      } else {
+        resH=`<div onmouseenter="showResTooltip(this,${i})" onmouseleave="hideResTooltip()"
+          style="font-size:.62em;opacity:.5;margin-top:6px;cursor:default;padding:2px 0;
+          border-bottom:1px dashed rgba(255,255,255,.1)">
+          🂠 預留 ${p.reserved.length} 張（移入查看）</div>`;
+      }
     }
     const inner=`<div class="pi-card ${cur?'cur':'inactive'}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}">
       <div style="display:flex;align-items:baseline;gap:6px">
@@ -1463,9 +1526,12 @@ function showTurnNotification(playerIdx, callback) {
   document.getElementById('tn-name').textContent = pl.name;
   document.getElementById('tn-name').style.color = pl.color;
   _turnNotifCallback = callback;
-  el.classList.add('on');
   clearTimeout(window._tndTimer);
-  window._tndTimer = setTimeout(dismissTurnNotif, 1000);
+  // Force reflow so opacity transition always restarts from 0
+  el.classList.remove('on');
+  void el.offsetWidth;
+  el.classList.add('on');
+  window._tndTimer = setTimeout(dismissTurnNotif, 1200);
 }
 function dismissTurnNotif() {
   const el = document.getElementById('turn-notif');
@@ -1482,6 +1548,7 @@ let _timerInterval = null;
 let _timerSec = 60;
 
 function activateZones() {
+  if ((G.turnCount||0) >= 2 * G.numP) return; // Stop guiding after 2 full rounds
   ['g-bank','g-cards'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1515,6 +1582,20 @@ function startTimer() {
 function stopTimer() {
   clearInterval(_timerInterval);
   _timerInterval = null;
+  _timerSec = 60;
+  _updateTimerEl();
+}
+
+// Passive countdown for non-active players (display only, no game effects)
+function startTimerDisplay() {
+  clearInterval(_timerInterval);
+  _timerSec = 60;
+  _updateTimerEl();
+  _timerInterval = setInterval(() => {
+    _timerSec--;
+    _updateTimerEl();
+    if (_timerSec <= 0) clearInterval(_timerInterval);
+  }, 1000);
 }
 function _updateTimerEl() {
   const s = Math.max(0, _timerSec);
@@ -1589,6 +1670,34 @@ document.addEventListener('click', e => {
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 let _tt;
+function showResTooltip(el, playerIdx) {
+  const p = G.players[playerIdx];
+  if (!p || !p.reserved.length) return;
+  const tip = document.getElementById('res-tip');
+  tip.innerHTML = p.reserved.map(card => {
+    const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
+      `<div class="cost-ln"><div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`
+    ).join('');
+    return `<div class="dev-card t${card.tier}" style="width:90px;min-height:120px;cursor:default;transform:none">
+      <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
+        <span class="card-pts" style="font-size:1.5em">${card.pts||''}</span>
+        <div class="card-gem-dot ${GCC[card.bonus]}" style="width:16px;height:16px"></div>
+      </div>
+      <div class="card-body" style="padding:6px">${costH}</div>
+    </div>`;
+  }).join('');
+  const rect = el.getBoundingClientRect();
+  const tipW = p.reserved.length * 98 + 28;
+  let left = rect.right + 10;
+  if (left + tipW > window.innerWidth - 8) left = rect.left - tipW - 10;
+  tip.style.left = Math.max(8, left) + 'px';
+  tip.style.top  = Math.max(8, rect.top - 10) + 'px';
+  tip.style.display = 'flex';
+}
+function hideResTooltip() {
+  document.getElementById('res-tip').style.display = 'none';
+}
+
 function toast(msg) {
   const el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('on');
