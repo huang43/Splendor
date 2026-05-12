@@ -1224,6 +1224,7 @@ function endGame() {
 function clickBank(col) {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
   if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  if (G.ui.pendGold){ toast('已選金幣，請先確認或取消'); return; }
   deactivateZone('g-cards');
   const p=G.ui.pending, b=G.bank, cnt=p[col]||0;
   const total=CI.reduce((s,c)=>s+(p[c]||0),0);
