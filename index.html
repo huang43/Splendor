@@ -290,6 +290,17 @@ body {
   animation:zone-pulse 1.6s ease-in-out infinite;
 }
 
+/* Opponent cursor effects */
+.opp-hover {
+  outline: 2px solid rgba(120,200,255,.75) !important;
+  box-shadow: 0 0 14px rgba(100,180,255,.45) !important;
+  border-radius: 10px;
+}
+.opp-pick-badge {
+  font-size:.62em; font-weight:bold; padding:1px 6px;
+  border-radius:8px; margin-left:auto;
+}
+
 /* Help button */
 #btn-help {
   position:fixed; top:10px; right:14px; z-index:450;
@@ -560,6 +571,8 @@ let myIdx = -1;
 let roomCode = '';
 let isHost = false;
 let _crNumP = 2;
+let _opponentCursors = {};  // { playerIdx: { pending:{}, hover:{tier,slot}|null } }
+let _hoverThrottle = null;
 
 function isMyTurn() { return !onlineMode || G.cur === myIdx; }
 function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
@@ -636,6 +649,7 @@ function listenWait(code) {
       render();
       showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{});
       listenGame(code);
+      listenCursor(code);
       return;
     }
     const players = room.players||{}, n = room.numP;
@@ -677,6 +691,18 @@ function copyCode() {
     const icon = document.getElementById('wait-copy-icon');
     icon.setAttribute('stroke','#55ff99');
     setTimeout(()=>{ icon.setAttribute('stroke','white'); }, 1500);
+    // Show "已複製" label next to the code box
+    let lbl = document.getElementById('copy-lbl');
+    if (!lbl) {
+      lbl = document.createElement('div');
+      lbl.id = 'copy-lbl';
+      lbl.style.cssText = 'font-size:.75em;color:#55ff99;letter-spacing:1px;margin-top:6px;transition:opacity .4s';
+      document.getElementById('wait-code').insertAdjacentElement('afterend', lbl);
+    }
+    lbl.textContent = '✅ 已複製！';
+    lbl.style.opacity = '1';
+    clearTimeout(lbl._t);
+    lbl._t = setTimeout(()=>{ lbl.style.opacity='0'; }, 1500);
   }).catch(()=>{
     prompt('複製此房號：', roomCode);
   });
@@ -724,6 +750,62 @@ function pushG() {
   };
   if (G.winners) serial.winnerIndices = G.winners.map(w=>G.players.indexOf(w));
   db.ref(`rooms/${roomCode}/state`).set(serial);
+}
+
+// ── Opponent cursor broadcast ─────────────────────────────────────────────
+function pushCursor(data) {
+  if (!onlineMode || !db || !roomCode || myIdx < 0) return;
+  db.ref(`rooms/${roomCode}/cursor/${myIdx}`).set(data);
+}
+
+function hoverCard(tier, slot) {
+  if (!onlineMode) return;
+  clearTimeout(_hoverThrottle);
+  _hoverThrottle = setTimeout(() => {
+    pushCursor({ pending: {...G.ui.pending}, hover: tier != null ? {tier, slot} : null });
+  }, 80);
+}
+
+function listenCursor(code) {
+  db.ref(`rooms/${code}/cursor`).on('value', snap => {
+    _opponentCursors = snap.val() || {};
+    applyOpponentCursors();
+  });
+}
+
+function applyOpponentCursors() {
+  if (!onlineMode) return;
+  // Clear old effects
+  document.querySelectorAll('.opp-hover').forEach(el => el.classList.remove('opp-hover'));
+  document.querySelectorAll('.opp-pick-badge').forEach(el => el.remove());
+  Object.entries(_opponentCursors).forEach(([idx, cursor]) => {
+    if (!cursor || Number(idx) === myIdx) return;
+    const pl = G.players ? G.players[Number(idx)] : null;
+    if (!pl) return;
+    // Pending gem badges on bank rows
+    if (cursor.pending) {
+      CI.forEach(col => {
+        const n = cursor.pending[col] || 0;
+        if (n > 0) {
+          const row = document.querySelector(`.bank-row[data-col="${col}"]`);
+          if (row) {
+            const badge = document.createElement('span');
+            badge.className = 'opp-pick-badge';
+            badge.textContent = `+${n}`;
+            badge.style.color = pl.color;
+            badge.style.background = pl.color + '28';
+            row.appendChild(badge);
+          }
+        }
+      });
+    }
+    // Card hover highlight
+    if (cursor.hover != null) {
+      const { tier, slot } = cursor.hover;
+      const card = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"]`);
+      if (card) card.classList.add('opp-hover');
+    }
+  });
 }
 
 function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values(v); }
@@ -1057,7 +1139,7 @@ function advanceTurn() {
   if (G.lastRound && next===G.lastStarter){ endGame(); return; }
   G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null;
   stopTimer(); render();
-  if (onlineMode) { pushG(); } // listener handles turn notification for all
+  if (onlineMode) { pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null}); pushG(); } // listener handles turn notification for all
   else { showTurnNotification(G.cur, startTimer); }
 }
 
@@ -1081,18 +1163,18 @@ function clickBank(col) {
   const has2=CI.some(c=>(p[c]||0)===2);
   const others=CI.filter(c=>c!==col&&(p[c]||0)>0);
 
-  if (cnt===2){ p[col]=0; render(); return; }
+  if (cnt===2){ p[col]=0; render(); pushCursor({pending:{...p}}); return; }
   if (cnt===1) {
     if (!others.length){
       if ((b[col]||0)>=4){ p[col]=2; }
       else { toast(`${CN[col]}寶石不足4枚，無法取2枚同色`); p[col]=0; }
     } else { p[col]=0; }
-    render(); return;
+    render(); pushCursor({pending:{...p}}); return;
   }
   if ((b[col]||0)<=0){ toast(`${CN[col]}寶石已用盡`); return; }
   if (has2){ toast('已選2枚同色，無法再選其他'); return; }
   if (total>=3){ toast('最多選3枚'); return; }
-  p[col]=1; render();
+  p[col]=1; render(); pushCursor({pending:{...p}});
 }
 
 function pendValid() {
@@ -1101,7 +1183,7 @@ function pendValid() {
   return CI.some(c=>(p[c]||0)===2) ? tot===2 : tot<=3;
 }
 
-function clearPend(){ G.ui.pending={w:0,u:0,g:0,r:0,k:0}; render(); if(!G.ui.acted) activateZones(); }
+function clearPend(){ G.ui.pending={w:0,u:0,g:0,r:0,k:0}; pushCursor({pending:{w:0,u:0,g:0,r:0,k:0}}); render(); if(!G.ui.acted) activateZones(); }
 
 function tryEnd() {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
@@ -1117,6 +1199,7 @@ function gdot(col, sz=24) {
 
 function render() {
   rMissions(); rBank(); rCards(); rBottom(); rPlayers();
+  if (onlineMode) applyOpponentCursors();
 }
 
 // Mission card display
@@ -1143,7 +1226,7 @@ function rBank() {
   let h=`<div class="panel-label" style="margin-top:10px">寶石庫</div>`;
   [...CI,'gold'].forEach(col=>{
     const cnt=G.bank[col]||0, pk=pend[col]||0, isGold=col==='gold';
-    h+=`<div class="bank-row ${pk?'picked':''} ${isGold?'no-click':''}" ${isGold?'':` onclick="clickBank('${col}')"`}>
+    h+=`<div class="bank-row ${pk?'picked':''} ${isGold?'no-click':''}" data-col="${col}" ${isGold?'':` onclick="clickBank('${col}')"`}>
       <div class="${GCC[col]}" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.35)"></div>
       <span class="g-name">${CN[col]}</span>
       <span class="g-cnt">${cnt}</span>
@@ -1154,7 +1237,8 @@ function rBank() {
 }
 
 function rCards() {
-  const pl=G.players[G.cur];
+  // In online mode always highlight based on your own wallet, not the current player's
+  const pl = (onlineMode && myIdx >= 0) ? G.players[myIdx] : G.players[G.cur];
   let h='';
   [3,2,1].forEach(t=>{
     const tc={3:'#dd88ff',2:'#88aaff',1:'#ffcc88'}[t];
@@ -1173,7 +1257,7 @@ function rCards() {
         return `<div class="cost-ln ${covered?'covered':''}">
           <div class="cost-dot ${GCC[c]}"></div><span class="cost-n">${card.cost[c]}</span></div>`;
       }).join('');
-      h+=`<div class="dev-card t${t} ${afford?'':'dim'}" onclick="openBoardCard(${card.id},${t},${bi})">
+      h+=`<div class="dev-card t${t} ${afford?'':'dim'}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
         <div class="card-top ${CHC[card.bonus]}">
           <span class="card-pts">${card.pts||''}</span>
           <div class="card-gem-dot ${GCC[card.bonus]}" style="width:20px;height:20px"></div>
