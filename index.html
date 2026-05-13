@@ -9,7 +9,11 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
-  background: #12111e; color: #e8e8f0; min-height: 100vh; user-select: none;
+  background:
+    linear-gradient(180deg,rgba(16,20,26,.42),rgba(27,18,12,.72)),
+    url('splendor-card-art/game-bg-castle.jpg') center/cover fixed,
+    #3b2b1d;
+  color: #e8e8f0; min-height: 100vh; user-select: none;
 }
 
 /* ── Setup ──────────────────────────────────── */
@@ -48,14 +52,18 @@ body {
 
 /* Header */
 #g-hdr {
-  background:rgba(0,0,0,.45); border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(32,20,12,.58); border-bottom:1px solid rgba(255,224,166,.18);
   padding:7px 16px; flex-shrink:0;
+  backdrop-filter:blur(5px);
 }
 .hdr-logo { font-size:1em; font-weight:bold; color:#ffcc44; letter-spacing:2px; }
 .last-round-flag { font-size:.8em; color:#ff9955; font-weight:bold; }
 
 /* Main */
-#g-main { display:flex; gap:10px; padding:10px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center; }
+#g-main {
+  display:flex; gap:10px; padding:10px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center;
+  background:linear-gradient(90deg,rgba(11,12,20,.48),rgba(18,14,10,.18),rgba(11,12,20,.48));
+}
 
 /* Left panel */
 #g-left { display:flex; flex-direction:column; gap:10px; width:190px; flex-shrink:0; }
@@ -85,32 +93,152 @@ body {
 
 /* Mission cards */
 .mission-card {
-  border-radius:8px; padding:6px 8px; flex:1; min-width:0;
-  border:2px solid rgba(80,120,200,.3);
-  background:linear-gradient(135deg,#1a2a3a,#102030);
+  position:relative; border-radius:5px; padding:7px 10px 8px 12px; flex:1; min-width:0;
+  border:1.5px solid rgba(86,51,18,.55);
+  background:
+    radial-gradient(circle at 12% 8%,rgba(255,255,255,.36),transparent 22%),
+    linear-gradient(135deg,#ead19a,#c59a5a 52%,#f0dcae);
+  color:#1c1309; font-family:Georgia,'Noto Serif TC','Times New Roman',serif;
+  box-shadow:0 2px 7px rgba(0,0,0,.34), inset 0 0 16px rgba(98,57,21,.22);
+  overflow:hidden;
 }
-.mission-card.claimed { border-color:rgba(255,200,50,.35); background:linear-gradient(135deg,#2a2810,#1a1a08); opacity:.72; }
-.mission-name { font-size:.68em; font-weight:bold; color:#88aaff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.mission-pts  { font-size:.72em; font-weight:bold; color:#ffcc44; flex-shrink:0; }
-.mission-desc { font-size:.6em; opacity:.7; margin-top:2px; line-height:1.3; }
-.mission-winner { font-size:.6em; margin-top:2px; }
+.mission-card::before {
+  content:""; position:absolute; inset:4px; border:1px dashed rgba(44,25,8,.28);
+  border-radius:4px; pointer-events:none;
+}
+.mission-card.claimed {
+  border-color:rgba(80,52,18,.42); opacity:.76;
+  filter:saturate(.72);
+}
+.mission-card.claimed::after {
+  content:"已領"; position:absolute; right:8px; bottom:5px;
+  color:rgba(110,22,18,.55); border:1.5px solid rgba(110,22,18,.45);
+  transform:rotate(-10deg); font-size:.7em; font-weight:900;
+  padding:1px 5px; border-radius:3px;
+}
+.mission-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; position:relative; z-index:1; }
+.mission-name {
+  font-size:.72em; font-weight:900; color:#1d1308; letter-spacing:.8px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mission-pts  {
+  font-size:.7em; font-weight:900; color:#2a1707; flex-shrink:0;
+  background:rgba(122,38,18,.14); border:1px solid rgba(70,35,11,.3);
+  border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+}
+.mission-desc { font-size:.62em; color:#30200e; margin-top:3px; line-height:1.32; position:relative; z-index:1; }
+.mission-icons { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; position:relative; z-index:1; }
+.mission-token {
+  display:inline-flex; align-items:center; gap:2px; padding:1px 5px;
+  border-radius:10px; background:rgba(55,31,9,.12); border:1px solid rgba(42,23,6,.2);
+  font-size:.64em; font-weight:900; color:#1d1308;
+}
+.mission-mark { font-size:.9em; opacity:.78; margin-right:1px; }
+.mission-winner { font-size:.62em; margin-top:3px; position:relative; z-index:1; font-weight:900; }
 
 /* Gem bank */
-.bank-row {
-  display:flex; align-items:center; gap:7px; padding:4px 5px;
-  border-radius:7px; cursor:pointer; border:2px solid transparent; transition:all .12s;
+#g-bank {
+  position:relative; width:100%; padding:17px 10px 12px;
+  border-radius:14px;
+  border:3px solid #8a6324;
+  background:
+    radial-gradient(circle at 18px 18px,#f1c86b 0 3px,transparent 4px),
+    radial-gradient(circle at calc(100% - 18px) 18px,#f1c86b 0 3px,transparent 4px),
+    radial-gradient(circle at 18px calc(100% - 18px),#c48b33 0 3px,transparent 4px),
+    linear-gradient(145deg,rgba(255,225,130,.18),transparent 28%),
+    repeating-linear-gradient(90deg,rgba(255,210,120,.06) 0 1px,transparent 1px 9px),
+    linear-gradient(160deg,#3a2513,#18100c 54%,#2f1d10);
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.42),
+    inset 0 0 0 2px rgba(255,219,128,.25),
+    inset 0 0 26px rgba(0,0,0,.65),
+    0 0 18px rgba(255,195,65,.12);
+  overflow:hidden;
 }
-.bank-row:hover:not(.no-click) { background:rgba(255,255,255,.07); }
-.bank-row.picked { background:rgba(255,220,50,.13); border-color:rgba(255,220,50,.45); }
+#g-bank::before {
+  content:""; position:absolute; inset:6px; border-radius:10px;
+  border:1px solid rgba(255,219,128,.24); pointer-events:none;
+}
+#g-bank::after {
+  content:""; position:absolute; left:50%; top:-18px; width:62px; height:36px;
+  transform:translateX(-50%);
+  border-radius:0 0 34px 34px;
+  background:linear-gradient(180deg,#d3a043,#6d4315);
+  box-shadow:inset 0 -4px 10px rgba(0,0,0,.45), 0 3px 9px rgba(0,0,0,.38);
+  opacity:.9; pointer-events:none;
+}
+#g-bank .panel-label {
+  position:relative; z-index:1; display:flex; align-items:center; justify-content:center;
+  margin:0 0 8px !important; padding:3px 8px;
+  color:#ffe29a; opacity:1; letter-spacing:3px;
+  background:linear-gradient(90deg,rgba(71,38,10,.35),rgba(166,105,29,.36),rgba(71,38,10,.35));
+  border:1px solid rgba(255,218,126,.22); border-radius:999px;
+  text-shadow:0 1px 2px rgba(0,0,0,.85);
+}
+#g-bank .panel-label::before,
+#g-bank .panel-label::after { content:"◆"; font-size:.72em; color:#d69a35; margin:0 7px; }
+.bank-row {
+  position:relative; z-index:1; display:flex; align-items:center; gap:7px; padding:5px 7px;
+  margin-top:5px; border-radius:8px; cursor:pointer;
+  border:1.5px solid rgba(220,166,68,.26);
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.32),rgba(255,214,109,.08),rgba(0,0,0,.26)),
+    rgba(20,14,10,.68);
+  box-shadow:inset 0 1px 0 rgba(255,231,154,.13), inset 0 -8px 12px rgba(0,0,0,.24);
+  transition:all .12s;
+}
+.bank-row:hover:not(.no-click) {
+  background:
+    linear-gradient(90deg,rgba(61,36,13,.62),rgba(255,214,109,.16),rgba(61,36,13,.46)),
+    rgba(36,22,12,.78);
+  border-color:rgba(255,211,104,.52);
+}
+.bank-row.picked {
+  background:
+    linear-gradient(90deg,rgba(92,57,13,.72),rgba(255,222,91,.25),rgba(92,57,13,.52)),
+    rgba(39,25,9,.82);
+  border-color:rgba(255,220,50,.75);
+  box-shadow:0 0 14px rgba(255,201,58,.26), inset 0 1px 0 rgba(255,245,184,.24);
+}
 .bank-row.no-click { cursor:default; opacity:.55; }
+.bank-row[data-col="gold"]:not(.picked) {
+  border-color:rgba(220,166,68,.26);
+  background:
+    radial-gradient(circle at 20% 50%,rgba(255,228,90,.09),transparent 42%),
+    linear-gradient(90deg,rgba(0,0,0,.34),rgba(124,84,20,.14),rgba(0,0,0,.28)),
+    rgba(20,14,10,.68);
+  box-shadow:inset 0 1px 0 rgba(255,231,154,.13), inset 0 -8px 12px rgba(0,0,0,.24);
+}
+.bank-row[data-col="gold"].picked {
+  border-color:rgba(255,220,50,.82);
+  background:
+    radial-gradient(circle at 20% 50%,rgba(255,235,93,.28),transparent 44%),
+    linear-gradient(90deg,rgba(92,57,13,.78),rgba(255,222,91,.3),rgba(92,57,13,.56)),
+    rgba(39,25,9,.82);
+  box-shadow:0 0 16px rgba(255,201,58,.32), inset 0 1px 0 rgba(255,245,184,.3);
+}
 .g-circle {
   border-radius:50%; border:2px solid rgba(255,255,255,.38);
   display:flex; align-items:center; justify-content:center;
   font-weight:bold; flex-shrink:0; text-shadow:0 1px 3px rgba(0,0,0,.8);
 }
-.g-name { font-size:.78em; flex:1; }
-.g-cnt  { font-size:.82em; font-weight:bold; opacity:.7; }
+.g-name { font-size:.78em; flex:1; color:#f4dfb0; text-shadow:0 1px 2px rgba(0,0,0,.7); }
+.g-cnt  {
+  min-width:22px; text-align:center; font-size:.82em; font-weight:bold; color:#ffecb0; opacity:1;
+  background:rgba(0,0,0,.28); border:1px solid rgba(255,223,130,.16); border-radius:999px; padding:1px 5px;
+}
 .pick-badge { font-size:.78em; color:#ffcc44; font-weight:bold; }
+#g-bank .btn {
+  border:1px solid rgba(255,221,119,.22);
+  box-shadow:0 2px 8px rgba(0,0,0,.28);
+}
+.gem-fly {
+  position:fixed; z-index:540; pointer-events:none;
+  width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  filter:drop-shadow(0 0 10px rgba(255,230,140,.75)) drop-shadow(0 8px 10px rgba(0,0,0,.5));
+  transition:left .58s cubic-bezier(.22,.8,.24,1),top .58s cubic-bezier(.22,.8,.24,1),
+             transform .58s cubic-bezier(.22,.8,.24,1),opacity .2s ease .48s;
+}
 
 /* Cards area */
 #g-right { display:flex; flex-direction:column; gap:10px; }
@@ -118,23 +246,110 @@ body {
 .tier-row { display:flex; gap:6px; }
 
 .deck-box {
-  width:110px; min-height:150px; border-radius:10px; flex-shrink:0;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  border:2px dashed rgba(255,255,255,.18); cursor:pointer; transition:all .15s;
+  width:112px; height:164px; min-height:164px; border-radius:10px; flex-shrink:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  border:2px solid rgba(255,255,255,.18); cursor:pointer; transition:all .15s;
+  position:relative; overflow:hidden;
+  padding-top:19px;
+  background:linear-gradient(160deg,rgba(18,15,18,.92),rgba(45,31,20,.9));
+  box-shadow:inset 0 0 18px rgba(0,0,0,.55), 0 5px 14px rgba(0,0,0,.28);
+  --deck-edge-hi:#e8eef4; --deck-edge-mid:#aebac6; --deck-edge-lo:#667484;
+  --deck-face-border:#e8dcc0;
+  --deck-back-a:#0d0d0a; --deck-back-b:#19130a; --deck-line:#d6aa45; --deck-line-soft:rgba(214,170,69,.42);
+  --deck-mark-bg:#15100a; --deck-mark-fg:#ffe28a;
 }
-.deck-box:hover:not(.empty) { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.38); }
+.deck-box:hover:not(.empty) { filter:brightness(1.1); border-color:rgba(255,224,138,.55); }
 .deck-box.empty { cursor:default; opacity:.28; }
-.deck-tier { font-size:.66em; opacity:.7; margin-bottom:2px; }
-.deck-n { font-size:1.5em; font-weight:bold; }
-.deck-lbl { font-size:.62em; opacity:.55; }
+.deck-card-icon {
+  position:relative; width:96px; height:118px; border-radius:0;
+  transform:rotate(0deg);
+  transform-origin:center center;
+  border:0;
+  z-index:0;
+  background:transparent center / contain no-repeat;
+  box-shadow:none;
+  margin-top:0;
+  margin-bottom:0;
+  overflow:visible;
+}
+.deck-card-icon::before,
+.deck-card-icon::after {
+  display:none;
+}
+.deck-sigil {
+  display:none;
+}
+.deck-sigil::before {
+  font-size:1.25em; font-weight:900; line-height:1;
+  text-shadow:0 1px 4px rgba(0,0,0,.55);
+}
+.deck-sigil::after {
+  content:""; position:absolute; inset:-16px -8px; border-radius:999px;
+  border:1px solid var(--deck-line);
+  opacity:.5;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 7px transparent;
+}
+.deck-tier-3 {
+  border-color:rgba(255,213,83,.62);
+  --deck-edge-hi:#ffeaa0; --deck-edge-mid:#d9a532; --deck-edge-lo:#8b520d;
+  --deck-face-border:#fff0a4;
+  --deck-back-a:#050504; --deck-back-b:#21180b; --deck-line:#dfb34c; --deck-line-soft:rgba(223,179,76,.48);
+  --deck-mark-bg:#0c0a07; --deck-mark-fg:#ffe993;
+}
+.deck-tier-3 .deck-card-icon { background-image:url('splendor-card-art/deck-tier3-real.png'); }
+.deck-tier-3 .deck-sigil::before { content:"✦"; }
+.deck-tier-2 {
+  border-color:rgba(104,176,255,.58);
+  --deck-edge-hi:#8fc8ff; --deck-edge-mid:#2f78ad; --deck-edge-lo:#0d355d;
+  --deck-face-border:#9dd3ff;
+  --deck-back-a:#061a32; --deck-back-b:#15558d; --deck-line:#9bd2ff; --deck-line-soft:rgba(155,210,255,.5);
+  --deck-mark-bg:#072746; --deck-mark-fg:#e3f3ff;
+}
+.deck-tier-2 .deck-card-icon { background-image:url('splendor-card-art/deck-tier2-real.png'); }
+.deck-tier-2 .deck-sigil::before { content:"✦"; }
+.deck-tier-1 {
+  border-color:rgba(184,148,91,.55);
+  --deck-edge-hi:#9fd596; --deck-edge-mid:#3f8a4d; --deck-edge-lo:#173f22;
+  --deck-face-border:#9fdd93;
+  --deck-back-a:#092416; --deck-back-b:#24693a; --deck-line:#a5df95; --deck-line-soft:rgba(165,223,149,.48);
+  --deck-mark-bg:#0c321d; --deck-mark-fg:#e4ffd6;
+}
+.deck-tier-1 .deck-card-icon { background-image:url('splendor-card-art/deck-tier1-real.png'); }
+.deck-tier-1 .deck-sigil::before { content:"✦"; }
+.deck-rank {
+  position:absolute; left:0; right:0; top:4px; z-index:2;
+  height:15px; line-height:15px; text-align:center;
+  font-size:.7em; font-weight:900; letter-spacing:1.4px;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);
+  white-space:nowrap; overflow:hidden;
+}
+.deck-n {
+  position:absolute; left:0; right:0; bottom:10px; height:16px; line-height:16px; text-align:center;
+  padding:0; border-radius:0; background:none; border:0;
+  font-size:.86em; font-weight:900; color:#d8b987;
+  box-sizing:border-box; z-index:2;
+  text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
+.deck-lbl {
+  position:static; margin-left:4px; font-size:.78em; opacity:.78;
+  z-index:auto; white-space:nowrap; color:#d8b987;
+}
+.refill-card-back {
+  position:fixed; width:112px; height:164px; border-radius:10px; z-index:520;
+  pointer-events:none; border:2px solid rgba(255,255,255,.24);
+  box-shadow:0 0 28px rgba(255,230,120,.28), 0 12px 30px rgba(0,0,0,.5);
+  transition:left .48s cubic-bezier(.25,.8,.25,1),top .48s cubic-bezier(.25,.8,.25,1),
+             transform .48s cubic-bezier(.25,.8,.25,1),opacity .25s;
+}
 
 .dev-card {
-  width:110px; min-height:150px; border-radius:10px; flex-shrink:0;
+  width:112px; height:164px; min-height:164px; border-radius:10px; flex-shrink:0;
   display:flex; flex-direction:column; overflow:hidden; cursor:pointer;
   border:2px solid rgba(255,255,255,.13); transition:transform .15s,box-shadow .15s;
+  position:relative; background-size:cover; background-position:center;
 }
 .dev-card:hover { transform:translateY(-5px); box-shadow:0 8px 22px rgba(0,0,0,.55); }
-.dev-card.dim { opacity:.55; }
+.dev-card.dim { opacity:.86; }
 @keyframes urge-pulse {
   0%,100% { box-shadow:0 0 14px rgba(255,60,30,.35); }
   50%     { box-shadow:0 0 28px rgba(255,60,30,.75), 0 0 8px rgba(255,60,30,.4); }
@@ -148,20 +363,31 @@ body {
 .dev-card.t2 { background:linear-gradient(160deg,#1e3858,#101e38); }
 .dev-card.t3 { background:linear-gradient(160deg,#32144a,#180a28); }
 .card-top {
+  position:absolute; top:0; left:0; right:0; z-index:2;
   display:flex; justify-content:space-between; align-items:center;
-  padding:5px 7px;
+  padding:5px 7px; min-height:34px;
+  box-shadow:0 2px 12px rgba(0,0,0,.45);
+  backdrop-filter:blur(2px);
 }
 .card-pts { font-size:1.5em; font-weight:900; color:white; text-shadow:0 1px 4px rgba(0,0,0,.9); line-height:1; }
 .card-gem-dot { border-radius:50%; border:2px solid rgba(255,255,255,.55); flex-shrink:0; }
 .card-body {
-  flex:1; padding:3px 5px; display:flex; flex-direction:column;
-  justify-content:flex-end; gap:2px; background:rgba(0,0,0,.28);
+  position:absolute; inset:0; z-index:1; min-height:0; padding:42px 5px 6px;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:3px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.08) 0%,rgba(0,0,0,.02) 42%,rgba(0,0,0,.62) 76%,rgba(0,0,0,.9) 100%);
 }
-.cost-ln { display:flex; align-items:center; gap:4px; }
+.cost-stack {
+  display:flex; flex-direction:column; justify-content:flex-end; gap:1px;
+  min-height:0; align-self:flex-start; max-width:100%;
+  padding:3px 5px; border-radius:6px;
+  background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(2px);
+}
+.cost-ln { display:flex; align-items:center; gap:4px; min-height:12px; }
 .cost-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
 .cost-n { font-size:.8em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
 .cost-ln.covered { opacity:.35; }
-.card-empty-slot { width:110px; height:150px; flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
+.card-empty-slot { width:112px; height:164px; flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
 
 /* Bottom — now inline below cards in right column */
 #g-bottom {
@@ -198,6 +424,12 @@ body {
 .btn-go  { background:linear-gradient(135deg,#226622,#44aa44); color:white; }
 .btn-end { background:linear-gradient(135deg,#662222,#aa4444); color:white; }
 .btn-grey { background:rgba(255,255,255,.1); color:white; }
+.bank-clear-btn {
+  font-family:Arial,sans-serif;
+  letter-spacing:0;
+  line-height:1;
+  background:rgba(255,255,255,.08);
+}
 
 /* All-players strip — left panel vertical stack */
 #g-players {
@@ -206,6 +438,7 @@ body {
 .pi-card {
   background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
   border-left:4px solid; border-radius:10px; padding:8px 11px; width:100%;
+  position:relative;
 }
 .pi-card.cur { background:rgba(255,215,50,.07); }
 .pi-card.inactive {
@@ -223,6 +456,27 @@ body {
 .pi-gems { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
 .pi-gem-item { display:flex; align-items:center; gap:2px; font-size:.7em; font-weight:bold; opacity:.85; }
 .pi-mini { font-size:.68em; opacity:.55; margin-top:4px; }
+.time-up-alert {
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:2px 6px; border-radius:6px; margin-left:auto;
+  color:#fff6d8; background:linear-gradient(135deg,#8f1111,#e43a22);
+  border:1px solid rgba(255,226,120,.65);
+  font-size:.62em; font-weight:900; letter-spacing:.8px;
+  text-shadow:0 1px 2px rgba(0,0,0,.8);
+  box-shadow:0 0 12px rgba(255,56,28,.68);
+  animation:time-up-flash .48s steps(2,end) infinite, time-up-shake .22s linear infinite;
+  white-space:nowrap;
+}
+@keyframes time-up-flash {
+  0%,100% { opacity:1; filter:brightness(1.25); }
+  50% { opacity:.42; filter:brightness(.72); }
+}
+@keyframes time-up-shake {
+  0%,100% { transform:translate(0,0) rotate(0deg); }
+  25% { transform:translate(1px,-1px) rotate(-2deg); }
+  50% { transform:translate(-1px,1px) rotate(2deg); }
+  75% { transform:translate(1px,1px) rotate(-1deg); }
+}
 
 /* Modals */
 .m-overlay {
@@ -246,11 +500,16 @@ body {
 .gc-gold { background:radial-gradient(circle at 35% 30%,#ffee88,#cc8800); color:white; }
 
 /* Card header tint by bonus */
-.ch-w { background:rgba(210,200,185,.88); }
-.ch-u { background:rgba(20,65,185,.88); }
-.ch-g { background:rgba(20,120,50,.88); }
-.ch-r { background:rgba(175,20,20,.88); }
-.ch-k { background:rgba(15,25,50,.88); }
+.ch-w { background:linear-gradient(90deg,rgba(210,200,185,.88),rgba(80,70,60,.62)); }
+.ch-u { background:linear-gradient(90deg,rgba(20,65,185,.9),rgba(8,20,60,.66)); }
+.ch-g { background:linear-gradient(90deg,rgba(20,120,50,.9),rgba(6,42,22,.68)); }
+.ch-r { background:linear-gradient(90deg,rgba(175,20,20,.9),rgba(70,8,12,.68)); }
+.ch-k { background:linear-gradient(90deg,rgba(15,25,50,.92),rgba(12,8,20,.7)); }
+.card-preview {
+  height:190px; border-radius:10px; margin-bottom:12px;
+  background-size:cover; background-position:center;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16), 0 12px 28px rgba(0,0,0,.38);
+}
 
 /* Player colors */
 .pcol-0{color:#ff9955} .pcol-1{color:#55aaff} .pcol-2{color:#55cc88} .pcol-3{color:#cc88ff}
@@ -552,7 +811,7 @@ body {
 
     <div class="h-sec">
       <h3>計時器</h3>
-      <p>每位玩家有 <strong>45 秒</strong>操作時間（畫面頂端讀條）。剩餘 10 秒時會發出提示。時間到後請盡快完成行動。</p>
+      <p>每位玩家有 <strong>60 秒</strong>操作時間。剩餘 15 秒時會顯示「時光不等人」，時間到後會在玩家計分牌旁持續顯示警語。</p>
     </div>
 
     <div style="text-align:right;margin-top:18px">
@@ -1044,21 +1303,97 @@ const RAW = [
 // ── Mission cards ────────────────────────────────────────────────────────
 // check(player) → true if condition met; claimedBy = player index or null
 const MISSION_DB = [
-  {name:'白色收藏家', desc:'率先擁有 3 張白色寶石卡', pts:2, check:p=>(p.bonuses.w||0)>=3},
-  {name:'藍色收藏家', desc:'率先擁有 3 張藍色寶石卡', pts:2, check:p=>(p.bonuses.u||0)>=3},
-  {name:'綠色收藏家', desc:'率先擁有 3 張綠色寶石卡', pts:2, check:p=>(p.bonuses.g||0)>=3},
-  {name:'紅色收藏家', desc:'率先擁有 3 張紅色寶石卡', pts:2, check:p=>(p.bonuses.r||0)>=3},
-  {name:'黑色收藏家', desc:'率先擁有 3 張黑色寶石卡', pts:2, check:p=>(p.bonuses.k||0)>=3},
-  {name:'多彩大師',   desc:'率先擁有 5 種顏色加成各至少 1 張', pts:3, check:p=>CI.filter(c=>(p.bonuses[c]||0)>0).length>=5},
-  {name:'發展巨匠',   desc:'率先擁有合計 8 張寶石卡',       pts:3, check:p=>p.cards.length>=8},
-  {name:'白藍雙璧',   desc:'率先擁有 白×2 + 藍×2 寶石卡', pts:2, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.u||0)>=2},
-  {name:'綠紅雙輝',   desc:'率先擁有 綠×2 + 紅×2 寶石卡', pts:2, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.r||0)>=2},
-  {name:'黑白雙雄',   desc:'率先擁有 黑×2 + 白×2 寶石卡', pts:2, check:p=>(p.bonuses.k||0)>=2&&(p.bonuses.w||0)>=2},
+  {name:'白塔徵召',   desc:'王室徵求白色寶石卡 3 張', pts:2, req:{w:3}, check:p=>(p.bonuses.w||0)>=3},
+  {name:'藍港契約',   desc:'王室徵求藍色寶石卡 3 張', pts:2, req:{u:3}, check:p=>(p.bonuses.u||0)>=3},
+  {name:'翠庭供貨',   desc:'王室徵求綠色寶石卡 3 張', pts:2, req:{g:3}, check:p=>(p.bonuses.g||0)>=3},
+  {name:'赤焰印令',   desc:'王室徵求紅色寶石卡 3 張', pts:2, req:{r:3}, check:p=>(p.bonuses.r||0)>=3},
+  {name:'黑曜密令',   desc:'王室徵求黑色寶石卡 3 張', pts:2, req:{k:3}, check:p=>(p.bonuses.k||0)>=3},
+  {name:'白藍雙璧',   desc:'白色與藍色加成各 2 張', pts:2, req:{w:2,u:2}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.u||0)>=2},
+  {name:'藍綠海路',   desc:'藍色與綠色加成各 2 張', pts:2, req:{u:2,g:2}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.g||0)>=2},
+  {name:'綠紅邊境',   desc:'綠色與紅色加成各 2 張', pts:2, req:{g:2,r:2}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.r||0)>=2},
+  {name:'紅黑軍需',   desc:'紅色與黑色加成各 2 張', pts:2, req:{r:2,k:2}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.k||0)>=2},
+  {name:'黑白密約',   desc:'黑色與白色加成各 2 張', pts:2, req:{k:2,w:2}, check:p=>(p.bonuses.k||0)>=2&&(p.bonuses.w||0)>=2},
+  {name:'鑽翠珠冠',   desc:'白色 2 張，綠色 1 張，藍色 1 張', pts:2, req:{w:2,g:1,u:1}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.g||0)>=1&&(p.bonuses.u||0)>=1},
+  {name:'海焰徽章',   desc:'藍色 2 張，紅色 1 張，黑色 1 張', pts:2, req:{u:2,r:1,k:1}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.r||0)>=1&&(p.bonuses.k||0)>=1},
+  {name:'翡翠王令',   desc:'綠色 2 張，白色 1 張，紅色 1 張', pts:2, req:{g:2,w:1,r:1}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.w||0)>=1&&(p.bonuses.r||0)>=1},
+  {name:'赤黑護符',   desc:'紅色 2 張，藍色 1 張，黑色 1 張', pts:2, req:{r:2,u:1,k:1}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.u||0)>=1&&(p.bonuses.k||0)>=1},
+  {name:'五色通緝',   desc:'五種顏色加成各至少 1 張', pts:3, req:{w:1,u:1,g:1,r:1,k:1}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=1)},
+  {name:'王室寶庫',   desc:'五種顏色加成各至少 2 張', pts:4, req:{w:2,u:2,g:2,r:2,k:2}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=2)},
+  {name:'純色行會',   desc:'任一顏色加成達到 4 張', pts:3, mark:'任一色×4', check:p=>CI.some(c=>(p.bonuses[c]||0)>=4)},
+  {name:'商隊總管',   desc:'合計擁有 8 張寶石卡', pts:3, mark:'寶石卡×8', check:p=>p.cards.length>=8},
+  {name:'上城資助',   desc:'擁有 3 張中級或高級寶石卡', pts:3, mark:'Ⅱ/Ⅲ×3', check:p=>p.cards.filter(c=>c.tier>=2).length>=3},
+  {name:'貴族獻禮',   desc:'聲望點累積至少 6 分', pts:2, mark:'聲望≥6', check:p=>p.points>=6},
 ];
 
 // ── Parse data ───────────────────────────────────────────────────────────
 let _cid = 0;
 const ALL_CARDS  = RAW.map(r => ({id:_cid++, tier:r[0], pts:r[1], bonus:CI[r[2]], cost:{w:r[3],u:r[4],g:r[5],r:r[6],k:r[7]}}));
+const CARD_ART_VERSION = 'balanced-mix-1';
+const CARD_ART_PATTERN = ['outdoor','indoor','character'];
+const CARD_ART_POOLS = {
+  1: {
+    outdoor: [
+      'tier1-01.jpg','tier1-02.jpg','tier1-05.jpg','tier1-06.jpg','tier1-07.jpg',
+      'tier1-08.jpg','tier1-09.jpg','tier1-15.jpg','tier1-16.jpg','tier1-17.jpg',
+      'tier1-18.jpg','tier1-19.jpg','tier1-21.jpg','tier1-22.jpg'
+    ],
+    indoor: [
+      'tier1-26.jpg','tier1-27.jpg','tier1-28.jpg','tier1-29.jpg','tier1-30.jpg',
+      'tier1-31.jpg','tier1-32.jpg','tier1-34.jpg','tier1-35.jpg','tier1-36.jpg',
+      'tier1-38.jpg','tier1-39.jpg','tier1-40.jpg'
+    ],
+    character: [
+      'tier1-03.jpg','tier1-04.jpg','tier1-10.jpg','tier1-11.jpg','tier1-12.jpg',
+      'tier1-13.jpg','tier1-14.jpg','tier1-20.jpg','tier1-23.jpg','tier1-24.jpg',
+      'tier1-25.jpg','tier1-33.jpg','tier1-37.jpg'
+    ]
+  },
+  2: {
+    outdoor: [
+      'tier2-01.jpg','tier2-02.jpg','tier2-03.jpg','tier2-04.jpg','tier2-05.jpg',
+      'tier2-08.jpg','tier2-10.jpg','tier2-11.jpg','tier2-12.jpg','tier2-15.jpg'
+    ],
+    indoor: [
+      'tier2-16.jpg','tier2-18.jpg','tier2-19.jpg','tier2-20.jpg','tier2-24.jpg',
+      'tier2-25.jpg','tier2-26.jpg','tier2-27.jpg','tier2-28.jpg','tier2-29.jpg'
+    ],
+    character: [
+      'tier2-06.jpg','tier2-07.jpg','tier2-09.jpg','tier2-13.jpg','tier2-14.jpg',
+      'tier2-17.jpg','tier2-21.jpg','tier2-22.jpg','tier2-23.jpg','tier2-30.jpg'
+    ]
+  },
+  3: {
+    outdoor: [
+      'tier3-02.jpg','tier3-04.jpg','tier3-06.jpg','tier3-07.jpg','tier3-08.jpg',
+      'tier3-09.jpg','tier3-10.jpg'
+    ],
+    indoor: [
+      'tier3-11.jpg','tier3-12.jpg','tier3-13.jpg','tier3-15.jpg','tier3-16.jpg',
+      'tier3-17.jpg','tier3-20.jpg'
+    ],
+    character: [
+      'tier3-01.jpg','tier3-03.jpg','tier3-05.jpg','tier3-14.jpg','tier3-18.jpg',
+      'tier3-19.jpg'
+    ]
+  }
+};
+const CARD_ART_INDEX = {};
+const _artCounter = {1:0, 2:0, 3:0};
+const _artStyleCounter = {
+  1:{outdoor:0, indoor:0, character:0},
+  2:{outdoor:0, indoor:0, character:0},
+  3:{outdoor:0, indoor:0, character:0}
+};
+ALL_CARDS.forEach(card => {
+  const key = cardEffectKey(card);
+  if (!CARD_ART_INDEX[key]) {
+    const style = CARD_ART_PATTERN[_artCounter[card.tier] % CARD_ART_PATTERN.length];
+    const pool = CARD_ART_POOLS[card.tier][style];
+    CARD_ART_INDEX[key] = pool[_artStyleCounter[card.tier][style] % pool.length];
+    _artCounter[card.tier]++;
+    _artStyleCounter[card.tier][style]++;
+  }
+});
 
 // ── Game State ───────────────────────────────────────────────────────────
 let G = {};
@@ -1143,56 +1478,121 @@ function canBuy(pl,card) {
 }
 
 // ── Card animation ───────────────────────────────────────────────────────
-function animateCardAcquired(card, playerIdx, label, callback) {
-  const pl = G.players[playerIdx];
-  const W=130, H=175;
-
-  // Dim layer
-  const dim = document.createElement('div');
-  dim.style.cssText='position:fixed;inset:0;background:rgba(0,0,15,.82);z-index:500;pointer-events:none;transition:opacity .4s;';
-  document.body.appendChild(dim);
-
-  // Player label
-  const lbl = document.createElement('div');
-  lbl.textContent = label;
-  lbl.style.cssText=`position:fixed;top:calc(50% - ${H/2+44}px);left:50%;transform:translateX(-50%);
-    color:${pl.color};font-size:1.35em;font-weight:900;z-index:502;pointer-events:none;
-    text-shadow:0 0 20px ${pl.color};white-space:nowrap;transition:opacity .4s;`;
-  document.body.appendChild(lbl);
-
-  // The card itself
-  const fly = document.createElement('div');
-  fly.className=`dev-card t${card.tier}`;
-  const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>
+function cardCostHtml(card) {
+  return CI.filter(c=>(card.cost[c]||0)>0).map(c=>
     `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
   ).join('');
-  fly.innerHTML=`
-    <div class="card-top ${CHC[card.bonus]}" style="padding:8px 10px;min-height:50px">
-      <span class="card-pts" style="font-size:2.2em">${card.pts||''}</span>
-      ${gemSVG(card.bonus,28)}
+}
+
+function flyingCardHtml(card) {
+  return `
+    <div class="card-top ${CHC[card.bonus]}" style="padding:8px 10px;min-height:44px">
+      <span class="card-pts" style="font-size:2em">${card.pts||''}</span>
+      ${gemSVG(card.bonus,26)}
     </div>
-    <div class="card-body" style="padding:8px">${costH}</div>`;
-  const sx=window.innerWidth/2-W/2, sy=window.innerHeight/2-H/2+20;
-  fly.style.cssText=`position:fixed;width:${W}px;min-height:${H}px;left:${sx}px;top:${sy}px;
-    z-index:501;pointer-events:none;box-shadow:0 0 50px ${pl.color},0 0 20px rgba(255,255,255,.3);
-    transition:left .65s cubic-bezier(.4,0,.2,1),top .65s cubic-bezier(.4,0,.2,1),
-               transform .65s,opacity .65s;`;
+    <div class="card-body" style="padding:7px">
+      <div class="cost-stack">${cardCostHtml(card)}</div>
+    </div>`;
+}
+
+function deckBackStyle(tier) {
+  return {
+    3:"background:url('splendor-card-art/deck-tier3-cardback.png') center / cover no-repeat;border-color:#fff0a4;",
+    2:"background:url('splendor-card-art/deck-tier2-cardback.png') center / cover no-repeat;border-color:#9dd3ff;",
+    1:"background:url('splendor-card-art/deck-tier1-cardback.png') center / cover no-repeat;border-color:#9fdd93;"
+  }[tier] || '';
+}
+
+function preloadCardArt(card) {
+  return new Promise(resolve=>{
+    const name = card ? cardArtName(card) : '';
+    if (!name) { resolve(); return; }
+    const img = new Image();
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    img.onload = finish;
+    img.onerror = finish;
+    img.src = `splendor-card-art/${name}`;
+    if (img.complete) finish();
+    setTimeout(finish, 1400);
+  });
+}
+
+function completeRefillThen(refill, nextStep) {
+  const artReady = refill && refill.newCard ? preloadCardArt(refill.newCard) : Promise.resolve();
+  animateRefillFromDeck(refill, ()=>{
+    artReady.then(()=>{
+      if (refill && refill.newCard) render();
+      setTimeout(nextStep, refill && refill.newCard ? 500 : 0);
+    });
+  });
+}
+
+function animateCardAcquired(card, playerIdx, label, callback) {
+  playClick('card');
+  const pl = G.players[playerIdx];
+  const src = document.querySelector(`.dev-card[data-card-id="${card.id}"]`);
+  const sr = src ? src.getBoundingClientRect() : null;
+  const W = sr ? sr.width : 130, H = sr ? sr.height : 175;
+  if (src) src.style.visibility = 'hidden';
+
+  const dim = document.createElement('div');
+  dim.style.cssText='position:fixed;inset:0;background:rgba(0,0,15,.42);z-index:500;pointer-events:none;transition:opacity .35s;';
+  document.body.appendChild(dim);
+
+  const lbl = document.createElement('div');
+  lbl.textContent = label;
+  lbl.style.cssText=`position:fixed;top:${sr?Math.max(18,sr.top-42)+'px':`calc(50% - ${H/2+44}px)`};left:${sr?sr.left+W/2+'px':'50%'};
+    transform:translateX(-50%);color:${pl.color};font-size:1.2em;font-weight:900;z-index:522;pointer-events:none;
+    text-shadow:0 0 20px ${pl.color},0 1px 4px rgba(0,0,0,.9);white-space:nowrap;transition:opacity .35s,left .6s,top .6s;`;
+  document.body.appendChild(lbl);
+
+  const fly = document.createElement('div');
+  fly.className=`dev-card t${card.tier}`;
+  fly.innerHTML=flyingCardHtml(card);
+  const sx=sr ? sr.left : window.innerWidth/2-W/2;
+  const sy=sr ? sr.top : window.innerHeight/2-H/2+20;
+  fly.style.cssText=`position:fixed;width:${W}px;height:${H}px;min-height:${H}px;left:${sx}px;top:${sy}px;
+    z-index:521;pointer-events:none;box-shadow:0 0 42px ${pl.color},0 0 18px rgba(255,255,255,.28);
+    transition:left .68s cubic-bezier(.4,0,.2,1),top .68s cubic-bezier(.4,0,.2,1),
+               transform .68s,opacity .68s;${cardBgStyle(card)}`;
   document.body.appendChild(fly);
 
-  // After pause, fly to player tab in header
   setTimeout(()=>{
-    const tabs=document.querySelectorAll('.p-tab');
-    const tgt=tabs[playerIdx];
-    if (tgt) {
-      const r=tgt.getBoundingClientRect();
-      fly.style.left=(r.left+r.width/2-W*0.05)+'px';
-      fly.style.top=(r.top+r.height/2-H*0.1)+'px';
-      fly.style.transform='scale(0.08)';
-      fly.style.opacity='0';
-    } else { fly.style.opacity='0'; }
-    lbl.style.opacity='0'; dim.style.opacity='0';
-    setTimeout(()=>{ dim.remove(); lbl.remove(); fly.remove(); callback(); }, 700);
-  }, 1250);
+    const tgt = document.querySelector(`.pi-card[data-player="${playerIdx}"]`);
+    const r = tgt ? tgt.getBoundingClientRect() : null;
+    if (r) {
+      fly.style.left=(r.left+r.width*.68-W*.08)+'px';
+      fly.style.top=(r.top+r.height*.28-H*.08)+'px';
+      fly.style.transform='scale(.16) rotate(7deg)';
+      lbl.style.left=(r.left+r.width*.58)+'px';
+      lbl.style.top=Math.max(10,r.top-28)+'px';
+    }
+    fly.style.opacity='0';
+    lbl.style.opacity='0';
+    dim.style.opacity='0';
+    setTimeout(()=>{ dim.remove(); lbl.remove(); fly.remove(); callback(); }, 720);
+  }, 180);
+}
+
+function animateRefillFromDeck(refill, callback) {
+  if (!refill || !refill.newCard) { callback(); return; }
+  playClick('card');
+  const deck = document.querySelector(`.deck-box[data-deck-tier="${refill.tier}"]`);
+  const target = document.querySelector(`.dev-card[data-tier="${refill.tier}"][data-slot="${refill.slot}"]`);
+  if (!deck || !target) { callback(); return; }
+  const dr=deck.getBoundingClientRect(), tr=target.getBoundingClientRect();
+  const fly=document.createElement('div');
+  fly.className='refill-card-back';
+  fly.style.cssText=`left:${dr.left+dr.width/2-tr.width/2}px;top:${dr.top+dr.height/2-tr.height/2}px;
+    width:${tr.width}px;height:${tr.height}px;transform:scale(.58) rotate(-7deg);${deckBackStyle(refill.tier)}`;
+  document.body.appendChild(fly);
+  setTimeout(()=>{
+    fly.style.left=tr.left+'px';
+    fly.style.top=tr.top+'px';
+    fly.style.transform='scale(1) rotate(0deg)';
+  }, 40);
+  setTimeout(()=>{ fly.style.opacity='0'; setTimeout(()=>{ fly.remove(); callback(); }, 160); }, 560);
 }
 
 // ── Buy / Reserve ─────────────────────────────────────────────────────────
@@ -1211,10 +1611,12 @@ function execBuy(card, fromRes) {
   pl.bonuses[card.bonus]=(pl.bonuses[card.bonus]||0)+1;
   pl.points+=card.pts;
   if (fromRes){ pl.reserved=pl.reserved.filter(c=>c.id!==card.id); }
-  else { fillBoard(card); }
   G.ui.acted=true; G.ui.pendCard=null;
   closeM('m-card');
-  animateCardAcquired(card, G.cur, `${pl.name} 購得寶石卡！`, ()=>{ afterAct(); render(); });
+  animateCardAcquired(card, G.cur, `${pl.name} 購得寶石卡！`, ()=>{
+    const refill = fromRes ? null : fillBoard(card);
+    completeRefillThen(refill, ()=>{ afterAct(); render(); });
+  });
   return true;
 }
 
@@ -1224,12 +1626,14 @@ function execReserve(card, tier, bi) {
   window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...G.ui.pending},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks))};
   pl.reserved.push(card);
   if (G.bank.gold>0){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; }
-  if (tier!==null && bi!==null){ fillBoard(card); }
   G.ui.acted=true; G.ui.pendCard=null;
   closeM('m-card');
   animateCardAcquired(card, G.cur, `${pl.name} 預留寶石卡！`, ()=>{
-    if (gsum(pl.gems)>10){ showRetMod(); }
-    else { afterAct(); render(); }
+    const refill = tier!==null && bi!==null ? fillBoard(card) : null;
+    completeRefillThen(refill, ()=>{
+      if (gsum(pl.gems)>10){ render(); showRetMod(); }
+      else { afterAct(); render(); }
+    });
   });
   return true;
 }
@@ -1237,13 +1641,56 @@ function execReserve(card, tier, bi) {
 function fillBoard(card) {
   for (const t of [1,2,3]) {
     const idx=G.board[t].findIndex(c=>c&&c.id===card.id);
-    if (idx!==-1){ G.board[t][idx]=G.decks[t].length>0?G.decks[t].pop():null; return; }
+    if (idx!==-1){
+      const newCard=G.decks[t].length>0?G.decks[t].pop():null;
+      G.board[t][idx]=newCard;
+      return {tier:t, slot:idx, newCard};
+    }
   }
+  return null;
+}
+
+function animateGemsToPlayer(selection, playerIdx, callback) {
+  const entries=[];
+  [...CI,'gold'].forEach(col=>{
+    for(let i=0;i<(selection[col]||0);i++) entries.push(col);
+  });
+  if (!entries.length) { callback(); return; }
+  const target=document.querySelector(`.pi-card[data-player="${playerIdx}"] .pi-gems`)
+    || document.querySelector(`.pi-card[data-player="${playerIdx}"]`);
+  const tr=target ? target.getBoundingClientRect() : null;
+  const tx=tr ? tr.left+Math.max(4, Math.min(tr.width-24, 8)) : window.innerWidth*.18;
+  const ty=tr ? tr.top+Math.max(4, Math.min(tr.height-24, 6)) : window.innerHeight*.65;
+  let longest=0;
+  entries.forEach((col,i)=>{
+    const src=document.querySelector(`.bank-row[data-col="${col}"]`);
+    const sr=src ? src.getBoundingClientRect() : null;
+    const sx=sr ? sr.left+18+(i%2)*5 : window.innerWidth*.16;
+    const sy=sr ? sr.top+sr.height/2-15 : window.innerHeight*.45;
+    const el=document.createElement('div');
+    el.className='gem-fly';
+    el.innerHTML=gemSVG(col,30);
+    el.style.left=sx+'px';
+    el.style.top=sy+'px';
+    el.style.transform=`scale(1) rotate(${(i%3-1)*8}deg)`;
+    document.body.appendChild(el);
+    const delay=i*85;
+    longest=Math.max(longest, delay+680);
+    setTimeout(()=>{
+      el.style.left=(tx+(i%4)*18)+'px';
+      el.style.top=(ty+(Math.floor(i/4)%2)*14)+'px';
+      el.style.transform='scale(.42) rotate(420deg)';
+      el.style.opacity='0';
+    }, delay+30);
+    setTimeout(()=>el.remove(), delay+780);
+  });
+  setTimeout(callback, longest);
 }
 
 // ── Take gems ─────────────────────────────────────────────────────────────
 // [Change 4] Block confirmation when player takes fewer gems than possible
 function execTakeGems() {
+  if (G.ui.acted) return;
   const p=G.ui.pending;
   const tot=CI.reduce((s,c)=>s+(p[c]||0),0);
   if (!tot){ toast('請先選擇寶石'); return; }
@@ -1261,12 +1708,16 @@ function execTakeGems() {
   }
 
   const pl=G.players[G.cur];
-  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...p},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks))};
-  CI.forEach(c=>{ pl.gems[c]=(pl.gems[c]||0)+(p[c]||0); G.bank[c]-=(p[c]||0); });
-  G.ui.pending={w:0,u:0,g:0,r:0,k:0};
+  const take={...p};
+  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...take},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks))};
   G.ui.acted=true;
-  if (gsum(pl.gems)>10){ showRetMod(); }
-  else { afterAct(); render(); }
+  render();
+  animateGemsToPlayer(take, G.cur, ()=>{
+    CI.forEach(c=>{ pl.gems[c]=(pl.gems[c]||0)+(take[c]||0); G.bank[c]-=(take[c]||0); });
+    G.ui.pending={w:0,u:0,g:0,r:0,k:0};
+    if (gsum(pl.gems)>10){ render(); showRetMod(); }
+    else { afterAct(); render(); }
+  });
 }
 
 function afterAct() {
@@ -1352,11 +1803,14 @@ function takeGold() {
   if (!isMyTurn()||G.ui.acted||(G.bank.gold||0)<=0) return;
   const pl=G.players[G.cur];
   if (gsum(pl.gems)>=10){ toast('寶石已達上限（10枚）'); return; }
-  G.bank.gold--;
-  pl.gems.gold=(pl.gems.gold||0)+1;
-  G.ui.pendGold=false;
   G.ui.acted=true;
-  afterAct();
+  render();
+  animateGemsToPlayer({gold:1}, G.cur, ()=>{
+    G.bank.gold--;
+    pl.gems.gold=(pl.gems.gold||0)+1;
+    G.ui.pendGold=false;
+    afterAct();
+  });
 }
 
 function tryEnd() {
@@ -1371,9 +1825,34 @@ function gdot(col, sz=24) {
   return `<div class="g-circle ${GCC[col]}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px"></div>`;
 }
 
+function cardEffectKey(card) {
+  return [
+    card.tier, card.pts, card.bonus,
+    card.cost.w||0, card.cost.u||0, card.cost.g||0, card.cost.r||0, card.cost.k||0
+  ].join('|');
+}
+
+function cardArtName(card) {
+  return CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
+}
+
+function cardBgStyle(card) {
+  return `background-image:url('splendor-card-art/${cardArtName(card)}?v=${CARD_ART_VERSION}');background-position:center top;`;
+}
+
 function render() {
   rMissions(); rBank(); rCards(); rPlayers();
   if (onlineMode) applyOpponentCursors();
+}
+
+function missionReqHtml(m) {
+  if (m.req) {
+    return CI.filter(c=>(m.req[c]||0)>0).map(c=>
+      `<span class="mission-token">${gemSVG(c,12)}<span>×${m.req[c]}</span></span>`
+    ).join('');
+  }
+  if (m.mark) return `<span class="mission-token"><span class="mission-mark">✦</span><span>${m.mark}</span></span>`;
+  return `<span class="mission-token"><span class="mission-mark">✦</span><span>王室令</span></span>`;
 }
 
 // Mission card display
@@ -1384,10 +1863,11 @@ function rMissions() {
     const claimed=m.claimedBy!==null;
     const claimer=claimed?G.players[m.claimedBy]:null;
     h+=`<div class="mission-card ${claimed?'claimed':''}">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span class="mission-name" style="${claimed?'color:#aa9933':''}">任務${i+1}: ${m.name}</span>
-        <span class="mission-pts">+${m.pts}分</span>
+      <div class="mission-top">
+        <span class="mission-name">懸賞令${i+1}：${m.name}</span>
+        <span class="mission-pts">+${m.pts}</span>
       </div>
+      <div class="mission-icons">${missionReqHtml(m)}</div>
       <div class="mission-desc">${m.desc}</div>
       ${claimed?`<div class="mission-winner" style="color:${claimer.color}">✓ ${claimer.name}達成</div>`:''}
     </div>`;
@@ -1414,13 +1894,13 @@ function rBank() {
   // Action buttons inside bank panel
   if (myTurn && pg) {
     h+=`<div style="display:flex;gap:5px;margin-top:8px">
-      <button class="btn btn-go" style="flex:1;font-size:.75em;padding:6px 4px" onclick="takeGold()">✅ 確認領取金幣</button>
-      <button class="btn btn-grey" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">✕</button>
+      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="takeGold()">確認領取金幣</button>
+      <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
     </div>`;
   } else if (myTurn && tot>0) {
     h+=`<div style="display:flex;gap:5px;margin-top:8px">
-      <button class="btn btn-go" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>✅ 確認取寶石</button>
-      <button class="btn btn-grey" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">✕</button>
+      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認取寶石</button>
+      <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
     </div>`;
   }
   if (G.lastRound) {
@@ -1444,13 +1924,13 @@ function rCards() {
   const pl = (onlineMode && myIdx >= 0) ? G.players[myIdx] : G.players[G.cur];
   let h='';
   [3,2,1].forEach(t=>{
-    const tc={3:'#ffe066',2:'#dd99ff',1:'#88ccff'}[t];
-    const bg={3:'#7a5800,#4a3400',2:'#3a1060,#200840',1:'#1a4a88,#0e2a55'}[t];
+    const tc={3:'#ffe066',2:'#8ec8ff',1:'#d6aa72'}[t];
     const dc=G.decks[t].length;
     h+=`<div class="tier-row">
-      <div class="deck-box ${dc?'':'empty'}" style="border-color:${tc}44;background:linear-gradient(160deg,${bg})">
-        <div class="deck-tier" style="color:${tc}">${{3:'高級卡',2:'中級卡',1:'初級卡'}[t]}</div>
-        <div class="deck-n">${dc}</div><div class="deck-lbl">張</div>
+      <div class="deck-box deck-tier-${t} ${dc?'':'empty'}" data-deck-tier="${t}">
+        <div class="deck-card-icon"><span class="deck-sigil"></span></div>
+        <div class="deck-rank" style="color:${tc}">${{3:'高級',2:'中級',1:'初級'}[t]}</div>
+        <div class="deck-n">${dc}<span class="deck-lbl">張</span></div>
       </div>`;
     G.board[t].forEach((card,bi)=>{
       if (!card){ h+=`<div class="card-empty-slot"></div>`; return; }
@@ -1460,12 +1940,14 @@ function rCards() {
         return `<div class="cost-ln ${covered?'covered':''}">
           ${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`;
       }).join('');
-      h+=`<div class="dev-card t${t} ${afford?'afford':'dim'}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
+      h+=`<div class="dev-card t${t} ${afford?'afford':'dim'}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
         <div class="card-top ${CHC[card.bonus]}">
           <span class="card-pts">${card.pts||''}</span>
           ${gemSVG(card.bonus,20)}
         </div>
-        <div class="card-body">${costH}</div>
+        <div class="card-body">
+          <div class="cost-stack">${costH}</div>
+        </div>
       </div>`;
     });
     h+='</div>';
@@ -1483,7 +1965,7 @@ function rBottom() {
       <div class="act-label">行動</div>
       ${tot?`<div class="pending-row">${pendH}</div>
         <div class="btn-row">
-          <button class="btn btn-go" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認取寶石</button>
+          <button class="btn btn-go" data-sound="treasure" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認取寶石</button>
           <button class="btn btn-grey" onclick="clearPend()">清除</button>
         </div>`:''}
       <div class="btn-row" style="margin-top:6px">
@@ -1518,11 +2000,12 @@ function rPlayers() {
       });
       resH+=`</div>`;
     }
-    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}${p.disconnected?';opacity:.45':''}">
-      <div style="display:flex;align-items:baseline;gap:6px">
+    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}${p.disconnected?';opacity:.45':''}">
+      <div style="display:flex;align-items:center;gap:6px">
         <div class="pi-pts" style="color:${p.color}">${p.points}分</div>
         <div class="pi-name" style="color:${p.color}">${p.name}</div>
         ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:''}
+        ${cur&&_timerExpired?'<span class="time-up-alert">時間到!</span>':''}
       </div>
       <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
       <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
@@ -1579,6 +2062,7 @@ function viewResCard(pi, ri) {
         ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
       </div>
     </div>
+    <div class="card-preview" style="${cardBgStyle(card)}"></div>
     <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用：</div>
     ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
     <div style="display:flex;gap:8px;margin-top:18px">
@@ -1614,6 +2098,7 @@ function showCardMod(card, fromRes) {
         ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
       </div>
     </div>
+    <div class="card-preview" style="${cardBgStyle(card)}"></div>
     <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用（持有加成已折抵）：</div>
     ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
     ${goldShort>0&&afford?`<div style="font-size:.78em;color:#ffcc44;margin-top:4px">將使用${goldShort}枚金色代幣補足</div>`:''}
@@ -1764,6 +2249,7 @@ function dismissTurnNotif() {
 // ── Turn Timer ────────────────────────────────────────────────────────────
 let _timerInterval = null;
 let _timerSec = 60;
+let _timerExpired = false;
 
 function activateZones() {
   if ((G.turnCount||0) >= 2 * G.numP) return; // Stop guiding after 2 full rounds
@@ -1792,12 +2278,17 @@ function hideUrgeBanner() {
   const el = document.getElementById('urge-banner');
   if (el) el.style.display = 'none';
 }
+function refreshPlayerTimers() {
+  if (G.players && document.getElementById('g-players')) rPlayers();
+}
 
 function startTimer() {
   clearInterval(_timerInterval);
   _timerSec = 60;
+  _timerExpired = false;
   hideUrgeBanner();
   _updateTimerEl();
+  refreshPlayerTimers();
   activateZones();
   _timerInterval = setInterval(() => {
     _timerSec--;
@@ -1805,7 +2296,9 @@ function startTimer() {
     if (_timerSec === 15) showUrgeBanner('⌛ 時光不等人');
     if (_timerSec <= 0) {
       clearInterval(_timerInterval);
-      showUrgeBanner('😤 時光不等你嗎的人你是哪個字聽不懂');
+      _timerExpired = true;
+      showUrgeBanner('時間到!');
+      refreshPlayerTimers();
     }
   }, 1000);
 }
@@ -1813,19 +2306,27 @@ function stopTimer() {
   clearInterval(_timerInterval);
   _timerInterval = null;
   _timerSec = 60;
+  _timerExpired = false;
   hideUrgeBanner();
   _updateTimerEl();
+  refreshPlayerTimers();
 }
 
 // Passive countdown for non-active players (display only, no game effects)
 function startTimerDisplay() {
   clearInterval(_timerInterval);
   _timerSec = 60;
+  _timerExpired = false;
   _updateTimerEl();
+  refreshPlayerTimers();
   _timerInterval = setInterval(() => {
     _timerSec--;
     _updateTimerEl();
-    if (_timerSec <= 0) clearInterval(_timerInterval);
+    if (_timerSec <= 0) {
+      clearInterval(_timerInterval);
+      _timerExpired = true;
+      refreshPlayerTimers();
+    }
   }, 1000);
 }
 function _updateTimerEl() {
@@ -1847,13 +2348,13 @@ function playClick(type = 'tap') {
     const ctx = _ac(), t = ctx.currentTime;
 
     // 雜訊爆音輔助（用於撞擊感）
-    const noise = (startT, dur, vol, lpFreq) => {
+    const noise = (startT, dur, vol, freq, filterType='lowpass', q=.6) => {
       const len = Math.floor(ctx.sampleRate * dur);
       const buf = ctx.createBuffer(1, len, ctx.sampleRate);
       const d = buf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 6);
       const src = ctx.createBufferSource();
-      const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = lpFreq;
+      const filt = ctx.createBiquadFilter(); filt.type = filterType; filt.frequency.value = freq; filt.Q.value = q;
       const g = ctx.createGain();
       src.buffer = buf; src.connect(filt); filt.connect(g); g.connect(ctx.destination);
       g.gain.setValueAtTime(vol, startT); g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
@@ -1868,12 +2369,38 @@ function playClick(type = 'tap') {
       o.start(startT); o.stop(startT + dur + 0.01);
     };
 
-    if (type === 'coin') {
-      // 撲克籌碼：硬塑膠撞擊 + 短暫金屬回響，快速收尾
-      noise(t,       0.018, 0.75, 5500);       // 塑膠撞擊瞬態（高頻脆聲）
-      noise(t,       0.030, 0.35, 900);        // 低頻底部重量感
-      tone(t,        3100, 0.14, 0.07, 2800);  // 金屬回響主音
-      tone(t+0.005,  1550, 0.07, 0.055, 1400); // 泛音層
+    if (type === 'chip' || type === 'coin') {
+      // 籌碼：硬塑膠短促疊碰，收尾乾淨不拖金屬尾音
+      noise(t,       0.012, 0.48, 3200, 'bandpass', 7);
+      noise(t+0.012, 0.020, 0.30, 1600, 'bandpass', 4);
+      tone(t,        640,  0.032, 0.035, 520);
+      tone(t+0.018,  780,  0.022, 0.026, 650);
+    } else if (type === 'mouse') {
+      // 滑鼠點擊：短、乾、沒有遊戲獎勵感
+      noise(t,       0.006, 0.18, 5200, 'highpass', .7);
+      tone(t+0.002,  920,  0.026, 0.026, 650);
+    } else if (type === 'card') {
+      // 翻書：較厚紙頁翻動，低頻紙面摩擦加一個收尾拍合
+      noise(t,       0.085, 0.18, 1250, 'bandpass', .75);
+      noise(t+0.045, 0.075, 0.13, 2600, 'bandpass', .9);
+      noise(t+0.108, 0.018, 0.16, 900,  'lowpass', .7);
+      tone(t+0.025,  155,  0.020, 0.075, 118);
+    } else if (type === 'treasure') {
+      // 寶物：低沉一點的寶石落袋聲，保留短促光澤但不尖亮
+      noise(t,       0.026, 0.18, 2600, 'bandpass', 5);
+      noise(t+0.055, 0.042, 0.22, 760,  'bandpass', 3);
+      tone(t,        420,  0.050, 0.070, 560);
+      tone(t+0.070,  680,  0.058, 0.090, 920);
+      tone(t+0.145,  1040, 0.044, 0.100, 1280);
+      noise(t+0.185, 0.035, 0.14, 1700, 'bandpass', 5);
+    } else if (type === 'deposit') {
+      // 存錢：硬幣投入、落底，再接一個短促清脆確認音
+      noise(t,       0.018, 0.24, 3400, 'bandpass', 7);
+      tone(t+0.004,  1320, 0.045, 0.045, 1120);
+      noise(t+0.070, 0.030, 0.28, 1250, 'bandpass', 4);
+      tone(t+0.080,  520,  0.040, 0.050, 430);
+      tone(t+0.145,  980,  0.060, 0.075, 1480);
+      tone(t+0.205,  1560, 0.045, 0.085, 1760);
     } else if (type === 'tick') {
       // 機械鐘滴答：乾脆雜訊爆音，無音調感
       noise(t, 0.018, 0.55, 5000);
@@ -1892,8 +2419,13 @@ function playClick(type = 'tap') {
 document.addEventListener('click', e => {
   const btn  = e.target.closest('.btn:not(:disabled)');
   const bank = e.target.closest('.bank-row:not(.no-click)');
+  const card = e.target.closest('.dev-card');
+  if (bank) playClick('chip');
+  if (card && !btn && !bank) playClick('mouse');
   if (btn) {
-    if (btn.classList.contains('btn-end')) playClick('end');
+    if (btn.dataset.sound) playClick(btn.dataset.sound);
+    else if (btn.classList.contains('btn-end')) playClick('end');
+    else if (btn.classList.contains('btn-go') && btn.closest('#g-bank')) playClick('deposit');
     else if (btn.classList.contains('btn-go')) playClick('confirm');
     else playClick('tap');
   }
@@ -1909,12 +2441,14 @@ function showResTooltip(el, playerIdx) {
     const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
       `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
     ).join('');
-    return `<div class="dev-card t${card.tier}" style="width:90px;min-height:120px;cursor:default;transform:none">
+    return `<div class="dev-card t${card.tier}" style="${cardBgStyle(card)}width:90px;height:128px;min-height:128px;cursor:default;transform:none">
       <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
         <span class="card-pts" style="font-size:1.5em">${card.pts||''}</span>
         ${gemSVG(card.bonus,16)}
       </div>
-      <div class="card-body" style="padding:6px">${costH}</div>
+      <div class="card-body" style="padding:5px">
+        <div class="cost-stack" style="min-height:40px">${costH}</div>
+      </div>
     </div>`;
   }).join('');
   const rect = el.getBoundingClientRect();
