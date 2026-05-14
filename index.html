@@ -7,6 +7,13 @@
 <title>璀燦寶石 Splendor</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --card-w:112px;
+  --card-h:164px;
+  --deck-icon-w:96px;
+  --deck-icon-h:118px;
+  --board-gap:6px;
+}
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background:
@@ -243,10 +250,10 @@ body {
 /* Cards area */
 #g-right { display:flex; flex-direction:column; gap:10px; }
 #g-cards { display:flex; flex-direction:column; gap:8px; }
-.tier-row { display:flex; gap:6px; }
+.tier-row { display:flex; gap:var(--board-gap); }
 
 .deck-box {
-  width:112px; height:164px; min-height:164px; border-radius:10px; flex-shrink:0;
+  width:var(--card-w); height:var(--card-h); min-height:var(--card-h); border-radius:10px; flex-shrink:0;
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
   border:2px solid rgba(255,255,255,.18); cursor:pointer; transition:all .15s;
   position:relative; overflow:hidden;
@@ -261,7 +268,7 @@ body {
 .deck-box:hover:not(.empty) { filter:brightness(1.1); border-color:rgba(255,224,138,.55); }
 .deck-box.empty { cursor:default; opacity:.28; }
 .deck-card-icon {
-  position:relative; width:96px; height:118px; border-radius:0;
+  position:relative; width:var(--deck-icon-w); height:var(--deck-icon-h); border-radius:0;
   transform:rotate(0deg);
   transform-origin:center center;
   border:0;
@@ -335,7 +342,7 @@ body {
   z-index:auto; white-space:nowrap; color:#d8b987;
 }
 .refill-card-back {
-  position:fixed; width:112px; height:164px; border-radius:10px; z-index:520;
+  position:fixed; width:var(--card-w); height:var(--card-h); border-radius:10px; z-index:520;
   pointer-events:none; border:2px solid rgba(255,255,255,.24);
   box-shadow:0 0 28px rgba(255,230,120,.28), 0 12px 30px rgba(0,0,0,.5);
   transition:left .48s cubic-bezier(.25,.8,.25,1),top .48s cubic-bezier(.25,.8,.25,1),
@@ -343,7 +350,7 @@ body {
 }
 
 .dev-card {
-  width:112px; height:164px; min-height:164px; border-radius:10px; flex-shrink:0;
+  width:var(--card-w); height:var(--card-h); min-height:var(--card-h); border-radius:10px; flex-shrink:0;
   display:flex; flex-direction:column; overflow:hidden; cursor:pointer;
   border:2px solid rgba(255,255,255,.13); transition:transform .15s,box-shadow .15s;
   position:relative; background-size:cover; background-position:center;
@@ -387,7 +394,7 @@ body {
 .cost-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
 .cost-n { font-size:.8em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
 .cost-ln.covered { opacity:.35; }
-.card-empty-slot { width:112px; height:164px; flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
+.card-empty-slot { width:var(--card-w); height:var(--card-h); flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
 
 /* Bottom — now inline below cards in right column */
 #g-bottom {
@@ -536,6 +543,85 @@ body {
   text-shadow:0 0 35px currentColor; }
 #turn-notif .tn-hint { font-size:.72em; opacity:.4; margin-top:18px; }
 
+/* Opening ceremony */
+body.intro-running #g-cards .deck-box,
+body.intro-running #g-cards .dev-card,
+body.intro-running #g-cards .card-empty-slot {
+  opacity:0;
+  pointer-events:none;
+}
+#game-start-intro {
+  position:fixed; inset:0; z-index:700;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,15,.82);
+  opacity:0; pointer-events:none; overflow:hidden;
+  transition:opacity .25s ease;
+}
+#game-start-intro.on { opacity:1; }
+.intro-panel {
+  position:relative; z-index:3; min-width:270px; text-align:center;
+  padding:24px 32px 28px;
+  border-top:1px solid rgba(255,224,138,.35);
+  border-bottom:1px solid rgba(255,224,138,.28);
+  text-shadow:0 2px 12px rgba(0,0,0,.85);
+}
+.intro-stage {
+  font-size:1.06em; font-weight:900; color:#ffcc44;
+  letter-spacing:0; margin-bottom:10px;
+}
+.intro-count {
+  min-height:120px; display:flex; align-items:center; justify-content:center;
+  font-size:112px; line-height:1; font-weight:900; color:#fff3b0;
+  letter-spacing:0;
+  text-shadow:0 0 34px rgba(255,204,68,.72), 0 4px 18px rgba(0,0,0,.9);
+}
+.intro-count.word {
+  font-size:56px;
+  letter-spacing:6px;
+  white-space:nowrap;
+}
+.intro-status {
+  min-height:22px; font-size:.92em; color:rgba(255,255,255,.68);
+  letter-spacing:0;
+}
+.intro-count.pop { animation:intro-count-pop .58s cubic-bezier(.2,.9,.25,1); }
+.intro-deck-fly,
+.intro-deal-card {
+  position:fixed; pointer-events:none; border-radius:10px;
+  background-size:cover; background-position:center;
+}
+.intro-deck-fly {
+  z-index:712; border:2px solid rgba(255,255,255,.25);
+  box-shadow:0 0 42px rgba(255,213,83,.25), 0 18px 36px rgba(0,0,0,.58);
+  transition:left .7s cubic-bezier(.18,.9,.22,1), top .7s cubic-bezier(.18,.9,.22,1),
+             transform .7s cubic-bezier(.18,.9,.22,1), opacity .24s ease;
+}
+.intro-deck-fly.settled { animation:intro-deck-settle .7s ease-in-out infinite alternate; }
+.intro-deal-card {
+  z-index:724; opacity:0; overflow:hidden;
+  box-shadow:0 0 24px rgba(255,232,164,.18), 0 14px 28px rgba(0,0,0,.54);
+  transition:left .36s cubic-bezier(.24,.86,.28,1), top .36s cubic-bezier(.24,.86,.28,1),
+             transform .36s cubic-bezier(.24,.86,.28,1), opacity .12s ease;
+}
+.intro-deal-card.on { opacity:1; }
+.intro-deal-card.face-up {
+  box-shadow:0 0 28px rgba(255,232,164,.22), 0 10px 26px rgba(0,0,0,.52);
+}
+@keyframes intro-count-pop {
+  0% { opacity:0; transform:scale(.68); filter:blur(5px); }
+  42% { opacity:1; transform:scale(1.08); filter:blur(0); }
+  100% { opacity:.92; transform:scale(1); filter:blur(0); }
+}
+@keyframes intro-deck-settle {
+  from { transform:translateY(0) rotate(-.6deg); }
+  to   { transform:translateY(-3px) rotate(.6deg); }
+}
+@media (max-width:640px) {
+  .intro-count { min-height:88px; font-size:76px; }
+  .intro-count.word { font-size:38px; letter-spacing:3px; }
+  .intro-panel { min-width:220px; padding:20px 24px 24px; }
+}
+
 /* Timer badge */
 .timer-badge {
   display:inline-flex; align-items:center; gap:5px;
@@ -661,6 +747,135 @@ body {
 .pi-timer-outer {
   padding:2px; border-radius:12px; width:100%;
   transition:background .4s;
+}
+
+/* ── Responsive layouts ───────────────────────── */
+@media (max-width:760px) {
+  :root {
+    --card-w:82px;
+    --card-h:120px;
+    --deck-icon-w:70px;
+    --deck-icon-h:86px;
+    --board-gap:5px;
+  }
+  body { min-height:100dvh; overflow-x:hidden; }
+  #screen-setup, #screen-lobby, #screen-wait {
+    min-height:100dvh; padding:22px 16px; gap:14px;
+  }
+  .setup-title { font-size:2em; letter-spacing:3px; text-align:center; }
+  .setup-sub { font-size:.82em; text-align:center; line-height:1.5; }
+  .num-row, .online-btns { width:100%; max-width:340px; gap:8px; }
+  .btn-num { flex:1; min-width:0; padding:10px 0; }
+  .player-inputs { width:min(100%,340px); }
+  .btn-start, .btn-online { width:100%; max-width:340px; padding:12px 16px; }
+  .code-display {
+    max-width:100%; font-size:1.85em; letter-spacing:6px; padding:12px 18px;
+  }
+  .wait-list { width:min(100%,300px); }
+
+  #screen-game { min-height:100dvh; }
+  #g-hdr {
+    position:sticky; top:0; z-index:320; padding:8px 12px; text-align:center;
+  }
+  #btn-help { top:7px; right:8px; width:30px; height:30px; z-index:520; }
+  #g-main {
+    flex-direction:column; align-items:stretch; justify-content:flex-start;
+    overflow-x:hidden; overflow-y:auto; min-height:0;
+    padding:8px 8px 12px; gap:8px;
+  }
+  #g-right { order:1; width:100%; min-width:0; gap:8px; }
+  #g-left {
+    order:2; width:100%;
+    display:grid; grid-template-columns:minmax(118px,.72fr) minmax(0,1fr);
+    gap:8px; align-items:start;
+  }
+  #g-bank { grid-column:1; padding:14px 8px 10px; border-width:2px; border-radius:12px; }
+  #g-players {
+    grid-column:2; max-height:calc(100dvh - 430px); min-height:210px;
+    overflow-y:auto; padding-right:2px;
+  }
+  .bank-row { min-height:32px; padding:5px 6px; gap:5px; margin-top:4px; }
+  .g-name { font-size:.72em; }
+  .g-cnt { min-width:20px; font-size:.75em; }
+
+  #g-top-bar { justify-content:flex-start; overflow:hidden; }
+  #g-missions {
+    justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden;
+    padding-bottom:4px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+  }
+  .mission-card {
+    min-width:204px; max-width:224px; flex:0 0 204px;
+    padding:7px 9px 8px; scroll-snap-align:start;
+  }
+  .mission-name { font-size:.66em; }
+  .mission-desc { font-size:.58em; }
+  .mission-pts { width:30px; height:30px; }
+
+  #g-cards {
+    width:100%; overflow-x:auto; overflow-y:hidden; padding:1px 2px 8px;
+    scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+  }
+  .tier-row { min-width:max-content; scroll-snap-align:start; }
+  .deck-box { border-radius:8px; padding-top:15px; }
+  .deck-rank { top:3px; height:13px; line-height:13px; font-size:.58em; letter-spacing:.8px; }
+  .deck-n { bottom:7px; font-size:.72em; }
+  .deck-lbl { font-size:.7em; }
+  .card-top { padding:4px 5px; min-height:27px; }
+  .card-pts { font-size:1.15em; }
+  .card-body { padding:32px 4px 5px; }
+  .cost-stack { padding:2px 4px; border-radius:5px; gap:0; }
+  .cost-ln { min-height:10px; gap:2px; }
+  .cost-n { font-size:.68em; }
+
+  .pi-card { border-radius:8px; padding:7px 8px; }
+  .pi-pts { font-size:1.22em; }
+  .pi-name { font-size:.76em; }
+  .bonus-chip { padding:2px 5px; font-size:.68em; }
+  .pi-gem-item { font-size:.66em; }
+  .time-up-alert { font-size:.55em; padding:2px 5px; }
+
+  .m-overlay { align-items:flex-start; padding:16px 10px; overflow-y:auto; }
+  .m-box { width:100%; max-width:420px; padding:18px 16px; border-radius:14px; }
+  #m-help { align-items:flex-start; padding:12px 8px; overflow-y:auto; }
+  #m-help .hbox { width:100%; max-height:none; padding:20px 16px; border-radius:14px; }
+  .h-title { font-size:1.1em; }
+  #toast {
+    top:50px; max-width:calc(100vw - 20px); white-space:normal; text-align:center;
+  }
+  #res-tip { display:none !important; }
+}
+
+@media (max-width:430px) {
+  :root {
+    --card-w:76px;
+    --card-h:112px;
+    --deck-icon-w:64px;
+    --deck-icon-h:78px;
+    --board-gap:4px;
+  }
+  #g-left { grid-template-columns:1fr; }
+  #g-bank, #g-players { grid-column:1; }
+  #g-players {
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+    max-height:none; min-height:0; overflow:visible; gap:6px;
+  }
+  #g-players .pi-timer-outer, #g-players .pi-card { min-width:0; }
+  .mission-card { min-width:190px; flex-basis:190px; }
+  .bank-row { min-height:30px; }
+}
+
+@media (orientation:landscape) and (max-height:520px) and (max-width:900px) {
+  :root {
+    --card-w:74px;
+    --card-h:108px;
+    --deck-icon-w:62px;
+    --deck-icon-h:76px;
+  }
+  #g-main { flex-direction:row; }
+  #g-left { order:1; width:170px; display:flex; flex-direction:column; flex-shrink:0; }
+  #g-right { order:2; min-width:0; }
+  #g-players { max-height:calc(100dvh - 175px); min-height:0; }
+  #g-missions { max-width:calc(100vw - 194px); }
 }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -927,8 +1142,9 @@ function listenWait(code) {
       applyRemoteState(room.state);
       showOnly('screen-game');
       G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+      document.body.classList.add('intro-running');
       render();
-      showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{});
+      runStartCeremony(()=>showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{}));
       _knownDisc = new Set();
       listenGame(code);
       listenCursor(code);
@@ -1398,6 +1614,16 @@ ALL_CARDS.forEach(card => {
 // ── Game State ───────────────────────────────────────────────────────────
 let G = {};
 
+function updateDeviceLayout() {
+  const mobile = window.matchMedia('(max-width:760px), (pointer:coarse) and (max-width:900px)').matches;
+  document.documentElement.dataset.layout = mobile ? 'mobile' : 'desktop';
+  document.body.classList.toggle('is-mobile', mobile);
+  document.body.classList.toggle('is-desktop', !mobile);
+}
+updateDeviceLayout();
+window.addEventListener('resize', updateDeviceLayout);
+window.addEventListener('orientationchange', updateDeviceLayout);
+
 // ── Setup ────────────────────────────────────────────────────────────────
 let numP = 2;
 function setN(n) {
@@ -1449,8 +1675,9 @@ function startGame() {
   const names = Array.from({length:numP},(_,i)=>document.getElementById(`pn${i}`)?.value.trim()||`玩家${i+1}`);
   G = _buildG(names);
   showOnly('screen-game');
+  document.body.classList.add('intro-running');
   render();
-  showTurnNotification(0, startTimer);
+  runStartCeremony(()=>showTurnNotification(0, startTimer));
 }
 
 function startGameOnline(names) {
@@ -1593,6 +1820,171 @@ function animateRefillFromDeck(refill, callback) {
     fly.style.transform='scale(1) rotate(0deg)';
   }, 40);
   setTimeout(()=>{ fly.style.opacity='0'; setTimeout(()=>{ fly.remove(); callback(); }, 160); }, 560);
+}
+
+// ── Opening ceremony ─────────────────────────────────────────────────────
+let _startCeremonyRunning = false;
+function introWait(ms) { return new Promise(resolve=>setTimeout(resolve, ms)); }
+
+function makeStartIntroOverlay() {
+  const el = document.createElement('div');
+  el.id = 'game-start-intro';
+  el.innerHTML = `<div class="intro-panel">
+    <div class="intro-stage">遊戲即將開始</div>
+    <div class="intro-count">3</div>
+    <div class="intro-status">請準備好你的寶石商隊</div>
+  </div>`;
+  document.body.appendChild(el);
+  return el;
+}
+
+function setIntroText(overlay, stage, count, status) {
+  const st = overlay.querySelector('.intro-stage');
+  const ct = overlay.querySelector('.intro-count');
+  const ss = overlay.querySelector('.intro-status');
+  if (st) {
+    st.textContent = stage;
+    st.style.display = stage ? '' : 'none';
+  }
+  if (ct) {
+    ct.textContent = count;
+    ct.classList.toggle('word', String(count).length > 2);
+    ct.classList.remove('pop');
+    void ct.offsetWidth;
+    ct.classList.add('pop');
+  }
+  if (ss) {
+    ss.textContent = status;
+    ss.style.display = status ? '' : 'none';
+  }
+}
+
+function getOpeningBoardCards() {
+  const cards = [];
+  [3,2,1].forEach(t=>{
+    (G.board[t]||[]).forEach(card=>{ if (card) cards.push(card); });
+  });
+  return cards;
+}
+
+function createIntroDeckFlyer(tier, idx) {
+  const target = document.querySelector(`.deck-box[data-deck-tier="${tier}"]`);
+  const tr = target ? target.getBoundingClientRect() : null;
+  if (!tr) return null;
+  const starts = [
+    {x:-tr.width-80, y:Math.max(16, tr.top-70), r:-22},
+    {x:window.innerWidth/2-tr.width/2, y:-tr.height-90, r:8},
+    {x:window.innerWidth+80, y:Math.min(window.innerHeight-tr.height-16, tr.top+80), r:24},
+  ];
+  const s = starts[idx] || starts[0];
+  const el = document.createElement('div');
+  el.className = `intro-deck-fly intro-deck-${tier}`;
+  el.style.cssText = `left:${s.x}px;top:${s.y}px;width:${tr.width}px;height:${tr.height}px;transform:rotate(${s.r}deg) scale(.86);${deckBackStyle(tier)}`;
+  document.body.appendChild(el);
+  return {tier, el, rect:tr};
+}
+
+async function flyIntroDecks() {
+  const decks = [3,2,1].map((tier, idx)=>createIntroDeckFlyer(tier, idx)).filter(Boolean);
+  playClick('shuffle');
+  await introWait(60);
+  decks.forEach((d, idx)=>{
+    setTimeout(()=>{
+      d.el.style.left = d.rect.left + 'px';
+      d.el.style.top = d.rect.top + 'px';
+      d.el.style.transform = 'rotate(0deg) scale(1)';
+    }, idx * 90);
+  });
+  await introWait(840);
+  decks.forEach(d=>d.el.classList.add('settled'));
+  return decks;
+}
+
+function findIntroDeckRect(decks, tier) {
+  const deck = decks.find(d=>d.tier===tier);
+  if (deck) return deck.el.getBoundingClientRect();
+  const target = document.querySelector(`.deck-box[data-deck-tier="${tier}"]`);
+  return target ? target.getBoundingClientRect() : null;
+}
+
+async function dealOpeningBoardCards(decks) {
+  const flyers = [];
+  const order = [];
+  [3,2,1].forEach(t=>[0,1,2,3].forEach(slot=>order.push({tier:t, slot})));
+  order.forEach(({tier, slot}, i)=>{
+    setTimeout(()=>{
+      const card = G.board[tier] && G.board[tier][slot];
+      const target = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"]`);
+      const tr = target ? target.getBoundingClientRect() : null;
+      const dr = findIntroDeckRect(decks, tier);
+      if (!card || !tr || !dr) return;
+      const el = document.createElement('div');
+      el.className = `intro-deal-card dev-card t${tier}`;
+      const startX = dr.left + dr.width * .5 - tr.width * .5;
+      const startY = dr.top + dr.height * .5 - tr.height * .5;
+      const rot = ((slot % 2 ? 1 : -1) * (4 + tier));
+      el.style.cssText = `left:${startX}px;top:${startY}px;width:${tr.width}px;height:${tr.height}px;min-height:${tr.height}px;transform:scale(.62) rotate(${rot}deg);${deckBackStyle(tier)}`;
+      document.body.appendChild(el);
+      flyers.push(el);
+      requestAnimationFrame(()=>{
+        el.classList.add('on');
+        el.style.left = tr.left + 'px';
+        el.style.top = tr.top + 'px';
+        el.style.transform = `scale(1) rotate(${(slot-1.5)*1.2}deg)`;
+      });
+      setTimeout(()=>{
+        playClick('deal');
+        el.classList.add('face-up');
+        el.style.cssText += cardBgStyle(card);
+        el.style.backgroundSize = 'cover';
+        el.innerHTML = flyingCardHtml(card);
+      }, 240);
+    }, i * 86);
+  });
+  await introWait(order.length * 86 + 720);
+  return flyers;
+}
+
+function runStartCeremony(callback) {
+  if (_startCeremonyRunning) return;
+  _startCeremonyRunning = true;
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pace = reduced ? .78 : 1;
+  let overlay = null;
+  let deckFlyers = [];
+  let cardFlyers = [];
+
+  (async()=>{
+    overlay = makeStartIntroOverlay();
+    const artReady = Promise.all(getOpeningBoardCards().map(preloadCardArt));
+    await introWait(30);
+    overlay.classList.add('on');
+    for (const n of [3,2,1]) {
+      setIntroText(overlay, '遊戲即將開始', String(n), n === 1 ? '牌桌就緒' : '請準備好你的寶石商隊');
+      playClick('count');
+      await introWait(720 * pace);
+    }
+    setIntroText(overlay, '', '遊戲開始', '');
+    await introWait(1500);
+    overlay.classList.remove('on');
+    deckFlyers = await flyIntroDecks();
+    await artReady;
+    await introWait(180 * pace);
+    cardFlyers = await dealOpeningBoardCards(deckFlyers);
+    playClick('confirm');
+    await introWait(520 * pace);
+    document.body.classList.remove('intro-running');
+    [...deckFlyers.map(d=>d.el), ...cardFlyers].forEach(el=>{ el.style.opacity = '0'; });
+    overlay.classList.remove('on');
+    await introWait(280);
+  })().catch(()=>{}).finally(()=>{
+    document.body.classList.remove('intro-running');
+    deckFlyers.forEach(d=>d.el.remove());
+    cardFlyers.forEach(el=>el.remove());
+    if (overlay) overlay.remove();
+    _startCeremonyRunning = false;
+    if (typeof callback === 'function') callback();
+  });
 }
 
 // ── Buy / Reserve ─────────────────────────────────────────────────────────
@@ -2341,6 +2733,7 @@ function _updateTimerEl() {
 let _audioCtx = null;
 function _ac() {
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(()=>{});
   return _audioCtx;
 }
 function playClick(type = 'tap') {
@@ -2385,6 +2778,19 @@ function playClick(type = 'tap') {
       noise(t+0.045, 0.075, 0.13, 2600, 'bandpass', .9);
       noise(t+0.108, 0.018, 0.16, 900,  'lowpass', .7);
       tone(t+0.025,  155,  0.020, 0.075, 118);
+    } else if (type === 'shuffle') {
+      // 洗牌：一串乾爽紙邊摩擦，最後輕拍成疊
+      for (let i=0;i<6;i++) {
+        noise(t+i*0.045, 0.035, 0.13, 1900+i*180, 'bandpass', 1.2);
+      }
+      noise(t+0.285, 0.038, 0.18, 900, 'lowpass', .8);
+      tone(t+0.26, 180, 0.025, 0.07, 140);
+    } else if (type === 'deal') {
+      // 發牌：短促紙牌切過桌面，再有一個落桌拍合
+      noise(t,       0.018, 0.20, 4200, 'highpass', .8);
+      noise(t+0.018, 0.034, 0.15, 1250, 'bandpass', 1.1);
+      noise(t+0.044, 0.014, 0.12, 720,  'lowpass', .7);
+      tone(t+0.012,  235,  0.018, 0.048, 170);
     } else if (type === 'treasure') {
       // 寶物：低沉一點的寶石落袋聲，保留短促光澤但不尖亮
       noise(t,       0.026, 0.18, 2600, 'bandpass', 5);
@@ -2405,6 +2811,9 @@ function playClick(type = 'tap') {
       // 機械鐘滴答：乾脆雜訊爆音，無音調感
       noise(t, 0.018, 0.55, 5000);
       noise(t, 0.010, 0.30, 1200);
+    } else if (type === 'count') {
+      tone(t,       360, 0.055, 0.075, 520);
+      tone(t+0.055, 720, 0.050, 0.095, 860);
     } else if (type === 'confirm') {
       tone(t, 500, 0.13, 0.16, 800);
     } else if (type === 'end') {
