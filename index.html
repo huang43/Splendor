@@ -8,11 +8,12 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
-  --card-w:112px;
-  --card-h:164px;
-  --deck-icon-w:96px;
-  --deck-icon-h:118px;
-  --board-gap:6px;
+  --card-w:140px;
+  --card-h:205px;
+  --card-bar-h:39px;
+  --deck-icon-w:120px;
+  --deck-icon-h:148px;
+  --board-gap:7px;
 }
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -68,12 +69,12 @@ body {
 
 /* Main */
 #g-main {
-  display:flex; gap:10px; padding:10px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center;
+  display:flex; gap:8px; padding:10px 12px 10px 2px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center;
   background:linear-gradient(90deg,rgba(11,12,20,.48),rgba(18,14,10,.18),rgba(11,12,20,.48));
 }
 
 /* Left panel */
-#g-left { display:flex; flex-direction:column; gap:10px; width:190px; flex-shrink:0; }
+#g-left { display:flex; flex-direction:column; gap:10px; width:166px; margin-left:-8px; flex-shrink:0; }
 .panel-label { font-size:.68em; text-transform:uppercase; letter-spacing:2px; opacity:.45; margin-bottom:4px; }
 
 /* Nobles */
@@ -325,15 +326,15 @@ body {
 .deck-tier-1 .deck-sigil::before { content:"✦"; }
 .deck-rank {
   position:absolute; left:0; right:0; top:4px; z-index:2;
-  height:15px; line-height:15px; text-align:center;
-  font-size:.7em; font-weight:900; letter-spacing:1.4px;
+  height:18px; line-height:18px; text-align:center;
+  font-size:.78em; font-weight:900; letter-spacing:1.4px;
   text-shadow:0 1px 3px rgba(0,0,0,.8);
   white-space:nowrap; overflow:hidden;
 }
 .deck-n {
-  position:absolute; left:0; right:0; bottom:10px; height:16px; line-height:16px; text-align:center;
+  position:absolute; left:0; right:0; bottom:12px; height:18px; line-height:18px; text-align:center;
   padding:0; border-radius:0; background:none; border:0;
-  font-size:.86em; font-weight:900; color:#d8b987;
+  font-size:.94em; font-weight:900; color:#d8b987;
   box-sizing:border-box; z-index:2;
   text-shadow:0 1px 3px rgba(0,0,0,.9);
 }
@@ -355,6 +356,21 @@ body {
   border:2px solid rgba(255,255,255,.13); transition:transform .15s,box-shadow .15s;
   position:relative; background-size:cover; background-position:center;
 }
+.dev-card.gem-art {
+  background-image:none !important;
+  background-color:#090b12;
+}
+.dev-card.gem-art::before {
+  display:none;
+}
+.dev-card.gem-art::after {
+  content:""; position:absolute; left:0; right:0; top:var(--card-bar-h); bottom:0;
+  z-index:1; pointer-events:none;
+  background-image:var(--card-art);
+  background-size:100% 100%;
+  background-position:center top;
+  background-repeat:no-repeat;
+}
 .dev-card:hover { transform:translateY(-5px); box-shadow:0 8px 22px rgba(0,0,0,.55); }
 .dev-card.dim { opacity:.86; }
 @keyframes urge-pulse {
@@ -370,29 +386,32 @@ body {
 .dev-card.t2 { background:linear-gradient(160deg,#1e3858,#101e38); }
 .dev-card.t3 { background:linear-gradient(160deg,#32144a,#180a28); }
 .card-top {
-  position:absolute; top:0; left:0; right:0; z-index:2;
+  position:absolute; top:0; left:0; right:0; z-index:4;
   display:flex; justify-content:space-between; align-items:center;
-  padding:5px 7px; min-height:34px;
+  padding:6px 8px; min-height:var(--card-bar-h);
   box-shadow:0 2px 12px rgba(0,0,0,.45);
   backdrop-filter:blur(2px);
 }
-.card-pts { font-size:1.5em; font-weight:900; color:white; text-shadow:0 1px 4px rgba(0,0,0,.9); line-height:1; }
+.card-pts { font-size:1.62em; font-weight:900; color:white; text-shadow:0 1px 4px rgba(0,0,0,.9); line-height:1; }
 .card-gem-dot { border-radius:50%; border:2px solid rgba(255,255,255,.55); flex-shrink:0; }
 .card-body {
-  position:absolute; inset:0; z-index:1; min-height:0; padding:42px 5px 6px;
+  position:absolute; inset:0; z-index:2; min-height:0; padding:48px 7px 7px;
   display:flex; flex-direction:column; justify-content:flex-end; gap:3px;
   background:linear-gradient(to bottom,rgba(0,0,0,.08) 0%,rgba(0,0,0,.02) 42%,rgba(0,0,0,.62) 76%,rgba(0,0,0,.9) 100%);
+}
+.dev-card.gem-art .card-body {
+  background:linear-gradient(to bottom,rgba(0,0,0,.08) 0%,rgba(0,0,0,0) 34%,rgba(0,0,0,.58) 76%,rgba(0,0,0,.9) 100%);
 }
 .cost-stack {
   display:flex; flex-direction:column; justify-content:flex-end; gap:1px;
   min-height:0; align-self:flex-start; max-width:100%;
-  padding:3px 5px; border-radius:6px;
+  padding:4px 6px; border-radius:7px;
   background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
   backdrop-filter:blur(2px);
 }
-.cost-ln { display:flex; align-items:center; gap:4px; min-height:12px; }
+.cost-ln { display:flex; align-items:center; gap:5px; min-height:14px; }
 .cost-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
-.cost-n { font-size:.8em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
+.cost-n { font-size:.88em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
 .cost-ln.covered { opacity:.35; }
 .card-empty-slot { width:var(--card-w); height:var(--card-h); flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
 
@@ -503,7 +522,7 @@ body {
 .gc-u    { background:radial-gradient(circle at 35% 30%,#aaccff,#1d55bb); color:white; }
 .gc-g    { background:radial-gradient(circle at 35% 30%,#aaffcc,#1d9944); color:white; }
 .gc-r    { background:radial-gradient(circle at 35% 30%,#ffaaaa,#cc1e1e); color:white; }
-.gc-k    { background:radial-gradient(circle at 35% 30%,#c8854a,#5c2e0a); color:white; }
+.gc-k    { background:radial-gradient(circle at 35% 30%,#d7b7ff,#7d32ff 58%,#32105f); color:white; }
 .gc-gold { background:radial-gradient(circle at 35% 30%,#ffee88,#cc8800); color:white; }
 
 /* Card header tint by bonus */
@@ -511,11 +530,17 @@ body {
 .ch-u { background:linear-gradient(90deg,rgba(20,65,185,.9),rgba(8,20,60,.66)); }
 .ch-g { background:linear-gradient(90deg,rgba(20,120,50,.9),rgba(6,42,22,.68)); }
 .ch-r { background:linear-gradient(90deg,rgba(175,20,20,.9),rgba(70,8,12,.68)); }
-.ch-k { background:linear-gradient(90deg,rgba(15,25,50,.92),rgba(12,8,20,.7)); }
+.ch-k { background:linear-gradient(90deg,rgba(110,36,190,.92),rgba(28,10,56,.72)); }
 .card-preview {
   height:190px; border-radius:10px; margin-bottom:12px;
   background-size:cover; background-position:center;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.16), 0 12px 28px rgba(0,0,0,.38);
+}
+.card-preview.gem-art {
+  background-color:#080a12;
+  background-size:auto 100%;
+  background-repeat:no-repeat;
+  background-position:center;
 }
 
 /* Player colors */
@@ -717,18 +742,39 @@ body.intro-running #g-cards .card-empty-slot {
 .online-btns { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
 .btn-online {
   padding:14px 32px; border-radius:12px; border:2px solid rgba(255,255,255,.2);
-  background:rgba(255,255,255,.07); color:white; cursor:pointer; font-size:1em;
+  background:linear-gradient(180deg,rgba(32,42,58,.96),rgba(12,17,28,.94));
+  color:#f7fbff; cursor:pointer; font-size:1em;
   font-weight:bold; letter-spacing:1px; transition:all .15s;
+  box-shadow:0 10px 24px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.12);
+  text-shadow:0 1px 2px rgba(0,0,0,.75);
 }
-.btn-online:hover { background:rgba(100,160,255,.2); border-color:#88aaff; color:#88aaff; }
+.btn-online:hover {
+  background:linear-gradient(180deg,rgba(46,70,105,.98),rgba(18,28,48,.96));
+  border-color:#88aaff; color:#eaf3ff;
+}
 .btn-online.primary { background:linear-gradient(135deg,#cc6600,#ffaa22); border-color:transparent; }
 .btn-online.primary:hover { filter:brightness(1.15); color:white; }
-.lb-input {
-  background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.2);
-  border-radius:10px; padding:10px 16px; color:white; font-size:.95em;
-  width:240px; text-align:center;
+#wait-ready {
+  background:linear-gradient(135deg,#1f6f52,#35b675);
+  border-color:rgba(136,255,190,.44);
+  color:#f3fff8;
 }
-.lb-input:focus { outline:none; border-color:#88aaff; }
+#wait-ready:hover {
+  background:linear-gradient(135deg,#288760,#42cc86);
+  border-color:rgba(180,255,215,.72);
+  color:white;
+}
+.lb-input {
+  background:rgba(8,13,24,.88); border:1.5px solid rgba(255,224,138,.34);
+  border-radius:10px; padding:10px 16px; color:#fff6d6; font-size:.95em;
+  width:240px; text-align:center;
+  box-shadow:0 8px 22px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.lb-input::placeholder { color:rgba(255,236,180,.82); opacity:1; }
+.lb-input:focus {
+  outline:none; border-color:#ffcc44; background:rgba(10,16,30,.96);
+  box-shadow:0 0 0 3px rgba(255,204,68,.16), 0 8px 22px rgba(0,0,0,.32);
+}
 .code-display {
   font-size:2.8em; font-weight:900; letter-spacing:10px; color:#ffcc44;
   background:rgba(255,200,50,.1); border:2px solid rgba(255,200,50,.35);
@@ -736,11 +782,37 @@ body.intro-running #g-cards .card-empty-slot {
 }
 .wait-list { display:flex; flex-direction:column; gap:7px; width:260px; }
 .wait-slot {
+  position:relative; overflow:visible;
   padding:9px 14px; border-radius:9px; font-size:.9em; font-weight:bold;
-  border:1.5px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04);
+  border:1.5px solid rgba(255,255,255,.16);
+  background:rgba(9,14,24,.84);
+  color:#eef5ff;
+  box-shadow:0 6px 18px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.07);
 }
-.wait-slot.filled { border-color:rgba(100,255,150,.45); color:#88ffaa; background:rgba(80,200,120,.08); }
-.wait-slot.empty  { opacity:.38; font-weight:normal; }
+.wait-slot.filled {
+  border-color:rgba(100,255,150,.56); color:#9dffbf;
+  background:linear-gradient(90deg,rgba(18,68,45,.92),rgba(10,24,20,.9));
+}
+.wait-slot.empty  {
+  opacity:1; font-weight:600; color:#d9e3f0;
+  background:linear-gradient(90deg,rgba(31,38,52,.9),rgba(12,18,30,.88));
+  border-color:rgba(170,195,230,.24);
+}
+.wait-slot.host {
+  padding-left:25px;
+  border-color:rgba(255,218,93,.72);
+  box-shadow:0 8px 22px rgba(0,0,0,.28), 0 0 18px rgba(255,200,50,.18), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.host-crown {
+  position:absolute; left:-10px; top:-13px; z-index:2;
+  width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 25%,#fff0a8,#e3a720 62%,#7a3d00);
+  border:1.5px solid rgba(255,236,154,.95);
+  box-shadow:0 6px 14px rgba(0,0,0,.42), 0 0 16px rgba(255,205,70,.38);
+  font-size:16px; line-height:1;
+  transform:rotate(-12deg);
+}
 .lb-sep { font-size:.78em; opacity:.38; letter-spacing:2px; }
 
 /* Player card timer border wrapper */
@@ -754,6 +826,7 @@ body.intro-running #g-cards .card-empty-slot {
   :root {
     --card-w:82px;
     --card-h:120px;
+    --card-bar-h:27px;
     --deck-icon-w:70px;
     --deck-icon-h:86px;
     --board-gap:5px;
@@ -820,7 +893,7 @@ body.intro-running #g-cards .card-empty-slot {
   .deck-rank { top:3px; height:13px; line-height:13px; font-size:.58em; letter-spacing:.8px; }
   .deck-n { bottom:7px; font-size:.72em; }
   .deck-lbl { font-size:.7em; }
-  .card-top { padding:4px 5px; min-height:27px; }
+  .card-top { padding:4px 5px; min-height:var(--card-bar-h); }
   .card-pts { font-size:1.15em; }
   .card-body { padding:32px 4px 5px; }
   .cost-stack { padding:2px 4px; border-radius:5px; gap:0; }
@@ -849,6 +922,7 @@ body.intro-running #g-cards .card-empty-slot {
   :root {
     --card-w:76px;
     --card-h:112px;
+    --card-bar-h:27px;
     --deck-icon-w:64px;
     --deck-icon-h:78px;
     --board-gap:4px;
@@ -868,6 +942,7 @@ body.intro-running #g-cards .card-empty-slot {
   :root {
     --card-w:74px;
     --card-h:108px;
+    --card-bar-h:27px;
     --deck-icon-w:62px;
     --deck-icon-h:76px;
   }
@@ -1160,8 +1235,9 @@ function listenWait(code) {
       if (nm) {
         const isPlayerHost = (i===0);
         const isReady = isPlayerHost || ready[i];
-        const badge = isPlayerHost ? ' 👑' : (isReady ? ' ✅' : ' ⏳');
-        html+=`<div class="wait-slot filled">${PC_NAME[i]} ${nm}${badge}</div>`;
+        const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
+        const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
+        html+=`<div class="wait-slot filled ${isPlayerHost?'host':''}">${hostCrown}${PC_NAME[i]} ${nm}${badge}</div>`;
       } else {
         html+=`<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
       }
@@ -1172,7 +1248,7 @@ function listenWait(code) {
       const btn = document.getElementById('wait-ready');
       if (ready[myIdx]) {
         btn.textContent = '❌ 取消準備';
-        btn.style.opacity = '0.7';
+        btn.style.opacity = '0.95';
       } else {
         btn.textContent = '✋ 準備';
         btn.style.opacity = '1';
@@ -1430,10 +1506,10 @@ function showDisconnectNotif(name) {
 
 // ── Constants ────────────────────────────────────────────────────────────
 const CI  = ['w','u','g','r','k'];
-const CN  = {w:'白',u:'藍',g:'綠',r:'紅',k:'黑',gold:'金'};
+const CN  = {w:'白',u:'藍',g:'綠',r:'紅',k:'紫',gold:'金'};
 const GCC = {w:'gc-w',u:'gc-u',g:'gc-g',r:'gc-r',k:'gc-k',gold:'gc-gold'};
-const GEM_FILL = {w:'#c8ecff',u:'#3a7fff',g:'#22cc66',r:'#ff2244',k:'#7a4020'};
-const GEM_NAME = {w:'鑽石',u:'藍寶石',g:'綠寶石',r:'紅寶石',k:'黑曜石'};
+const GEM_FILL = {w:'#c8ecff',u:'#3a7fff',g:'#22cc66',r:'#ff2244',k:'#8d4dff'};
+const GEM_NAME = {w:'鑽石',u:'藍寶石',g:'綠寶石',r:'紅寶石',k:'紫水晶'};
 function gemSVG(col, size=18) {
   const s=size, a=`display:inline-block;vertical-align:middle;flex-shrink:0`;
   if(col==='w') // 鑽石 — 菱形稜角，半透明
@@ -1446,11 +1522,14 @@ function gemSVG(col, size=18) {
       <line x1="12" y1="1" x2="3" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
       <line x1="12" y1="1" x2="21" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
     </svg>`;
-  if(col==='k') // 黑曜石 — 長方形，咖啡色
+  if(col==='k') // 紫水晶 — 三角形切面
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
-      <rect x="5" y="2" width="14" height="20" rx="2" fill="#7a4020"/>
-      <rect x="5" y="2" width="14" height="9" rx="2" fill="rgba(255,220,160,0.22)"/>
-      <rect x="5" y="2" width="14" height="20" rx="2" fill="none" stroke="rgba(255,200,120,0.22)" stroke-width="0.8"/>
+      <polygon points="12,2 22,21 2,21" fill="#8d4dff"/>
+      <polygon points="12,2 12,21 2,21" fill="rgba(255,255,255,0.18)"/>
+      <polygon points="12,2 22,21 12,21" fill="rgba(36,6,84,0.26)"/>
+      <polygon points="7,21 12,2 17,21" fill="rgba(230,205,255,0.22)"/>
+      <polygon points="12,2 22,21 2,21" fill="none" stroke="rgba(238,220,255,0.46)" stroke-width="0.8"/>
+      <line x1="12" y1="2" x2="12" y2="21" stroke="rgba(255,255,255,0.35)" stroke-width="0.7"/>
     </svg>`;
   if(col==='g') // 綠寶石 — 橢圓形
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
@@ -1523,16 +1602,16 @@ const MISSION_DB = [
   {name:'藍港契約',   desc:'王室徵求藍色寶石卡 3 張', pts:2, req:{u:3}, check:p=>(p.bonuses.u||0)>=3},
   {name:'翠庭供貨',   desc:'王室徵求綠色寶石卡 3 張', pts:2, req:{g:3}, check:p=>(p.bonuses.g||0)>=3},
   {name:'赤焰印令',   desc:'王室徵求紅色寶石卡 3 張', pts:2, req:{r:3}, check:p=>(p.bonuses.r||0)>=3},
-  {name:'黑曜密令',   desc:'王室徵求黑色寶石卡 3 張', pts:2, req:{k:3}, check:p=>(p.bonuses.k||0)>=3},
+  {name:'紫晶密令',   desc:'王室徵求紫色寶石卡 3 張', pts:2, req:{k:3}, check:p=>(p.bonuses.k||0)>=3},
   {name:'白藍雙璧',   desc:'白色與藍色加成各 2 張', pts:2, req:{w:2,u:2}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.u||0)>=2},
   {name:'藍綠海路',   desc:'藍色與綠色加成各 2 張', pts:2, req:{u:2,g:2}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.g||0)>=2},
   {name:'綠紅邊境',   desc:'綠色與紅色加成各 2 張', pts:2, req:{g:2,r:2}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.r||0)>=2},
-  {name:'紅黑軍需',   desc:'紅色與黑色加成各 2 張', pts:2, req:{r:2,k:2}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.k||0)>=2},
-  {name:'黑白密約',   desc:'黑色與白色加成各 2 張', pts:2, req:{k:2,w:2}, check:p=>(p.bonuses.k||0)>=2&&(p.bonuses.w||0)>=2},
+  {name:'紅紫軍需',   desc:'紅色與紫色加成各 2 張', pts:2, req:{r:2,k:2}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.k||0)>=2},
+  {name:'紫白密約',   desc:'紫色與白色加成各 2 張', pts:2, req:{k:2,w:2}, check:p=>(p.bonuses.k||0)>=2&&(p.bonuses.w||0)>=2},
   {name:'鑽翠珠冠',   desc:'白色 2 張，綠色 1 張，藍色 1 張', pts:2, req:{w:2,g:1,u:1}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.g||0)>=1&&(p.bonuses.u||0)>=1},
-  {name:'海焰徽章',   desc:'藍色 2 張，紅色 1 張，黑色 1 張', pts:2, req:{u:2,r:1,k:1}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.r||0)>=1&&(p.bonuses.k||0)>=1},
+  {name:'海焰徽章',   desc:'藍色 2 張，紅色 1 張，紫色 1 張', pts:2, req:{u:2,r:1,k:1}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.r||0)>=1&&(p.bonuses.k||0)>=1},
   {name:'翡翠王令',   desc:'綠色 2 張，白色 1 張，紅色 1 張', pts:2, req:{g:2,w:1,r:1}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.w||0)>=1&&(p.bonuses.r||0)>=1},
-  {name:'赤黑護符',   desc:'紅色 2 張，藍色 1 張，黑色 1 張', pts:2, req:{r:2,u:1,k:1}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.u||0)>=1&&(p.bonuses.k||0)>=1},
+  {name:'赤紫護符',   desc:'紅色 2 張，藍色 1 張，紫色 1 張', pts:2, req:{r:2,u:1,k:1}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.u||0)>=1&&(p.bonuses.k||0)>=1},
   {name:'五色通緝',   desc:'五種顏色加成各至少 1 張', pts:3, req:{w:1,u:1,g:1,r:1,k:1}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=1)},
   {name:'王室寶庫',   desc:'五種顏色加成各至少 2 張', pts:4, req:{w:2,u:2,g:2,r:2,k:2}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=2)},
   {name:'純色行會',   desc:'任一顏色加成達到 4 張', pts:3, mark:'任一色×4', check:p=>CI.some(c=>(p.bonuses[c]||0)>=4)},
@@ -1544,7 +1623,11 @@ const MISSION_DB = [
 // ── Parse data ───────────────────────────────────────────────────────────
 let _cid = 0;
 const ALL_CARDS  = RAW.map(r => ({id:_cid++, tier:r[0], pts:r[1], bonus:CI[r[2]], cost:{w:r[3],u:r[4],g:r[5],r:r[6],k:r[7]}}));
-const CARD_ART_VERSION = 'balanced-mix-1';
+const CARD_ART_VERSION = 'gem-90-v5-bar-aligned';
+const GEM_CARD_ART = {};
+CI.forEach(c => {
+  GEM_CARD_ART[c] = Array.from({length:18}, (_,i)=>`gem-${c}-${String(i+1).padStart(2,'0')}.jpg`);
+});
 const CARD_ART_PATTERN = ['outdoor','indoor','character'];
 const CARD_ART_POOLS = {
   1: {
@@ -1609,6 +1692,12 @@ ALL_CARDS.forEach(card => {
     _artCounter[card.tier]++;
     _artStyleCounter[card.tier][style]++;
   }
+});
+const CARD_ART_BY_ID = {};
+const _gemArtCounter = {w:0,u:0,g:0,r:0,k:0};
+ALL_CARDS.forEach(card => {
+  const pool = GEM_CARD_ART[card.bonus] || [];
+  CARD_ART_BY_ID[card.id] = pool[_gemArtCounter[card.bonus]++] || CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
 });
 
 // ── Game State ───────────────────────────────────────────────────────────
@@ -1775,14 +1864,14 @@ function animateCardAcquired(card, playerIdx, label, callback) {
   document.body.appendChild(lbl);
 
   const fly = document.createElement('div');
-  fly.className=`dev-card t${card.tier}`;
+  fly.className=`dev-card t${card.tier} ${cardArtClass(card)}`;
   fly.innerHTML=flyingCardHtml(card);
   const sx=sr ? sr.left : window.innerWidth/2-W/2;
   const sy=sr ? sr.top : window.innerHeight/2-H/2+20;
   fly.style.cssText=`position:fixed;width:${W}px;height:${H}px;min-height:${H}px;left:${sx}px;top:${sy}px;
     z-index:521;pointer-events:none;box-shadow:0 0 42px ${pl.color},0 0 18px rgba(255,255,255,.28);
     transition:left .68s cubic-bezier(.4,0,.2,1),top .68s cubic-bezier(.4,0,.2,1),
-               transform .68s,opacity .68s;${cardBgStyle(card)}`;
+               transform .68s,opacity .68s;--card-bar-h:44px;${cardBgStyle(card)}`;
   document.body.appendChild(fly);
 
   setTimeout(()=>{
@@ -1919,7 +2008,7 @@ async function dealOpeningBoardCards(decks) {
       const dr = findIntroDeckRect(decks, tier);
       if (!card || !tr || !dr) return;
       const el = document.createElement('div');
-      el.className = `intro-deal-card dev-card t${tier}`;
+      el.className = `intro-deal-card dev-card t${tier} ${cardArtClass(card)}`;
       const startX = dr.left + dr.width * .5 - tr.width * .5;
       const startY = dr.top + dr.height * .5 - tr.height * .5;
       const rot = ((slot % 2 ? 1 : -1) * (4 + tier));
@@ -1935,7 +2024,7 @@ async function dealOpeningBoardCards(decks) {
       setTimeout(()=>{
         playClick('deal');
         el.classList.add('face-up');
-        el.style.cssText += cardBgStyle(card);
+        el.style.cssText += `--card-bar-h:44px;${cardBgStyle(card)}`;
         el.style.backgroundSize = 'cover';
         el.innerHTML = flyingCardHtml(card);
       }, 240);
@@ -2225,11 +2314,16 @@ function cardEffectKey(card) {
 }
 
 function cardArtName(card) {
-  return CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
+  return CARD_ART_BY_ID[card.id] || CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
+}
+
+function cardArtClass(card) {
+  return cardArtName(card).startsWith('gem-') ? 'gem-art' : '';
 }
 
 function cardBgStyle(card) {
-  return `background-image:url('splendor-card-art/${cardArtName(card)}?v=${CARD_ART_VERSION}');background-position:center top;`;
+  const url = `url('splendor-card-art/${cardArtName(card)}?v=${CARD_ART_VERSION}')`;
+  return `--card-art:${url};background-image:${url};background-size:auto 100%;background-position:center;background-repeat:no-repeat;`;
 }
 
 function render() {
@@ -2332,7 +2426,7 @@ function rCards() {
         return `<div class="cost-ln ${covered?'covered':''}">
           ${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`;
       }).join('');
-      h+=`<div class="dev-card t${t} ${afford?'afford':'dim'}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
+      h+=`<div class="dev-card t${t} ${afford?'afford':'dim'} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
         <div class="card-top ${CHC[card.bonus]}">
           <span class="card-pts">${card.pts||''}</span>
           ${gemSVG(card.bonus,20)}
@@ -2454,7 +2548,7 @@ function viewResCard(pi, ri) {
         ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
       </div>
     </div>
-    <div class="card-preview" style="${cardBgStyle(card)}"></div>
+    <div class="card-preview ${cardArtClass(card)}" style="${cardBgStyle(card)}"></div>
     <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用：</div>
     ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
     <div style="display:flex;gap:8px;margin-top:18px">
@@ -2468,7 +2562,7 @@ function showCardMod(card, fromRes) {
   const pl=G.players[G.cur], afford=canBuy(pl,card), e=effCost(pl,card);
   const canRes=!fromRes && pl.reserved.length<3;
   const tierN={1:'初級卡',2:'中級卡',3:'高級卡'}[card.tier];
-  const bonN={w:'白鑽',u:'藍寶石',g:'翡翠',r:'紅寶石',k:'黑玉'}[card.bonus];
+  const bonN={w:'白鑽',u:'藍寶石',g:'翡翠',r:'紅寶石',k:'紫水晶'}[card.bonus];
   const costRows=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
     const disc=(card.cost[c]||0)-(e[c]||0);
     const short=Math.max(0,(e[c]||0)-(pl.gems[c]||0));
@@ -2490,7 +2584,7 @@ function showCardMod(card, fromRes) {
         ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
       </div>
     </div>
-    <div class="card-preview" style="${cardBgStyle(card)}"></div>
+    <div class="card-preview ${cardArtClass(card)}" style="${cardBgStyle(card)}"></div>
     <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用（持有加成已折抵）：</div>
     ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
     ${goldShort>0&&afford?`<div style="font-size:.78em;color:#ffcc44;margin-top:4px">將使用${goldShort}枚金色代幣補足</div>`:''}
@@ -2850,7 +2944,7 @@ function showResTooltip(el, playerIdx) {
     const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
       `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
     ).join('');
-    return `<div class="dev-card t${card.tier}" style="${cardBgStyle(card)}width:90px;height:128px;min-height:128px;cursor:default;transform:none">
+    return `<div class="dev-card t${card.tier} ${cardArtClass(card)}" style="${cardBgStyle(card)}--card-bar-h:38px;width:90px;height:128px;min-height:128px;cursor:default;transform:none">
       <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
         <span class="card-pts" style="font-size:1.5em">${card.pts||''}</span>
         ${gemSVG(card.bonus,16)}
