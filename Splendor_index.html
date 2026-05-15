@@ -402,7 +402,7 @@ body {
 }
 .refill-card-back {
   position:fixed; width:var(--card-w); height:var(--card-h); border-radius:10px; z-index:520;
-  pointer-events:none; border:2px solid rgba(255,255,255,.24);
+  pointer-events:none; border:0; overflow:hidden;
   box-shadow:0 0 28px rgba(255,230,120,.28), 0 12px 30px rgba(0,0,0,.5);
   transition:left .48s cubic-bezier(.25,.8,.25,1),top .48s cubic-bezier(.25,.8,.25,1),
              transform .48s cubic-bezier(.25,.8,.25,1),opacity .25s;
@@ -1895,6 +1895,14 @@ function deckBackStyle(tier) {
   }[tier] || '';
 }
 
+function refillDeckCardStyle(tier) {
+  return {
+    3:`background:url('splendor-card-art/card-tier3-single.png?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`,
+    2:`background:url('splendor-card-art/card-tier2-single.png?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`,
+    1:`background:url('splendor-card-art/card-tier1-single.png?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`
+  }[tier] || '';
+}
+
 function preloadCardArt(card) {
   return new Promise(resolve=>{
     const name = card ? cardArtName(card) : '';
@@ -1977,7 +1985,7 @@ function animateRefillFromDeck(refill, callback) {
   const fly=document.createElement('div');
   fly.className='refill-card-back';
   fly.style.cssText=`left:${dr.left+dr.width/2-tr.width/2}px;top:${dr.top+dr.height/2-tr.height/2}px;
-    width:${tr.width}px;height:${tr.height}px;transform:scale(.58) rotate(-7deg);${deckBackStyle(refill.tier)}`;
+    width:${tr.width}px;height:${tr.height}px;transform:scale(.58) rotate(-7deg);${refillDeckCardStyle(refill.tier)}`;
   document.body.appendChild(fly);
   setTimeout(()=>{
     fly.style.left=tr.left+'px';
