@@ -1,0 +1,3052 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>璀燦寶石 Splendor</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --card-w:140px;
+  --card-h:205px;
+  --card-bar-h:39px;
+  --deck-icon-w:120px;
+  --deck-icon-h:148px;
+  --board-gap:7px;
+  --table-surface-image:url('splendor-card-art/table-surface-frame.png');
+  --mission-parchment-image:url('splendor-card-art/mission-parchment.png');
+}
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background:
+    linear-gradient(180deg,rgba(16,20,26,.42),rgba(27,18,12,.72)),
+    url('splendor-card-art/game-bg-castle.jpg') center/cover fixed,
+    #3b2b1d;
+  color: #e8e8f0; min-height: 100vh; user-select: none;
+}
+
+/* ── Setup ──────────────────────────────────── */
+#screen-setup {
+  display:none; flex-direction:column; align-items:center;
+  justify-content:center; min-height:100vh; gap:20px; padding:40px;
+}
+.setup-title {
+  font-size:2.8em; font-weight:900; letter-spacing:5px;
+  background:linear-gradient(135deg,#ffcc44,#ff8844,#cc55ff);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.setup-sub { opacity:.6; letter-spacing:2px; font-size:.95em; }
+.num-row { display:flex; gap:10px; }
+.btn-num {
+  padding:10px 24px; border:2px solid rgba(255,255,255,.2); border-radius:8px;
+  background:rgba(255,255,255,.07); color:white; cursor:pointer; font-size:1em; transition:all .15s;
+}
+.btn-num:hover,.btn-num.active { background:rgba(255,200,50,.25); border-color:#ffcc44; color:#ffcc44; }
+.player-inputs { display:flex; flex-direction:column; gap:12px; width:320px; }
+.p-row { display:flex; align-items:center; gap:10px; }
+.p-row .swatch { width:10px; height:38px; border-radius:4px; flex-shrink:0; }
+.p-row input {
+  flex:1; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+  border-radius:8px; padding:8px 12px; color:white; font-size:.95em;
+}
+.btn-start {
+  background:linear-gradient(135deg,#cc6600,#ffaa22); border:none; border-radius:10px;
+  padding:14px 48px; font-size:1.1em; font-weight:bold; color:white;
+  cursor:pointer; letter-spacing:2px; transition:all .15s;
+}
+.btn-start:hover { filter:brightness(1.2); transform:translateY(-2px); }
+
+/* ── Game layout ─────────────────────────────── */
+#screen-game { display:none; flex-direction:column; min-height:100vh; }
+
+/* Header */
+#g-hdr {
+  background:rgba(32,20,12,.58); border-bottom:1px solid rgba(255,224,166,.18);
+  padding:7px 16px; flex-shrink:0;
+  backdrop-filter:blur(5px);
+}
+.hdr-logo { font-size:1em; font-weight:bold; color:#ffcc44; letter-spacing:2px; }
+.last-round-flag { font-size:.8em; color:#ff9955; font-weight:bold; }
+
+/* Main */
+#g-main {
+  display:flex; gap:8px; padding:10px 12px 10px 2px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center;
+  background:linear-gradient(90deg,rgba(11,12,20,.48),rgba(18,14,10,.18),rgba(11,12,20,.48));
+}
+
+/* Left panel */
+#g-left { display:flex; flex-direction:column; gap:10px; width:166px; margin-left:-8px; flex-shrink:0; }
+.panel-label { font-size:.68em; text-transform:uppercase; letter-spacing:2px; opacity:.45; margin-bottom:4px; }
+
+/* Nobles */
+.noble-card {
+  background:linear-gradient(135deg,#1c1c22,#202028);
+  border:2px solid #35354a; border-radius:10px; padding:8px 10px; margin-bottom:5px;
+  transition:border-color .45s, box-shadow .45s;
+  position:relative;
+}
+/* 灰掉文字，但不動 gem dot（gem dot 有自己的 background，不受 color 影響） */
+.noble-card .noble-pts { color:#666; }
+.noble-card .req-item span { color:rgba(255,255,255,.4); }
+.noble-pts { font-size:1.2em; font-weight:bold; }
+.noble-info-btn {
+  width:15px; height:15px; border-radius:50%;
+  border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.07);
+  color:rgba(255,255,255,.45); font-size:.58em; font-weight:bold; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:all .15s; flex-shrink:0;
+}
+.noble-info-btn:hover { background:rgba(255,200,50,.2); border-color:#ffcc44; color:#ffcc44; }
+.noble-req { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+.req-item { display:flex; align-items:center; gap:3px; font-size:.78em; font-weight:bold; }
+
+/* Mission cards */
+.mission-card {
+  position:relative; border-radius:7px; padding:8px 11px 9px 13px; flex:1; min-width:0;
+  border:1.5px solid rgba(97,54,17,.78);
+  background:
+    linear-gradient(180deg,rgba(255,244,190,.18),rgba(91,43,8,.08)),
+    radial-gradient(circle at 15% 12%,rgba(255,233,156,.36),transparent 26%),
+    radial-gradient(circle at 86% 10%,rgba(255,211,117,.28),transparent 25%),
+    var(--mission-parchment-image) center / 100% 100% no-repeat,
+    linear-gradient(135deg,#dca55b,#b8752f 58%,#e8bd72);
+  color:#1c1309; font-family:Georgia,'Noto Serif TC','Times New Roman',serif;
+  box-shadow:
+    0 7px 14px rgba(0,0,0,.34),
+    0 1px 0 rgba(255,236,176,.14),
+    inset 0 0 0 1px rgba(255,233,171,.2),
+    inset 0 0 18px rgba(83,43,12,.26);
+  overflow:hidden;
+}
+.mission-card::before {
+  content:""; position:absolute; inset:5px; border:1px dashed rgba(68,36,9,.32);
+  border-radius:4px; pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(62,31,8,.06),transparent 18%,transparent 82%,rgba(62,31,8,.08)),
+    repeating-linear-gradient(0deg,rgba(61,35,12,.035) 0 1px,transparent 1px 7px);
+  box-shadow:inset 0 0 12px rgba(255,238,172,.1);
+  z-index:0;
+}
+.mission-card > * { position:relative; z-index:1; }
+.mission-card.claimed {
+  border-color:rgba(79,44,15,.62); opacity:.78;
+  filter:saturate(.72) sepia(.08);
+}
+.mission-card.claimed::after {
+  content:"已領"; position:absolute; right:8px; bottom:5px;
+  color:rgba(101,15,11,.72); border:1.5px solid rgba(108,23,16,.62);
+  transform:rotate(-10deg); font-size:.7em; font-weight:900;
+  padding:1px 6px; border-radius:3px; z-index:2;
+  background:rgba(136,24,14,.08);
+}
+.mission-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; position:relative; z-index:1; }
+.mission-name {
+  font-size:.72em; font-weight:900; color:#211006; letter-spacing:.8px;
+  text-shadow:0 1px 0 rgba(255,225,151,.45);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mission-pts  {
+  font-size:1.08em; font-weight:900; color:#ffedbc; flex-shrink:0;
+  background:
+    radial-gradient(circle at 35% 28%,#d85d32 0%,#8c2f1a 48%,#4f160d 100%);
+  border:1.5px solid rgba(255,211,128,.48);
+  border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  box-shadow:
+    inset 0 1px 0 rgba(255,229,170,.26),
+    inset 0 -5px 8px rgba(53,10,6,.45),
+    0 2px 5px rgba(46,16,4,.32);
+  text-shadow:0 1px 2px rgba(0,0,0,.5);
+}
+.mission-desc { font-size:.62em; color:#35200b; margin-top:3px; line-height:1.32; position:relative; z-index:1; text-shadow:0 1px 0 rgba(255,229,161,.28); }
+.mission-icons { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; position:relative; z-index:1; }
+.mission-token {
+  display:inline-flex; align-items:center; gap:2px; padding:1px 5px;
+  border-radius:10px;
+  background:linear-gradient(180deg,rgba(70,34,8,.18),rgba(45,22,6,.11));
+  border:1px solid rgba(61,31,6,.24);
+  box-shadow:inset 0 1px 0 rgba(255,239,180,.16);
+  font-size:.64em; font-weight:900; color:#231206;
+}
+.mission-mark { font-size:.9em; opacity:.78; margin-right:1px; }
+.mission-winner { font-size:.62em; margin-top:3px; position:relative; z-index:1; font-weight:900; }
+
+/* Gem bank */
+#g-bank {
+  position:relative; width:100%; padding:17px 10px 12px;
+  border-radius:14px;
+  border:3px solid #8a6324;
+  background:
+    radial-gradient(circle at 18px 18px,#f1c86b 0 3px,transparent 4px),
+    radial-gradient(circle at calc(100% - 18px) 18px,#f1c86b 0 3px,transparent 4px),
+    radial-gradient(circle at 18px calc(100% - 18px),#c48b33 0 3px,transparent 4px),
+    linear-gradient(145deg,rgba(255,225,130,.18),transparent 28%),
+    repeating-linear-gradient(90deg,rgba(255,210,120,.06) 0 1px,transparent 1px 9px),
+    linear-gradient(160deg,#3a2513,#18100c 54%,#2f1d10);
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.42),
+    inset 0 0 0 2px rgba(255,219,128,.25),
+    inset 0 0 26px rgba(0,0,0,.65),
+    0 0 18px rgba(255,195,65,.12);
+  overflow:hidden;
+}
+#g-bank::before {
+  content:""; position:absolute; inset:6px; border-radius:10px;
+  border:1px solid rgba(255,219,128,.24); pointer-events:none;
+}
+#g-bank::after {
+  content:""; position:absolute; left:50%; top:-18px; width:62px; height:36px;
+  transform:translateX(-50%);
+  border-radius:0 0 34px 34px;
+  background:linear-gradient(180deg,#d3a043,#6d4315);
+  box-shadow:inset 0 -4px 10px rgba(0,0,0,.45), 0 3px 9px rgba(0,0,0,.38);
+  opacity:.9; pointer-events:none;
+}
+#g-bank .panel-label {
+  position:relative; z-index:1; display:flex; align-items:center; justify-content:center;
+  margin:0 0 8px !important; padding:3px 8px;
+  color:#ffe29a; opacity:1; letter-spacing:3px;
+  background:linear-gradient(90deg,rgba(71,38,10,.35),rgba(166,105,29,.36),rgba(71,38,10,.35));
+  border:1px solid rgba(255,218,126,.22); border-radius:999px;
+  text-shadow:0 1px 2px rgba(0,0,0,.85);
+}
+#g-bank .panel-label::before,
+#g-bank .panel-label::after { content:"◆"; font-size:.72em; color:#d69a35; margin:0 7px; }
+.bank-row {
+  position:relative; z-index:1; display:flex; align-items:center; gap:7px; padding:5px 7px;
+  margin-top:5px; border-radius:8px; cursor:pointer;
+  border:1.5px solid rgba(220,166,68,.26);
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.32),rgba(255,214,109,.08),rgba(0,0,0,.26)),
+    rgba(20,14,10,.68);
+  box-shadow:inset 0 1px 0 rgba(255,231,154,.13), inset 0 -8px 12px rgba(0,0,0,.24);
+  transition:all .12s;
+}
+.bank-row:hover:not(.no-click) {
+  background:
+    linear-gradient(90deg,rgba(61,36,13,.62),rgba(255,214,109,.16),rgba(61,36,13,.46)),
+    rgba(36,22,12,.78);
+  border-color:rgba(255,211,104,.52);
+}
+.bank-row.picked {
+  background:
+    linear-gradient(90deg,rgba(92,57,13,.72),rgba(255,222,91,.25),rgba(92,57,13,.52)),
+    rgba(39,25,9,.82);
+  border-color:rgba(255,220,50,.75);
+  box-shadow:0 0 14px rgba(255,201,58,.26), inset 0 1px 0 rgba(255,245,184,.24);
+}
+.bank-row.no-click { cursor:default; opacity:.55; }
+.bank-row[data-col="gold"]:not(.picked) {
+  border-color:rgba(220,166,68,.26);
+  background:
+    radial-gradient(circle at 20% 50%,rgba(255,228,90,.09),transparent 42%),
+    linear-gradient(90deg,rgba(0,0,0,.34),rgba(124,84,20,.14),rgba(0,0,0,.28)),
+    rgba(20,14,10,.68);
+  box-shadow:inset 0 1px 0 rgba(255,231,154,.13), inset 0 -8px 12px rgba(0,0,0,.24);
+}
+.bank-row[data-col="gold"].picked {
+  border-color:rgba(255,220,50,.82);
+  background:
+    radial-gradient(circle at 20% 50%,rgba(255,235,93,.28),transparent 44%),
+    linear-gradient(90deg,rgba(92,57,13,.78),rgba(255,222,91,.3),rgba(92,57,13,.56)),
+    rgba(39,25,9,.82);
+  box-shadow:0 0 16px rgba(255,201,58,.32), inset 0 1px 0 rgba(255,245,184,.3);
+}
+.g-circle {
+  border-radius:50%; border:2px solid rgba(255,255,255,.38);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:bold; flex-shrink:0; text-shadow:0 1px 3px rgba(0,0,0,.8);
+}
+.g-name { font-size:.78em; flex:1; color:#f4dfb0; text-shadow:0 1px 2px rgba(0,0,0,.7); }
+.g-cnt  {
+  min-width:22px; text-align:center; font-size:.82em; font-weight:bold; color:#ffecb0; opacity:1;
+  background:rgba(0,0,0,.28); border:1px solid rgba(255,223,130,.16); border-radius:999px; padding:1px 5px;
+}
+.pick-badge { font-size:.78em; color:#ffcc44; font-weight:bold; }
+#g-bank .btn {
+  border:1px solid rgba(255,221,119,.22);
+  box-shadow:0 2px 8px rgba(0,0,0,.28);
+}
+.gem-fly {
+  position:fixed; z-index:540; pointer-events:none;
+  width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  filter:drop-shadow(0 0 10px rgba(255,230,140,.75)) drop-shadow(0 8px 10px rgba(0,0,0,.5));
+  transition:left .58s cubic-bezier(.22,.8,.24,1),top .58s cubic-bezier(.22,.8,.24,1),
+             transform .58s cubic-bezier(.22,.8,.24,1),opacity .2s ease .48s;
+}
+
+/* Cards area — table surface */
+#g-right {
+  display:flex; flex-direction:column; gap:10px;
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+  background:
+    linear-gradient(180deg, rgba(10,6,3,.04), rgba(8,4,2,.18)),
+    radial-gradient(ellipse at 54% 8%, rgba(255,218,135,.24) 0%, transparent 48%),
+    var(--table-surface-image) center / 100% 100% no-repeat,
+    #1b0f07;
+  border-radius:18px;
+  padding:14px 16px 24px;
+  border:1.5px solid rgba(201,139,61,.38);
+  box-shadow:
+    0 14px 55px rgba(0,0,0,.75),
+    0 4px 12px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,205,110,.16),
+    inset 0 0 74px rgba(0,0,0,.34);
+}
+/* table rim highlight — top edge */
+#g-right::before {
+  content:""; pointer-events:none;
+  position:absolute; inset:0; border-radius:inherit;
+  background:
+    linear-gradient(to bottom, rgba(255,216,126,.13) 0%, transparent 16%),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.28) 100%);
+  z-index:0;
+}
+#g-right > * { position:relative; z-index:1; }
+
+#g-cards { display:flex; flex-direction:column; gap:8px; }
+.tier-row { display:flex; gap:var(--board-gap); }
+
+.deck-box {
+  width:var(--card-w); height:var(--card-h); min-height:var(--card-h); flex-shrink:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  border:none; cursor:pointer; transition:all .15s;
+  position:relative; overflow:visible;
+  padding:0;
+  background:transparent;
+  box-shadow:none;
+  --deck-edge-hi:#e8eef4; --deck-edge-mid:#aebac6; --deck-edge-lo:#667484;
+  --deck-face-border:#e8dcc0;
+  --deck-back-a:#0d0d0a; --deck-back-b:#19130a; --deck-line:#d6aa45; --deck-line-soft:rgba(214,170,69,.42);
+  --deck-mark-bg:#15100a; --deck-mark-fg:#ffe28a;
+}
+.deck-box:hover:not(.empty) { filter:none; }
+.deck-box.empty { cursor:default; opacity:.28; }
+.deck-card-icon {
+  position:absolute; inset:0; width:100%; height:100%; border-radius:10px;
+  transform:rotate(0deg);
+  transform-origin:center center;
+  border:0;
+  z-index:0;
+  background:transparent center / 100% 100% no-repeat;
+  filter:drop-shadow(0 10px 10px rgba(0,0,0,.6)) drop-shadow(0 2px 3px rgba(0,0,0,.45));
+  margin-top:0;
+  margin-bottom:0;
+  overflow:visible;
+  transition:transform .15s, filter .15s;
+}
+.deck-box:hover:not(.empty) .deck-card-icon {
+  transform:translateY(-5px);
+  filter:drop-shadow(0 16px 14px rgba(0,0,0,.72)) drop-shadow(0 4px 6px rgba(0,0,0,.48));
+}
+.deck-card-icon::before,
+.deck-card-icon::after {
+  display:none;
+}
+.deck-sigil {
+  display:none;
+}
+.deck-sigil::before {
+  font-size:1.25em; font-weight:900; line-height:1;
+  text-shadow:0 1px 4px rgba(0,0,0,.55);
+}
+.deck-sigil::after {
+  content:""; position:absolute; inset:-16px -8px; border-radius:999px;
+  border:1px solid var(--deck-line);
+  opacity:.5;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 7px transparent;
+}
+.deck-tier-3 {
+  --deck-edge-hi:#ffeaa0; --deck-edge-mid:#d9a532; --deck-edge-lo:#8b520d;
+  --deck-face-border:#fff0a4;
+  --deck-back-a:#050504; --deck-back-b:#21180b; --deck-line:#dfb34c; --deck-line-soft:rgba(223,179,76,.48);
+  --deck-mark-bg:#0c0a07; --deck-mark-fg:#ffe993;
+}
+.deck-tier-3 .deck-card-icon { background-image:url('splendor-card-art/deck-tier3-hearthlike.png'); }
+.deck-tier-3 .deck-sigil::before { content:"✦"; }
+.deck-tier-2 {
+  --deck-edge-hi:#8fc8ff; --deck-edge-mid:#2f78ad; --deck-edge-lo:#0d355d;
+  --deck-face-border:#9dd3ff;
+  --deck-back-a:#061a32; --deck-back-b:#15558d; --deck-line:#9bd2ff; --deck-line-soft:rgba(155,210,255,.5);
+  --deck-mark-bg:#072746; --deck-mark-fg:#e3f3ff;
+}
+.deck-tier-2 .deck-card-icon { background-image:url('splendor-card-art/deck-tier2-hearthlike.png'); }
+.deck-tier-2 .deck-sigil::before { content:"✦"; }
+.deck-tier-1 {
+  --deck-edge-hi:#9fd596; --deck-edge-mid:#3f8a4d; --deck-edge-lo:#173f22;
+  --deck-face-border:#9fdd93;
+  --deck-back-a:#092416; --deck-back-b:#24693a; --deck-line:#a5df95; --deck-line-soft:rgba(165,223,149,.48);
+  --deck-mark-bg:#0c321d; --deck-mark-fg:#e4ffd6;
+}
+.deck-tier-1 .deck-card-icon { background-image:url('splendor-card-art/deck-tier1-hearthlike.png'); }
+.deck-tier-1 .deck-sigil::before { content:"✦"; }
+.deck-rank {
+  position:absolute; left:0; right:0; top:4px; z-index:2;
+  height:18px; line-height:18px; text-align:center;
+  font-size:.78em; font-weight:900; letter-spacing:1.4px;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);
+  white-space:nowrap; overflow:hidden;
+}
+.deck-n {
+  position:absolute; left:0; right:0; bottom:12px; height:18px; line-height:18px; text-align:center;
+  padding:0; border-radius:0; background:none; border:0;
+  font-size:.94em; font-weight:900; color:#d8b987;
+  box-sizing:border-box; z-index:2;
+  text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
+.deck-lbl {
+  position:static; margin-left:4px; font-size:.78em; opacity:.78;
+  z-index:auto; white-space:nowrap; color:#d8b987;
+}
+.refill-card-back {
+  position:fixed; width:var(--card-w); height:var(--card-h); border-radius:10px; z-index:520;
+  pointer-events:none; border:2px solid rgba(255,255,255,.24);
+  box-shadow:0 0 28px rgba(255,230,120,.28), 0 12px 30px rgba(0,0,0,.5);
+  transition:left .48s cubic-bezier(.25,.8,.25,1),top .48s cubic-bezier(.25,.8,.25,1),
+             transform .48s cubic-bezier(.25,.8,.25,1),opacity .25s;
+}
+
+.dev-card {
+  width:var(--card-w); height:var(--card-h); min-height:var(--card-h); border-radius:10px; flex-shrink:0;
+  display:flex; flex-direction:column; overflow:hidden; cursor:pointer;
+  border:none; transition:transform .18s,box-shadow .18s;
+  position:relative; background-size:cover; background-position:center;
+  box-shadow:none;
+}
+.dev-card::before {
+  display:none;
+}
+.dev-card.gem-art {
+  background-image:none !important;
+  background-color:#090b12;
+}
+.dev-card.gem-art::before {
+  display:none;
+}
+.dev-card.gem-art::after {
+  content:""; position:absolute; left:0; right:0; top:var(--card-bar-h); bottom:0;
+  z-index:1; pointer-events:none;
+  background-image:var(--card-art);
+  background-size:100% 100%;
+  background-position:center top;
+  background-repeat:no-repeat;
+}
+.dev-card:hover { transform:translateY(-9px) rotate(1.5deg); box-shadow:5px 16px 32px rgba(0,0,0,.78), 2px 6px 10px rgba(0,0,0,.5); }
+.dev-card.dim { opacity:.86; }
+@keyframes urge-pulse {
+  0%,100% { box-shadow:0 0 14px rgba(255,60,30,.35); }
+  50%     { box-shadow:0 0 28px rgba(255,60,30,.75), 0 0 8px rgba(255,60,30,.4); }
+}
+@keyframes afford-glow {
+  0%,100% { box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 6px rgba(120,255,160,.12); }
+  50%     { box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 20px rgba(120,255,160,.5), 0 0 8px rgba(120,255,160,.25); }
+}
+.dev-card.afford { animation:afford-glow 2.2s ease-in-out infinite; }
+.dev-card.t1 { background:linear-gradient(160deg,#6e5230,#42300e); }
+.dev-card.t2 { background:linear-gradient(160deg,#2a4e78,#162848); }
+.dev-card.t3 { background:linear-gradient(160deg,#481a68,#260e3c); }
+.card-top {
+  position:absolute; top:0; left:0; right:0; z-index:4;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:6px 8px; min-height:var(--card-bar-h);
+  box-shadow:0 2px 12px rgba(0,0,0,.45);
+  backdrop-filter:blur(2px);
+}
+.card-pts { font-size:1.62em; font-weight:900; color:white; text-shadow:0 1px 4px rgba(0,0,0,.9); line-height:1; }
+.card-gem-dot { border-radius:50%; border:2px solid rgba(255,255,255,.55); flex-shrink:0; }
+.card-body {
+  position:absolute; inset:0; z-index:2; min-height:0; padding:48px 7px 7px;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:3px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.04) 0%,rgba(0,0,0,0) 42%,rgba(0,0,0,.48) 76%,rgba(0,0,0,.78) 100%);
+}
+.dev-card.gem-art .card-body {
+  background:linear-gradient(to bottom,rgba(0,0,0,.04) 0%,rgba(0,0,0,0) 34%,rgba(0,0,0,.44) 76%,rgba(0,0,0,.78) 100%);
+}
+.cost-stack {
+  display:flex; flex-direction:column; justify-content:flex-end; gap:1px;
+  min-height:0; align-self:flex-start; max-width:100%;
+  padding:4px 6px; border-radius:7px;
+  background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(2px);
+}
+.cost-ln { display:flex; align-items:center; gap:5px; min-height:16px; }
+.cost-dot { width:13px; height:13px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
+.cost-n { font-size:1.05em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
+.cost-ln.covered { opacity:.35; }
+.card-empty-slot { width:var(--card-w); height:var(--card-h); flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
+
+/* Bottom — now inline below cards in right column */
+#g-bottom {
+  background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.1);
+  border-radius:12px; padding:10px 14px; display:flex; gap:16px;
+  align-items:flex-start; flex-wrap:wrap; width:100%;
+}
+.cur-area { flex:1; min-width:280px; }
+.cur-name { font-size:1.05em; font-weight:bold; margin-bottom:6px; }
+.cur-gems { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.gem-pile { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.gem-pile span { font-size:.62em; opacity:.65; }
+.cur-bonuses { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:5px; }
+.bonus-chip {
+  display:flex; align-items:center; gap:3px; background:rgba(255,255,255,.08);
+  border-radius:10px; padding:2px 7px; font-size:.78em; font-weight:bold;
+}
+.act-area { min-width:200px; display:flex; flex-direction:column; gap:7px; }
+.act-label { font-size:.7em; text-transform:uppercase; letter-spacing:1.5px; opacity:.45; }
+.pending-row { display:flex; gap:6px; flex-wrap:wrap; min-height:32px; }
+.pending-chip {
+  display:flex; align-items:center; gap:4px; background:rgba(255,215,50,.18);
+  border:1px solid rgba(255,215,50,.42); border-radius:16px; padding:3px 9px;
+  font-size:.82em; font-weight:bold;
+}
+.btn-row { display:flex; gap:7px; flex-wrap:wrap; }
+.btn {
+  padding:7px 15px; border-radius:8px; border:none; font-size:.87em;
+  font-weight:bold; cursor:pointer; transition:all .14s; letter-spacing:.4px;
+}
+.btn:hover { transform:translateY(-1px); filter:brightness(1.15); }
+.btn:active { transform:none; }
+.btn:disabled { opacity:.35; cursor:default; transform:none; filter:none; }
+.btn-go  { background:linear-gradient(135deg,#226622,#44aa44); color:white; }
+.btn-end { background:linear-gradient(135deg,#662222,#aa4444); color:white; }
+.btn-grey { background:rgba(255,255,255,.1); color:white; }
+.bank-clear-btn {
+  font-family:Arial,sans-serif;
+  letter-spacing:0;
+  line-height:1;
+  background:rgba(255,255,255,.08);
+}
+
+/* All-players strip — left panel vertical stack */
+#g-players {
+  display:flex; flex-direction:column; gap:6px; width:100%;
+}
+.pi-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
+  border-left:4px solid; border-radius:10px; padding:8px 11px; width:100%;
+  position:relative;
+}
+.pi-card.cur { background:rgba(255,215,50,.07); }
+.pi-card.inactive {
+  background:rgba(0,0,0,.18); border-color:rgba(255,255,255,.06);
+  border-left-color:rgba(255,255,255,.12) !important;
+}
+.pi-card.inactive .pi-name,
+.pi-card.inactive .pi-pts,
+.pi-card.inactive .bonus-chip { color:rgba(255,255,255,.28) !important; }
+.pi-card.inactive .pi-gem-item span { opacity:.3; }
+.pi-card.inactive .pi-mini { opacity:.25; }
+.pi-name { font-size:.82em; font-weight:bold; margin-bottom:4px; opacity:.85; }
+.pi-pts  { font-size:1.55em; font-weight:900; }
+.pi-bonuses { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+.pi-gems { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
+.pi-gem-item { display:flex; align-items:center; gap:2px; font-size:.7em; font-weight:bold; opacity:.85; }
+.pi-mini { font-size:.68em; opacity:.55; margin-top:4px; }
+.time-up-alert {
+  position:absolute; top:6px; right:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:2px 6px; border-radius:6px;
+  color:#fff6d8; background:linear-gradient(135deg,#8f1111,#e43a22);
+  border:1px solid rgba(255,226,120,.65);
+  font-size:.62em; font-weight:900; letter-spacing:.8px;
+  text-shadow:0 1px 2px rgba(0,0,0,.8);
+  box-shadow:0 0 12px rgba(255,56,28,.68);
+  animation:time-up-flash .48s steps(2,end) infinite, time-up-shake .22s linear infinite;
+  white-space:nowrap;
+}
+.time-up-alert.warn {
+  position:absolute; top:6px; right:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:2px 6px; border-radius:6px;
+  color:#ffe4a0; background:linear-gradient(135deg,#7a4800,#cc7700);
+  border:1px solid rgba(255,200,80,.55);
+  font-size:.62em; font-weight:900; letter-spacing:.8px;
+  text-shadow:0 1px 2px rgba(0,0,0,.8);
+  box-shadow:0 0 10px rgba(255,160,30,.5);
+  animation:pulse .8s ease-in-out infinite;
+  white-space:nowrap;
+}
+@keyframes time-up-flash {
+  0%,100% { opacity:1; filter:brightness(1.25); }
+  50% { opacity:.42; filter:brightness(.72); }
+}
+@keyframes time-up-shake {
+  0%,100% { transform:translate(0,0) rotate(0deg); }
+  25% { transform:translate(1px,-1px) rotate(-2deg); }
+  50% { transform:translate(-1px,1px) rotate(2deg); }
+  75% { transform:translate(1px,1px) rotate(-1deg); }
+}
+
+/* Modals */
+.m-overlay {
+  position:fixed; inset:0; background:rgba(0,0,10,.84);
+  display:flex; align-items:center; justify-content:center; z-index:100;
+}
+.m-box {
+  background:linear-gradient(160deg,#1c1c3a,#2a1a3a); border:2px solid rgba(140,90,255,.28);
+  border-radius:18px; padding:26px 30px; max-width:440px; width:92%;
+  box-shadow:0 0 60px rgba(100,50,255,.18);
+}
+.m-title { font-size:1.35em; font-weight:bold; color:#ffcc44; margin-bottom:14px; }
+.cost-detail-row { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:.88em; }
+
+/* Gem colors */
+.gc-w    { background:radial-gradient(circle at 35% 30%,#fff,#c8bca8); color:#333; }
+.gc-u    { background:radial-gradient(circle at 35% 30%,#aaccff,#1d55bb); color:white; }
+.gc-g    { background:radial-gradient(circle at 35% 30%,#aaffcc,#1d9944); color:white; }
+.gc-r    { background:radial-gradient(circle at 35% 30%,#ffaaaa,#cc1e1e); color:white; }
+.gc-k    { background:radial-gradient(circle at 35% 30%,#d7b7ff,#7d32ff 58%,#32105f); color:white; }
+.gc-gold { background:radial-gradient(circle at 35% 30%,#ffee88,#cc8800); color:white; }
+
+/* Card header tint by bonus */
+.ch-w { background:linear-gradient(90deg,rgba(210,200,185,.88),rgba(80,70,60,.62)); }
+.ch-u { background:linear-gradient(90deg,rgba(20,65,185,.9),rgba(8,20,60,.66)); }
+.ch-g { background:linear-gradient(90deg,rgba(20,120,50,.9),rgba(6,42,22,.68)); }
+.ch-r { background:linear-gradient(90deg,rgba(175,20,20,.9),rgba(70,8,12,.68)); }
+.ch-k { background:linear-gradient(90deg,rgba(110,36,190,.92),rgba(28,10,56,.72)); }
+.card-preview {
+  height:190px; border-radius:10px; margin-bottom:12px;
+  background-size:cover; background-position:center;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16), 0 12px 28px rgba(0,0,0,.38);
+}
+.card-preview.gem-art {
+  background-color:#080a12;
+  background-size:auto 100%;
+  background-repeat:no-repeat;
+  background-position:center;
+}
+
+/* Player colors */
+.pcol-0{color:#ff9955} .pcol-1{color:#55aaff} .pcol-2{color:#55cc88} .pcol-3{color:#cc88ff}
+
+/* Toast */
+#toast {
+  position:fixed; top:14px; left:50%; transform:translateX(-50%);
+  background:rgba(30,30,60,.95); border:1px solid rgba(255,200,50,.4);
+  border-radius:9px; padding:9px 18px; font-size:.88em; z-index:300;
+  opacity:0; transition:opacity .2s; pointer-events:none; white-space:nowrap; max-width:90vw;
+}
+#toast.on { opacity:1; }
+
+/* Turn notification overlay */
+#turn-notif {
+  position:fixed; inset:0; background:rgba(0,0,15,.82);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:400; cursor:pointer; opacity:0; pointer-events:none;
+  transition:opacity .3s;
+}
+#turn-notif.on { opacity:1; pointer-events:all; }
+#turn-notif .tn-sub  { font-size:.9em; letter-spacing:3px; margin-bottom:12px; opacity:.65; }
+#turn-notif .tn-name { font-size:3.2em; font-weight:900; letter-spacing:4px;
+  text-shadow:0 0 35px currentColor; }
+#turn-notif .tn-hint { font-size:.72em; opacity:.4; margin-top:18px; }
+
+/* Opening ceremony */
+body.intro-running #g-cards .deck-box,
+body.intro-running #g-cards .dev-card,
+body.intro-running #g-cards .card-empty-slot {
+  opacity:0;
+  pointer-events:none;
+}
+#game-start-intro {
+  position:fixed; inset:0; z-index:700;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,15,.82);
+  opacity:0; pointer-events:none; overflow:hidden;
+  transition:opacity .25s ease;
+}
+#game-start-intro.on { opacity:1; }
+.intro-panel {
+  position:relative; z-index:3; min-width:270px; text-align:center;
+  padding:24px 32px 28px;
+  border-top:1px solid rgba(255,224,138,.35);
+  border-bottom:1px solid rgba(255,224,138,.28);
+  text-shadow:0 2px 12px rgba(0,0,0,.85);
+}
+.intro-stage {
+  font-size:1.06em; font-weight:900; color:#ffcc44;
+  letter-spacing:0; margin-bottom:10px;
+}
+.intro-count {
+  min-height:120px; display:flex; align-items:center; justify-content:center;
+  font-size:112px; line-height:1; font-weight:900; color:#fff3b0;
+  letter-spacing:0;
+  text-shadow:0 0 34px rgba(255,204,68,.72), 0 4px 18px rgba(0,0,0,.9);
+}
+.intro-count.word {
+  font-size:56px;
+  letter-spacing:6px;
+  white-space:nowrap;
+}
+.intro-status {
+  min-height:22px; font-size:.92em; color:rgba(255,255,255,.68);
+  letter-spacing:0;
+}
+.intro-count.pop { animation:intro-count-pop .58s cubic-bezier(.2,.9,.25,1); }
+.intro-deck-fly,
+.intro-deal-card {
+  position:fixed; pointer-events:none; border-radius:10px;
+  background-size:cover; background-position:center;
+}
+.intro-deck-fly {
+  z-index:712; border:2px solid rgba(255,255,255,.25);
+  box-shadow:0 0 42px rgba(255,213,83,.25), 0 18px 36px rgba(0,0,0,.58);
+  transition:left .7s cubic-bezier(.18,.9,.22,1), top .7s cubic-bezier(.18,.9,.22,1),
+             transform .7s cubic-bezier(.18,.9,.22,1), opacity .24s ease;
+}
+.intro-deck-fly.settled { animation:intro-deck-settle .7s ease-in-out infinite alternate; }
+.intro-deal-card {
+  z-index:724; opacity:0; overflow:hidden;
+  box-shadow:0 0 24px rgba(255,232,164,.18), 0 14px 28px rgba(0,0,0,.54);
+  transition:left .36s cubic-bezier(.24,.86,.28,1), top .36s cubic-bezier(.24,.86,.28,1),
+             transform .36s cubic-bezier(.24,.86,.28,1), opacity .12s ease;
+}
+.intro-deal-card.on { opacity:1; }
+.intro-deal-card.face-up {
+  box-shadow:0 0 28px rgba(255,232,164,.22), 0 10px 26px rgba(0,0,0,.52);
+}
+@keyframes intro-count-pop {
+  0% { opacity:0; transform:scale(.68); filter:blur(5px); }
+  42% { opacity:1; transform:scale(1.08); filter:blur(0); }
+  100% { opacity:.92; transform:scale(1); filter:blur(0); }
+}
+@keyframes intro-deck-settle {
+  from { transform:translateY(0) rotate(-.6deg); }
+  to   { transform:translateY(-3px) rotate(.6deg); }
+}
+@media (max-width:640px) {
+  .intro-count { min-height:88px; font-size:76px; }
+  .intro-count.word { font-size:38px; letter-spacing:3px; }
+  .intro-panel { min-width:220px; padding:20px 24px 24px; }
+}
+
+/* Timer badge */
+.timer-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:2px 10px; border-radius:14px; font-size:.88em; font-weight:bold;
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.15);
+  transition:background .3s, border-color .3s, color .3s;
+}
+.timer-badge.warn   { background:rgba(255,140,0,.18); border-color:rgba(255,140,0,.55); color:#ffaa22; }
+.timer-badge.urgent { background:rgba(255,40,40,.22);  border-color:rgba(255,40,40,.65); color:#ff5555;
+  animation:pulse .6s infinite alternate; }
+@keyframes pulse { from{opacity:1} to{opacity:.5} }
+
+@keyframes zone-pulse {
+  0%,100% { box-shadow:0 0 6px 2px rgba(255,210,60,.15); outline-color:rgba(255,210,60,.3); }
+  50%     { box-shadow:0 0 20px 6px rgba(255,210,60,.55); outline-color:rgba(255,210,60,.8); }
+}
+.zone-active {
+  border-radius:10px;
+  outline:1.5px solid rgba(255,210,60,.3);
+  animation:zone-pulse 1.6s ease-in-out infinite;
+}
+
+/* Opponent cursor effects */
+.opp-hover {
+  box-shadow: 0 0 0 3px #55ccff, 0 0 20px rgba(85,204,255,.55) !important;
+  transform: translateY(-4px) !important;
+}
+.opp-pick-badge {
+  font-size:.62em; font-weight:bold; padding:1px 6px;
+  border-radius:8px; margin-left:auto;
+}
+/* Opponent reserved cards tooltip */
+#res-tip {
+  position:fixed; z-index:350; background:#1a1a2a;
+  border:1.5px solid rgba(255,255,255,.15); border-radius:12px;
+  padding:10px; display:none; flex-direction:row; gap:8px;
+  pointer-events:none; box-shadow:0 8px 32px rgba(0,0,0,.65);
+}
+
+/* Help button */
+#btn-help {
+  position:fixed; top:10px; right:14px; z-index:450;
+  width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.08); color:rgba(255,255,255,.75);
+  font-size:1em; font-weight:bold; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; backdrop-filter:blur(4px);
+}
+#btn-help:hover { background:rgba(255,200,50,.2); border-color:#ffcc44; color:#ffcc44; }
+
+/* Help modal */
+#m-help {
+  position:fixed; inset:0; background:rgba(0,0,15,.88);
+  display:none; align-items:center; justify-content:center; z-index:460;
+}
+#m-help .hbox {
+  background:linear-gradient(160deg,#1a1a32,#22123a);
+  border:1.5px solid rgba(140,90,255,.3); border-radius:18px;
+  padding:26px 28px; width:min(680px,94vw); max-height:86vh;
+  overflow-y:auto; box-shadow:0 0 60px rgba(100,50,255,.2);
+  scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.15) transparent;
+}
+.h-title { font-size:1.3em; font-weight:900; color:#ffcc44; margin-bottom:18px; letter-spacing:2px; }
+.h-sec { margin-bottom:16px; }
+.h-sec h3 { font-size:.88em; color:#bb99ff; font-weight:bold;
+  letter-spacing:1.5px; text-transform:uppercase; margin-bottom:7px;
+  padding-bottom:4px; border-bottom:1px solid rgba(140,90,255,.2); }
+.h-sec p, .h-sec li { font-size:.83em; line-height:1.7; opacity:.82; }
+.h-sec ul { padding-left:16px; }
+.h-sec li { margin-bottom:3px; }
+.h-tag {
+  display:inline-block; padding:1px 7px; border-radius:8px; font-size:.75em;
+  font-weight:bold; margin-right:4px; vertical-align:middle;
+}
+.h-tag.gem   { background:rgba(100,180,255,.2); color:#88ccff; }
+.h-tag.card  { background:rgba(100,255,150,.15); color:#88ffaa; }
+.h-tag.noble { background:rgba(255,200,50,.18); color:#ffcc44; }
+.h-tag.miss  { background:rgba(180,100,255,.2); color:#cc88ff; }
+
+/* Top bar: missions above card area */
+#g-top-bar { display:flex; justify-content:center; width:100%; }
+#g-missions{ display:flex; gap:6px; flex-wrap:nowrap; justify-content:center; max-width:100%; overflow:hidden; }
+
+/* (removed g-cur-info — merged into player cards)
+#g-cur-info-placeholder {
+}
+
+/* ── Lobby / Wait ──────────────────────────────── */
+#screen-lobby, #screen-wait {
+  display:none; flex-direction:column; align-items:center;
+  justify-content:center; min-height:100vh; gap:18px; padding:40px;
+}
+.online-btns { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+.btn-online {
+  padding:14px 32px; border-radius:12px; border:2px solid rgba(255,255,255,.2);
+  background:linear-gradient(180deg,rgba(32,42,58,.96),rgba(12,17,28,.94));
+  color:#f7fbff; cursor:pointer; font-size:1em;
+  font-weight:bold; letter-spacing:1px; transition:all .15s;
+  box-shadow:0 10px 24px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.12);
+  text-shadow:0 1px 2px rgba(0,0,0,.75);
+}
+.btn-online:hover {
+  background:linear-gradient(180deg,rgba(46,70,105,.98),rgba(18,28,48,.96));
+  border-color:#88aaff; color:#eaf3ff;
+}
+.btn-online.primary { background:linear-gradient(135deg,#cc6600,#ffaa22); border-color:transparent; }
+.btn-online.primary:hover { filter:brightness(1.15); color:white; }
+#wait-ready {
+  background:linear-gradient(135deg,#1f6f52,#35b675);
+  border-color:rgba(136,255,190,.44);
+  color:#f3fff8;
+}
+#wait-ready:hover {
+  background:linear-gradient(135deg,#288760,#42cc86);
+  border-color:rgba(180,255,215,.72);
+  color:white;
+}
+.lb-input {
+  background:rgba(8,13,24,.88); border:1.5px solid rgba(255,224,138,.34);
+  border-radius:10px; padding:10px 16px; color:#fff6d6; font-size:.95em;
+  width:240px; text-align:center;
+  box-shadow:0 8px 22px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.lb-input::placeholder { color:rgba(255,236,180,.82); opacity:1; }
+.lb-input:focus {
+  outline:none; border-color:#ffcc44; background:rgba(10,16,30,.96);
+  box-shadow:0 0 0 3px rgba(255,204,68,.16), 0 8px 22px rgba(0,0,0,.32);
+}
+.code-display {
+  font-size:2.8em; font-weight:900; letter-spacing:10px; color:#ffcc44;
+  background:rgba(255,200,50,.1); border:2px solid rgba(255,200,50,.35);
+  border-radius:14px; padding:14px 32px;
+}
+.wait-list { display:flex; flex-direction:column; gap:7px; width:260px; }
+.wait-slot {
+  position:relative; overflow:visible;
+  padding:9px 14px; border-radius:9px; font-size:.9em; font-weight:bold;
+  border:1.5px solid rgba(255,255,255,.16);
+  background:rgba(9,14,24,.84);
+  color:#eef5ff;
+  box-shadow:0 6px 18px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.wait-slot.filled {
+  border-color:rgba(100,255,150,.56); color:#9dffbf;
+  background:linear-gradient(90deg,rgba(18,68,45,.92),rgba(10,24,20,.9));
+}
+.wait-slot.empty  {
+  opacity:1; font-weight:600; color:#d9e3f0;
+  background:linear-gradient(90deg,rgba(31,38,52,.9),rgba(12,18,30,.88));
+  border-color:rgba(170,195,230,.24);
+}
+.wait-slot.host {
+  padding-left:25px;
+  border-color:rgba(255,218,93,.72);
+  box-shadow:0 8px 22px rgba(0,0,0,.28), 0 0 18px rgba(255,200,50,.18), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.host-crown {
+  position:absolute; left:-10px; top:-13px; z-index:2;
+  width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 25%,#fff0a8,#e3a720 62%,#7a3d00);
+  border:1.5px solid rgba(255,236,154,.95);
+  box-shadow:0 6px 14px rgba(0,0,0,.42), 0 0 16px rgba(255,205,70,.38);
+  font-size:16px; line-height:1;
+  transform:rotate(-12deg);
+}
+.lb-sep { font-size:.78em; opacity:.38; letter-spacing:2px; }
+
+/* Player card timer border wrapper */
+.pi-timer-outer {
+  padding:2px; border-radius:12px; width:100%;
+  transition:background .4s;
+}
+
+/* ── Responsive layouts ───────────────────────── */
+@media (max-width:760px) {
+  :root {
+    --card-w:82px;
+    --card-h:120px;
+    --card-bar-h:27px;
+    --deck-icon-w:70px;
+    --deck-icon-h:86px;
+    --board-gap:5px;
+  }
+  body { min-height:100dvh; overflow-x:hidden; }
+  #screen-setup, #screen-lobby, #screen-wait {
+    min-height:100dvh; padding:22px 16px; gap:14px;
+  }
+  .setup-title { font-size:2em; letter-spacing:3px; text-align:center; }
+  .setup-sub { font-size:.82em; text-align:center; line-height:1.5; }
+  .num-row, .online-btns { width:100%; max-width:340px; gap:8px; }
+  .btn-num { flex:1; min-width:0; padding:10px 0; }
+  .player-inputs { width:min(100%,340px); }
+  .btn-start, .btn-online { width:100%; max-width:340px; padding:12px 16px; }
+  .code-display {
+    max-width:100%; font-size:1.85em; letter-spacing:6px; padding:12px 18px;
+  }
+  .wait-list { width:min(100%,300px); }
+
+  #screen-game { min-height:100dvh; }
+  #g-hdr {
+    position:sticky; top:0; z-index:320; padding:8px 12px; text-align:center;
+  }
+  #btn-help { top:7px; right:8px; width:30px; height:30px; z-index:520; }
+  #g-main {
+    flex-direction:column; align-items:stretch; justify-content:flex-start;
+    overflow-x:hidden; overflow-y:auto; min-height:0;
+    padding:8px 8px 12px; gap:8px;
+  }
+  #g-right { order:1; width:100%; min-width:0; gap:8px; }
+  #g-left {
+    order:2; width:100%;
+    display:grid; grid-template-columns:minmax(118px,.72fr) minmax(0,1fr);
+    gap:8px; align-items:start;
+  }
+  #g-bank { grid-column:1; padding:14px 8px 10px; border-width:2px; border-radius:12px; }
+  #g-players {
+    grid-column:2; max-height:calc(100dvh - 430px); min-height:210px;
+    overflow-y:auto; padding-right:2px;
+  }
+  .bank-row { min-height:32px; padding:5px 6px; gap:5px; margin-top:4px; }
+  .g-name { font-size:.72em; }
+  .g-cnt { min-width:20px; font-size:.75em; }
+
+  #g-top-bar { justify-content:flex-start; overflow:hidden; }
+  #g-missions {
+    justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden;
+    padding-bottom:4px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+  }
+  .mission-card {
+    min-width:204px; max-width:224px; flex:0 0 204px;
+    padding:7px 9px 8px; scroll-snap-align:start;
+  }
+  .mission-name { font-size:.66em; }
+  .mission-desc { font-size:.58em; }
+  .mission-pts { width:30px; height:30px; }
+
+  #g-cards {
+    width:100%; overflow-x:auto; overflow-y:hidden; padding:1px 2px 8px;
+    scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+  }
+  .tier-row { min-width:max-content; scroll-snap-align:start; }
+  .deck-box { padding:0; }
+  .deck-rank { top:3px; height:13px; line-height:13px; font-size:.58em; letter-spacing:.8px; }
+  .deck-n { bottom:7px; font-size:.72em; }
+  .deck-lbl { font-size:.7em; }
+  .card-top { padding:4px 5px; min-height:var(--card-bar-h); }
+  .card-pts { font-size:1.15em; }
+  .card-body { padding:32px 4px 5px; }
+  .cost-stack { padding:2px 4px; border-radius:5px; gap:0; }
+  .cost-ln { min-height:12px; gap:2px; }
+  .cost-n { font-size:.82em; }
+
+  .pi-card { border-radius:8px; padding:7px 8px; }
+  .pi-pts { font-size:1.22em; }
+  .pi-name { font-size:.76em; }
+  .bonus-chip { padding:2px 5px; font-size:.68em; }
+  .pi-gem-item { font-size:.66em; }
+  .time-up-alert { font-size:.55em; padding:2px 5px; }
+
+  .m-overlay { align-items:flex-start; padding:16px 10px; overflow-y:auto; }
+  .m-box { width:100%; max-width:420px; padding:18px 16px; border-radius:14px; }
+  #m-help { align-items:flex-start; padding:12px 8px; overflow-y:auto; }
+  #m-help .hbox { width:100%; max-height:none; padding:20px 16px; border-radius:14px; }
+  .h-title { font-size:1.1em; }
+  #toast {
+    top:50px; max-width:calc(100vw - 20px); white-space:normal; text-align:center;
+  }
+  #res-tip { display:none !important; }
+}
+
+@media (max-width:430px) {
+  :root {
+    --card-w:76px;
+    --card-h:112px;
+    --card-bar-h:27px;
+    --deck-icon-w:64px;
+    --deck-icon-h:78px;
+    --board-gap:4px;
+  }
+  #g-left { grid-template-columns:1fr; }
+  #g-bank, #g-players { grid-column:1; }
+  #g-players {
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+    max-height:none; min-height:0; overflow:visible; gap:6px;
+  }
+  #g-players .pi-timer-outer, #g-players .pi-card { min-width:0; }
+  .mission-card { min-width:190px; flex-basis:190px; }
+  .bank-row { min-height:30px; }
+}
+
+@media (orientation:landscape) and (max-height:520px) and (max-width:900px) {
+  :root {
+    --card-w:74px;
+    --card-h:108px;
+    --card-bar-h:27px;
+    --deck-icon-w:62px;
+    --deck-icon-h:76px;
+  }
+  #g-main { flex-direction:row; }
+  #g-left { order:1; width:170px; display:flex; flex-direction:column; flex-shrink:0; }
+  #g-right { order:2; min-width:0; }
+  #g-players { max-height:calc(100dvh - 175px); min-height:0; }
+  #g-missions { max-width:calc(100vw - 194px); }
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<!-- Lobby -->
+<div id="screen-lobby" style="display:flex">
+  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-sub">Splendor ── 寶石商人</div>
+  <div class="online-btns" style="margin-top:10px">
+    <button class="btn-online primary" onclick="startLocal()">🏠 本機遊玩</button>
+    <button class="btn-online" onclick="showOnlineCreate()">🌐 建立線上房間</button>
+    <button class="btn-online" onclick="showOnlineJoin()">🔗 加入線上房間</button>
+  </div>
+</div>
+
+<!-- Create room -->
+<div id="screen-create" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
+  <div class="setup-title">建立房間</div>
+  <input id="cr-name" class="lb-input" placeholder="你的名字" maxlength="10">
+  <div class="setup-sub" style="margin-top:4px">玩家人數</div>
+  <div class="num-row">
+    <button class="btn-num active" onclick="crSetN(2,this)">2人</button>
+    <button class="btn-num" onclick="crSetN(3,this)">3人</button>
+    <button class="btn-num" onclick="crSetN(4,this)">4人</button>
+  </div>
+  <button class="btn-online primary" onclick="createRoom()" style="margin-top:6px">建立房間</button>
+  <button class="btn-online" onclick="backToLobby()">← 返回</button>
+</div>
+
+<!-- Join room -->
+<div id="screen-join" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
+  <div class="setup-title">加入房間</div>
+  <input id="jn-code" class="lb-input" placeholder="輸入房號" maxlength="6" style="letter-spacing:6px;font-size:1.5em;text-transform:uppercase">
+  <input id="jn-name" class="lb-input" placeholder="你的名字" maxlength="10">
+  <button class="btn-online primary" onclick="joinRoom()">加入</button>
+  <button class="btn-online" onclick="backToLobby()">← 返回</button>
+</div>
+
+<!-- Wait room -->
+<div id="screen-wait">
+  <div class="setup-title" style="font-size:1.8em"><span id="wait-crown" style="display:none">👑 </span>等待玩家加入</div>
+  <div class="setup-sub">把這個房號傳給朋友</div>
+  <div class="code-display" id="wait-code" onclick="copyCode()" title="點擊複製" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+    <span id="wait-code-text">------</span>
+    <svg id="wait-copy-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.85;flex-shrink:0;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.85">
+      <g transform="scale(-1,1) translate(-24,0)">
+        <rect x="9" y="9" width="13" height="13" rx="2.5" ry="2.5"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </g>
+    </svg>
+  </div>
+  <div class="wait-list" id="wait-list"></div>
+  <button id="wait-ready" class="btn-online" onclick="toggleReady()" style="display:none;margin-top:4px">✋ 準備</button>
+  <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="display:none;margin-top:4px">開始遊戲 ✦</button>
+  <button class="btn-online" onclick="backToLobby()">← 離開房間</button>
+</div>
+
+<!-- Setup -->
+<div id="screen-setup">
+  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-sub">Splendor ── 寶石商人</div>
+  <div class="num-row" id="num-row">
+    <button class="btn-num active" onclick="setN(2)">2人</button>
+    <button class="btn-num" onclick="setN(3)">3人</button>
+    <button class="btn-num" onclick="setN(4)">4人</button>
+  </div>
+  <div class="player-inputs" id="pinputs"></div>
+  <button class="btn-start" onclick="startGame()">開始遊戲 ✦</button>
+  <div style="font-size:.72em;opacity:.38;max-width:300px;text-align:center;line-height:1.6">
+    點擊寶石庫取寶石，點擊寶石卡購買或預留。<br>率先達到 15 聲望點獲勝。
+  </div>
+</div>
+
+<!-- Game -->
+<div id="screen-game">
+  <div id="g-hdr"><span class="hdr-logo">璀燦寶石</span></div>
+  <div id="g-main">
+    <div id="g-left">
+      <div id="g-bank"></div>
+      <div id="g-players"></div>
+    </div>
+    <div id="g-right">
+      <div id="g-top-bar">
+        <div id="g-missions"></div>
+      </div>
+      <div id="g-cards"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div id="m-card"  class="m-overlay" style="display:none"></div>
+<div id="m-ret"   class="m-overlay" style="display:none"></div>
+<div id="m-over"  class="m-overlay" style="display:none"></div>
+<div id="toast"></div>
+<div id="urge-banner" style="display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  z-index:8000;padding:10px 28px;border-radius:12px;font-weight:bold;font-size:1em;
+  text-align:center;pointer-events:none;white-space:nowrap;
+  border:2px solid rgba(255,80,60,.7);background:rgba(30,8,4,.88);color:#ff6644;
+  box-shadow:0 0 18px rgba(255,60,30,.4);animation:urge-pulse 1.2s ease-in-out infinite"></div>
+<div id="res-tip"></div>
+
+<button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="說明書">?</button>
+
+<div id="m-help" onclick="if(event.target===this)this.style.display='none'">
+  <div class="hbox">
+    <div class="h-title">📖 璀燦寶石 — 遊戲說明</div>
+
+    <div class="h-sec">
+      <h3>遊戲目標</h3>
+      <p>率先累積 <strong>15 聲望點</strong>的玩家觸發最終輪，最終輪結束後分數最高者獲勝。同分時，持有寶石卡數量較少者勝。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3>每回合選擇一項行動</h3>
+      <ul>
+        <li><span class="h-tag gem">取寶石</span>從寶石庫取 <strong>3 枚不同色</strong>寶石，或取 <strong>2 枚同色</strong>（該色庫存須 ≥ 4 枚）。金色代幣無法主動取得。</li>
+        <li><span class="h-tag card">購買寶石卡</span>支付牌上標示的寶石費用。已有的<strong>牌加成</strong>可折抵同色費用，不足時可用金色代幣補足。</li>
+        <li><span class="h-tag card">預留寶石卡</span>將場上或牌堆頂部的牌收入手中保留（最多 3 張），並從庫中取得 1 枚金色代幣（若有剩餘）。預留的牌可在之後的回合購買。</li>
+      </ul>
+    </div>
+
+    <div class="h-sec">
+      <h3>寶石上限</h3>
+      <p>任何時候持有寶石不得超過 <strong>10 枚</strong>。若超過，行動後需立即歸還多餘的寶石至庫中。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3>寶石卡加成</h3>
+      <p>購得的寶石卡會提供<strong>永久寶石加成</strong>（牌右上角圓點顏色）。加成不是寶石代幣，不佔上限，但可在購牌時折抵費用。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3><span class="h-tag miss">任務卡</span></h3>
+      <p>場上隨機出現 3 張任務卡，率先達成條件的玩家立即獲得對應分數（2–3 分）。每張任務只能被一位玩家完成。</p>
+    </div>
+
+    <div class="h-sec">
+      <h3>牌堆與場面</h3>
+      <ul>
+        <li>寶石卡分三個等級（Tier 1–3），每級場上維持 4 張，購買或預留後自動補牌。</li>
+        <li>點擊<strong>牌堆</strong>可盲抽一張並預留（無法直接購買盲抽的牌）。</li>
+      </ul>
+    </div>
+
+    <div class="h-sec">
+      <h3>計時器</h3>
+      <p>每位玩家有 <strong>60 秒</strong>操作時間。剩餘 15 秒時會顯示「時光不等人」，時間到後會在玩家計分牌旁持續顯示警語。</p>
+    </div>
+
+    <div style="text-align:right;margin-top:18px">
+      <button class="btn btn-grey" onclick="document.getElementById('m-help').style.display='none'" style="padding:8px 22px">關閉</button>
+    </div>
+  </div>
+</div>
+<div id="turn-notif" onclick="dismissTurnNotif()">
+  <div class="tn-sub" id="tn-sub">現在回合</div>
+  <div class="tn-name" id="tn-name"></div>
+</div>
+
+<script>
+'use strict';
+
+// ── Firebase ─────────────────────────────────────────────────────────────
+const FB_CONFIG = {
+  apiKey:"AIzaSyDTfjFjZ4hcba5S9oFzjb6PtvfSqA6pE-I",
+  authDomain:"splendor-game-c9256.firebaseapp.com",
+  databaseURL:"https://splendor-game-c9256-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"splendor-game-c9256",
+  storageBucket:"splendor-game-c9256.firebasestorage.app",
+  messagingSenderId:"406914825596",
+  appId:"1:406914825596:web:7c3fc19ac9214c316d78f9"
+};
+let _fbApp = null;
+let db = null;
+function fbInit() {
+  if (!_fbApp) { _fbApp = firebase.initializeApp(FB_CONFIG); }
+  db = firebase.database();
+}
+
+// ── Online mode state ────────────────────────────────────────────────────
+let onlineMode = false;
+let myIdx = -1;
+let roomCode = '';
+let isHost = false;
+let _crNumP = 2;
+let _opponentCursors = {};  // { playerIdx: { pending:{}, hover:{tier,slot}|null } }
+let _hoverThrottle = null;
+
+function isMyTurn() { return !onlineMode || G.cur === myIdx; }
+function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
+
+// ── Lobby navigation ─────────────────────────────────────────────────────
+function showOnly(id) {
+  ['screen-lobby','screen-create','screen-join','screen-wait','screen-setup','screen-game']
+    .forEach(s => document.getElementById(s).style.display = s===id ? 'flex' : 'none');
+}
+function backToLobby() {
+  if (db && roomCode) {
+    // Remove self from room if joining; leave cleanly
+    if (!isHost) db.ref(`rooms/${roomCode}/players/${myIdx}`).remove();
+    db.ref(`rooms/${roomCode}`).off();
+  }
+  roomCode=''; myIdx=-1; isHost=false; onlineMode=false;
+  showOnly('screen-lobby');
+}
+function startLocal()       { showOnly('screen-setup'); }
+function showOnlineCreate() { showOnly('screen-create'); }
+function showOnlineJoin()   { showOnly('screen-join'); }
+function crSetN(n, btn) {
+  _crNumP = n;
+  document.querySelectorAll('#screen-create .btn-num').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Create / Join ─────────────────────────────────────────────────────────
+async function createRoom() {
+  const name = document.getElementById('cr-name').value.trim() || '玩家1';
+  fbInit();
+  const code = genCode();
+  roomCode = code; myIdx = 0; isHost = true; onlineMode = true; numP = _crNumP;
+  await db.ref(`rooms/${code}`).set({ numP:_crNumP, players:{0:name}, state:null });
+  setupPresence(code, 0);
+  showOnly('screen-wait');
+  document.getElementById('wait-code-text').textContent = code;
+  document.getElementById('wait-crown').style.display = 'inline';
+  document.getElementById('wait-ready').style.display = 'none';
+  document.getElementById('wait-start').style.display = 'inline-block';
+  listenWait(code);
+}
+
+async function joinRoom() {
+  const code = (document.getElementById('jn-code').value||'').trim().toUpperCase();
+  const name = document.getElementById('jn-name').value.trim() || '玩家';
+  if (code.length < 4) { alert('請輸入正確房號'); return; }
+  fbInit();
+  const snap = await db.ref(`rooms/${code}`).once('value');
+  const room = snap.val();
+  if (!room)         { alert('找不到房間，請確認房號'); return; }
+  if (room.state)    { alert('遊戲已開始，無法加入'); return; }
+  const taken = Object.keys(room.players||{}).map(Number);
+  let slot = 0; while (taken.includes(slot)) slot++;
+  if (slot >= room.numP) { alert('房間已滿'); return; }
+  roomCode = code; myIdx = slot; isHost = false; onlineMode = true; numP = room.numP;
+  await db.ref(`rooms/${code}/players/${slot}`).set(name);
+  setupPresence(code, slot);
+  showOnly('screen-wait');
+  document.getElementById('wait-code-text').textContent = code;
+  document.getElementById('wait-crown').style.display = 'none';
+  document.getElementById('wait-ready').style.display = 'inline-block';
+  document.getElementById('wait-start').style.display = 'none';
+  listenWait(code);
+}
+
+// ── Wait room listener ────────────────────────────────────────────────────
+function listenWait(code) {
+  db.ref(`rooms/${code}`).on('value', snap => {
+    const room = snap.val(); if (!room) return;
+    if (room.state) {
+      db.ref(`rooms/${code}`).off();
+      applyRemoteState(room.state);
+      showOnly('screen-game');
+      G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+      document.body.classList.add('intro-running');
+      render();
+      runStartCeremony(()=>showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{}));
+      _knownDisc = new Set();
+      listenGame(code);
+      listenCursor(code);
+      listenPresence(code);
+      return;
+    }
+    const players = room.players||{}, n = room.numP;
+    const ready = room.ready||{};
+    // Build player list with ready indicators
+    let html='';
+    for (let i=0;i<n;i++) {
+      const nm=players[i];
+      if (nm) {
+        const isPlayerHost = (i===0);
+        const isReady = isPlayerHost || ready[i];
+        const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
+        const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
+        html+=`<div class="wait-slot filled ${isPlayerHost?'host':''}">${hostCrown}${PC_NAME[i]} ${nm}${badge}</div>`;
+      } else {
+        html+=`<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
+      }
+    }
+    document.getElementById('wait-list').innerHTML = html;
+    // Update ready button label for non-host
+    if (!isHost) {
+      const btn = document.getElementById('wait-ready');
+      if (ready[myIdx]) {
+        btn.textContent = '❌ 取消準備';
+        btn.style.opacity = '0.95';
+      } else {
+        btn.textContent = '✋ 準備';
+        btn.style.opacity = '1';
+      }
+    }
+    // Enable start: host only, all joined non-host players must be ready
+    const joinedNonHost = Object.keys(players).map(Number).filter(i=>i!==0);
+    const allReady = joinedNonHost.length > 0 && joinedNonHost.every(i=>ready[i]===true);
+    if (isHost) document.getElementById('wait-start').disabled = !allReady;
+  });
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(roomCode).then(()=>{
+    const icon = document.getElementById('wait-copy-icon');
+    icon.setAttribute('stroke','#55ff99');
+    setTimeout(()=>{ icon.setAttribute('stroke','white'); }, 1500);
+    // Show "已複製" label next to the code box
+    let lbl = document.getElementById('copy-lbl');
+    if (!lbl) {
+      lbl = document.createElement('div');
+      lbl.id = 'copy-lbl';
+      lbl.style.cssText = 'font-size:.75em;color:#55ff99;letter-spacing:1px;margin-top:6px;transition:opacity .4s';
+      document.getElementById('wait-code').insertAdjacentElement('afterend', lbl);
+    }
+    lbl.textContent = '✅ 已複製！';
+    lbl.style.opacity = '1';
+    clearTimeout(lbl._t);
+    lbl._t = setTimeout(()=>{ lbl.style.opacity='0'; }, 1500);
+  }).catch(()=>{
+    prompt('複製此房號：', roomCode);
+  });
+}
+
+function toggleReady() {
+  if (isHost) return;
+  db.ref(`rooms/${roomCode}/ready/${myIdx}`).once('value', snap => {
+    const isReady = snap.val() === true;
+    if (isReady) {
+      db.ref(`rooms/${roomCode}/ready/${myIdx}`).set(false);
+    } else {
+      db.ref(`rooms/${roomCode}/ready/${myIdx}`).set(true);
+    }
+  });
+}
+const PC_NAME = ['🟠','🔵','🟢','🟣'];
+
+function hostStart() {
+  if (!isHost) return;
+  db.ref(`rooms/${roomCode}/players`).once('value', snap => {
+    const players = snap.val()||{};
+    // Only use actually joined players, in slot order
+    const joined = Object.keys(players).map(Number).sort((a,b)=>a-b);
+    const nameList = joined.map(i=>players[i]||`玩家${i+1}`);
+    numP = nameList.length;
+    startGameOnline(nameList);
+  });
+}
+
+// ── Game state sync ────────────────────────────────────────────────────────
+function pushG() {
+  if (!onlineMode || !db || !roomCode) return;
+  const serial = {
+    numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
+    lastStarter:G.lastStarter, over:G.over,
+    players: JSON.parse(JSON.stringify(G.players)),
+    bank: {...G.bank},
+    decksJson: JSON.stringify(G.decks),
+    boardJson:  JSON.stringify(G.board),
+    missions: G.missions.map(m=>({
+      missionIdx: MISSION_DB.findIndex(d=>d.name===m.name),
+      claimedBy: m.claimedBy ?? null
+    })),
+  };
+  if (G.winners) serial.winnerIndices = G.winners.map(w=>G.players.indexOf(w));
+  db.ref(`rooms/${roomCode}/state`).set(serial);
+}
+
+// ── Opponent cursor broadcast ─────────────────────────────────────────────
+function pushCursor(data) {
+  if (!onlineMode || !db || !roomCode || myIdx < 0) return;
+  db.ref(`rooms/${roomCode}/cursor/${myIdx}`).set(data);
+}
+
+function hoverCard(tier, slot) {
+  if (!onlineMode) return;
+  clearTimeout(_hoverThrottle);
+  _hoverThrottle = setTimeout(() => {
+    pushCursor({ pending: {...G.ui.pending}, hover: tier != null ? {tier, slot} : null });
+  }, 80);
+}
+
+function listenCursor(code) {
+  db.ref(`rooms/${code}/cursor`).on('value', snap => {
+    _opponentCursors = snap.val() || {};
+    applyOpponentCursors();
+  });
+}
+
+function applyOpponentCursors() {
+  if (!onlineMode) return;
+  // Clear old effects
+  document.querySelectorAll('.opp-hover').forEach(el => el.classList.remove('opp-hover'));
+  document.querySelectorAll('.opp-pick-badge').forEach(el => el.remove());
+  Object.entries(_opponentCursors).forEach(([idx, cursor]) => {
+    if (!cursor || Number(idx) === myIdx) return;
+    const pl = G.players ? G.players[Number(idx)] : null;
+    if (!pl) return;
+    // Pending gem badges on bank rows
+    if (cursor.pending) {
+      CI.forEach(col => {
+        const n = cursor.pending[col] || 0;
+        if (n > 0) {
+          const row = document.querySelector(`.bank-row[data-col="${col}"]`);
+          if (row) {
+            const badge = document.createElement('span');
+            badge.className = 'opp-pick-badge';
+            badge.textContent = `+${n}`;
+            badge.style.color = pl.color;
+            badge.style.background = pl.color + '28';
+            row.appendChild(badge);
+          }
+        }
+      });
+    }
+    // Card hover highlight — only show when it's that player's turn
+    if (cursor.hover != null && Number(idx) === G.cur) {
+      const { tier, slot } = cursor.hover;
+      const card = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"]`);
+      if (card) card.classList.add('opp-hover');
+    }
+  });
+}
+
+function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values(v); }
+
+function applyRemoteState(data) {
+  const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  const prevCur = typeof G.cur==='number' ? G.cur : -1;
+  // Firebase can return objects instead of arrays, and empty arrays as null — normalise everything
+  const players = toArr(data.players).map((p,idx)=>{
+    if (p.disconnected) _knownDisc.add(idx);
+    return {
+      ...p,
+      cards:    toArr(p.cards),
+      reserved: toArr(p.reserved),
+      gems:     p.gems    || {w:0,u:0,g:0,r:0,k:0,gold:0},
+      bonuses:  p.bonuses || {w:0,u:0,g:0,r:0,k:0},
+    };
+  });
+  const missions = toArr(data.missions).map(m=>({
+    ...MISSION_DB[m.missionIdx],
+    claimedBy: m.claimedBy ?? null,
+  }));
+  G = {
+    numP:data.numP, cur:data.cur, turnCount:data.turnCount||0, lastRound:data.lastRound,
+    lastStarter:data.lastStarter, over:data.over,
+    players, bank:data.bank,
+    decks: JSON.parse(data.decksJson||'{"1":[],"2":[],"3":[]}'),
+    board:  JSON.parse(data.boardJson||'{"1":[null,null,null,null],"2":[null,null,null,null],"3":[null,null,null,null]}'),
+    missions,
+  };
+  if (data.winnerIndices) G.winners = toArr(data.winnerIndices).map(i=>G.players[i]);
+  G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
+}
+
+function listenGame(code) {
+  db.ref(`rooms/${code}/state`).on('value', snap => {
+    const data = snap.val(); if (!data) return;
+    const prevCur = typeof G.cur==='number' ? G.cur : -1;
+    const wasOver = G.over;
+    applyRemoteState(data);
+    render();
+    if (G.over && !wasOver) { stopTimer(); showOverMod(); return; }
+    if (G.cur !== prevCur) {
+      stopTimer();
+      showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
+    }
+  });
+}
+
+// ── Presence / Disconnect ────────────────────────────────────────────────
+let _knownDisc = new Set();
+
+function setupPresence(code, idx) {
+  const ref = db.ref(`rooms/${code}/presence/${idx}`);
+  ref.set(true);
+  ref.onDisconnect().set(false);
+  window.addEventListener('beforeunload', () => { ref.set(false); });
+}
+
+function listenPresence(code) {
+  db.ref(`rooms/${code}/presence`).on('value', snap => {
+    if (!G || !G.players || G.over) return;
+    const presence = snap.val() || {};
+    G.players.forEach((pl, idx) => {
+      if (idx === myIdx) return;
+      if (presence[idx] === false && !_knownDisc.has(idx)) {
+        _knownDisc.add(idx);
+        G.players[idx].disconnected = true;
+        showDisconnectNotif(pl.name);
+        handleDisconnect(idx);
+      }
+    });
+  });
+}
+
+function isLeader() {
+  const idx = G.players.findIndex(p => !p.disconnected);
+  return myIdx === idx;
+}
+
+function handleDisconnect(discIdx) {
+  if (!G || G.over) return;
+  G.players[discIdx].disconnected = true;
+  const active = G.players.filter(p => !p.disconnected);
+
+  if (active.length <= 1) {
+    // Only one player left — instant win
+    G.over = true;
+    G.winners = active.length === 1 ? [active[0]] : [];
+    if (isLeader()) { stopTimer(); pushG(); showOverMod(); }
+    return;
+  }
+
+  // Multiple players remain — if it was disconnected player's turn, skip
+  if (G.cur === discIdx) {
+    let next = (discIdx + 1) % G.numP;
+    while (G.players[next] && G.players[next].disconnected) next = (next + 1) % G.numP;
+    G.cur = next;
+    G.turnCount = (G.turnCount || 0) + 1;
+    G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+    stopTimer();
+    if (isLeader()) {
+      pushG();
+      showTurnNotification(G.cur, G.cur === myIdx ? startTimer : startTimerDisplay);
+    }
+  } else {
+    // Not their turn, just sync the disconnected flag
+    if (isLeader()) { pushG(); render(); }
+  }
+}
+
+function showDisconnectNotif(name) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(20,10,10,.92);border:2px solid #ff5533;border-radius:14px;
+    padding:20px 32px;font-size:1.1em;font-weight:bold;color:#ff8866;
+    z-index:9999;text-align:center;pointer-events:none;
+    animation:fadeIn .3s ease`;
+  el.innerHTML = `⚠ ${name} 已中離`;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .5s'; setTimeout(()=>el.remove(),500); }, 3000);
+}
+
+// ── Constants ────────────────────────────────────────────────────────────
+const CI  = ['w','u','g','r','k'];
+const CN  = {w:'白',u:'藍',g:'綠',r:'紅',k:'紫',gold:'金'};
+const GCC = {w:'gc-w',u:'gc-u',g:'gc-g',r:'gc-r',k:'gc-k',gold:'gc-gold'};
+const GEM_FILL = {w:'#c8ecff',u:'#3a7fff',g:'#22cc66',r:'#ff2244',k:'#8d4dff'};
+const GEM_NAME = {w:'鑽石',u:'藍寶石',g:'綠寶石',r:'紅寶石',k:'紫水晶'};
+function gemSVG(col, size=18) {
+  const s=size, a=`display:inline-block;vertical-align:middle;flex-shrink:0`;
+  if(col==='w') // 鑽石 — 菱形稜角，半透明
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <polygon points="12,1 21,9 12,23 3,9" fill="#d8f4ff" fill-opacity="0.82"/>
+      <polygon points="12,1 21,9 12,9" fill="rgba(255,255,255,0.62)"/>
+      <polygon points="3,9 12,9 12,23" fill="rgba(180,230,255,0.22)"/>
+      <polygon points="21,9 12,9 12,23" fill="rgba(140,210,255,0.14)"/>
+      <line x1="3" y1="9" x2="21" y2="9" stroke="rgba(255,255,255,0.78)" stroke-width="1"/>
+      <line x1="12" y1="1" x2="3" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
+      <line x1="12" y1="1" x2="21" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
+    </svg>`;
+  if(col==='k') // 紫水晶 — 三角形切面
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <polygon points="12,2 22,21 2,21" fill="#8d4dff"/>
+      <polygon points="12,2 12,21 2,21" fill="rgba(255,255,255,0.18)"/>
+      <polygon points="12,2 22,21 12,21" fill="rgba(36,6,84,0.26)"/>
+      <polygon points="7,21 12,2 17,21" fill="rgba(230,205,255,0.22)"/>
+      <polygon points="12,2 22,21 2,21" fill="none" stroke="rgba(238,220,255,0.46)" stroke-width="0.8"/>
+      <line x1="12" y1="2" x2="12" y2="21" stroke="rgba(255,255,255,0.35)" stroke-width="0.7"/>
+    </svg>`;
+  if(col==='g') // 綠寶石 — 橢圓形
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <ellipse cx="12" cy="12" rx="8.5" ry="10.5" fill="#22cc66"/>
+      <ellipse cx="11" cy="8" rx="4" ry="2.5" fill="rgba(255,255,255,0.32)" transform="rotate(-12,11,8)"/>
+      <ellipse cx="12" cy="12" rx="8.5" ry="10.5" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.8"/>
+    </svg>`;
+  if(col==='r') // 紅寶石 — 六角形
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <polygon points="12,2 20,7 20,17 12,22 4,17 4,7" fill="#ff2244"/>
+      <polygon points="12,2 20,7 12,10 4,7" fill="rgba(255,255,255,0.26)"/>
+      <polygon points="12,2 20,7 20,17 12,22 4,17 4,7" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+    </svg>`;
+  if(col==='u') // 藍寶石 — 正方形
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <rect x="3" y="3" width="18" height="18" rx="2.5" fill="#3a7fff"/>
+      <polygon points="3,3 21,3 17,8 7,8" fill="rgba(255,255,255,0.28)"/>
+      <rect x="3" y="3" width="18" height="18" rx="2.5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
+    </svg>`;
+  if(col==='gold') // 金幣 — 圓形硬幣
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+      <circle cx="12" cy="12" r="10.5" fill="#a86800"/>
+      <circle cx="12" cy="12" r="9.5" fill="#ffcc22"/>
+      <ellipse cx="11" cy="8.5" rx="4" ry="2.2" fill="rgba(255,255,255,0.42)"/>
+      <circle cx="12" cy="12" r="5.5" fill="none" stroke="rgba(160,100,0,0.4)" stroke-width="0.9"/>
+      <circle cx="12" cy="12" r="10.5" fill="none" stroke="rgba(160,100,0,0.35)" stroke-width="0.6"/>
+    </svg>`;
+  const fill=GEM_FILL[col]||'#aaa';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+    <polygon points="12,2 22,9 12,22 2,9" fill="${fill}"/>
+  </svg>`;
+}
+const CHC = {w:'ch-w',u:'ch-u',g:'ch-g',r:'ch-r',k:'ch-k'};
+const PC  = ['#ff9955','#55aaff','#55cc88','#cc88ff'];
+const GEMCNT = {2:4, 3:5, 4:7};
+
+// ── Card data [tier, pts, bonusIdx, W,U,G,R,K] ───────────────────────────
+const RAW = [
+  [1,0,0, 0,1,1,1,1],[1,0,0, 0,2,0,2,0],[1,0,0, 0,0,2,1,1],[1,0,0, 0,0,3,0,0],
+  [1,0,0, 1,0,1,0,2],[1,0,0, 2,0,0,0,2],[1,0,0, 0,0,2,0,2],[1,1,0, 0,0,0,0,4],
+  [1,0,1, 1,0,1,1,1],[1,0,1, 0,0,2,1,0],[1,0,1, 2,0,2,0,0],[1,0,1, 0,0,0,0,3],
+  [1,0,1, 2,0,0,2,0],[1,0,1, 1,0,0,1,2],[1,0,1, 0,0,1,2,2],[1,1,1, 0,0,4,0,0],
+  [1,0,2, 1,1,0,1,1],[1,0,2, 0,0,0,2,1],[1,0,2, 0,2,0,0,2],[1,0,2, 0,3,0,0,0],
+  [1,0,2, 0,2,0,2,0],[1,0,2, 0,1,0,2,2],[1,0,2, 2,2,0,0,1],[1,1,2, 0,0,0,4,0],
+  [1,0,3, 1,1,1,0,1],[1,0,3, 0,1,0,0,2],[1,0,3, 2,2,0,0,0],[1,0,3, 3,0,0,0,0],
+  [1,0,3, 0,0,1,0,3],[1,0,3, 1,0,2,0,2],[1,0,3, 0,2,1,0,2],[1,1,3, 0,4,0,0,0],
+  [1,0,4, 1,1,1,1,0],[1,0,4, 2,1,0,0,0],[1,0,4, 0,0,2,1,0],[1,0,4, 0,0,0,3,0],
+  [1,0,4, 1,2,0,2,0],[1,0,4, 2,0,1,2,0],[1,0,4, 2,0,0,2,0],[1,1,4, 4,0,0,0,0],
+  [2,1,0, 0,2,2,0,3],[2,1,0, 0,3,0,2,3],[2,2,0, 0,1,4,2,0],[2,2,0, 2,0,0,4,1],
+  [2,2,0, 0,0,5,0,0],[2,3,0, 0,0,6,0,0],
+  [2,1,1, 2,0,0,2,3],[2,1,1, 3,0,2,3,0],[2,2,1, 0,0,3,0,5],[2,2,1, 5,0,0,0,3],
+  [2,2,1, 5,0,0,0,0],[2,3,1, 0,0,6,0,0],
+  [2,1,2, 3,2,0,0,2],[2,1,2, 0,3,0,3,2],[2,2,2, 4,2,0,0,1],[2,2,2, 0,5,0,0,0],
+  [2,2,2, 0,2,0,5,0],[2,3,2, 0,0,0,6,0],
+  [2,1,3, 2,0,2,0,3],[2,1,3, 0,2,3,0,2],[2,2,3, 1,0,5,0,2],[2,2,3, 3,0,0,0,5],
+  [2,2,3, 0,5,0,0,0],[2,3,3, 0,6,0,0,0],
+  [2,1,4, 2,3,0,0,2],[2,1,4, 3,0,3,0,2],[2,2,4, 0,0,1,5,2],[2,2,4, 0,0,5,0,3],
+  [2,2,4, 0,0,0,5,0],[2,3,4, 6,0,0,0,0],
+  [3,3,0, 3,3,3,5,0],[3,4,0, 0,0,3,6,3],[3,4,0, 7,3,0,0,0],[3,5,0, 3,0,0,7,3],
+  [3,3,1, 3,5,3,0,3],[3,4,1, 6,3,0,0,3],[3,4,1, 0,7,0,3,0],[3,5,1, 0,7,3,0,3],
+  [3,3,2, 3,3,0,3,5],[3,4,2, 3,6,3,0,0],[3,4,2, 3,0,7,0,0],[3,5,2, 3,0,7,0,3],
+  [3,3,3, 0,3,3,3,5],[3,4,3, 3,0,0,3,6],[3,4,3, 0,0,3,7,0],[3,5,3, 3,3,0,7,0],
+  [3,3,4, 5,3,3,0,3],[3,4,4, 3,3,6,0,0],[3,4,4, 0,3,0,0,7],[3,5,4, 0,3,3,0,7],
+];
+
+// ── Mission cards ────────────────────────────────────────────────────────
+// check(player) → true if condition met; claimedBy = player index or null
+const MISSION_DB = [
+  {name:'白塔徵召',   desc:'王室徵求白色寶石卡 3 張', pts:2, req:{w:3}, check:p=>(p.bonuses.w||0)>=3},
+  {name:'藍港契約',   desc:'王室徵求藍色寶石卡 3 張', pts:2, req:{u:3}, check:p=>(p.bonuses.u||0)>=3},
+  {name:'翠庭供貨',   desc:'王室徵求綠色寶石卡 3 張', pts:2, req:{g:3}, check:p=>(p.bonuses.g||0)>=3},
+  {name:'赤焰印令',   desc:'王室徵求紅色寶石卡 3 張', pts:2, req:{r:3}, check:p=>(p.bonuses.r||0)>=3},
+  {name:'紫晶密令',   desc:'王室徵求紫色寶石卡 3 張', pts:2, req:{k:3}, check:p=>(p.bonuses.k||0)>=3},
+  {name:'白藍雙璧',   desc:'白色與藍色加成各 2 張', pts:2, req:{w:2,u:2}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.u||0)>=2},
+  {name:'藍綠海路',   desc:'藍色與綠色加成各 2 張', pts:2, req:{u:2,g:2}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.g||0)>=2},
+  {name:'綠紅邊境',   desc:'綠色與紅色加成各 2 張', pts:2, req:{g:2,r:2}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.r||0)>=2},
+  {name:'紅紫軍需',   desc:'紅色與紫色加成各 2 張', pts:2, req:{r:2,k:2}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.k||0)>=2},
+  {name:'紫白密約',   desc:'紫色與白色加成各 2 張', pts:2, req:{k:2,w:2}, check:p=>(p.bonuses.k||0)>=2&&(p.bonuses.w||0)>=2},
+  {name:'鑽翠珠冠',   desc:'白色 2 張，綠色 1 張，藍色 1 張', pts:2, req:{w:2,g:1,u:1}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.g||0)>=1&&(p.bonuses.u||0)>=1},
+  {name:'海焰徽章',   desc:'藍色 2 張，紅色 1 張，紫色 1 張', pts:2, req:{u:2,r:1,k:1}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.r||0)>=1&&(p.bonuses.k||0)>=1},
+  {name:'翡翠王令',   desc:'綠色 2 張，白色 1 張，紅色 1 張', pts:2, req:{g:2,w:1,r:1}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.w||0)>=1&&(p.bonuses.r||0)>=1},
+  {name:'赤紫護符',   desc:'紅色 2 張，藍色 1 張，紫色 1 張', pts:2, req:{r:2,u:1,k:1}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.u||0)>=1&&(p.bonuses.k||0)>=1},
+  {name:'五色通緝',   desc:'五種顏色加成各至少 1 張', pts:3, req:{w:1,u:1,g:1,r:1,k:1}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=1)},
+  {name:'王室寶庫',   desc:'五種顏色加成各至少 2 張', pts:4, req:{w:2,u:2,g:2,r:2,k:2}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=2)},
+  {name:'純色行會',   desc:'任一顏色加成達到 4 張', pts:3, mark:'任一色×4', check:p=>CI.some(c=>(p.bonuses[c]||0)>=4)},
+  {name:'商隊總管',   desc:'合計擁有 8 張寶石卡', pts:3, mark:'寶石卡×8', check:p=>p.cards.length>=8},
+  {name:'上城資助',   desc:'擁有 3 張中級或高級寶石卡', pts:3, mark:'Ⅱ/Ⅲ×3', check:p=>p.cards.filter(c=>c.tier>=2).length>=3},
+  {name:'貴族獻禮',   desc:'聲望點累積至少 6 分', pts:2, mark:'聲望≥6', check:p=>p.points>=6},
+];
+
+// ── Parse data ───────────────────────────────────────────────────────────
+let _cid = 0;
+const ALL_CARDS  = RAW.map(r => ({id:_cid++, tier:r[0], pts:r[1], bonus:CI[r[2]], cost:{w:r[3],u:r[4],g:r[5],r:r[6],k:r[7]}}));
+const CARD_ART_VERSION = 'gem-90-v5-bar-aligned';
+const GEM_CARD_ART = {};
+const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
+CI.forEach(c => {
+  GEM_CARD_ART[c] = Array.from({length:18}, (_,i)=>`${GEM_FOLDER[c]}/gem-${c}-${String(i+1).padStart(2,'0')}.jpg`);
+});
+const CARD_ART_PATTERN = ['outdoor','indoor','character'];
+const CARD_ART_POOLS = {
+  1: {
+    outdoor: [
+      'tier1-01.jpg','tier1-02.jpg','tier1-05.jpg','tier1-06.jpg','tier1-07.jpg',
+      'tier1-08.jpg','tier1-09.jpg','tier1-15.jpg','tier1-16.jpg','tier1-17.jpg',
+      'tier1-18.jpg','tier1-19.jpg','tier1-21.jpg','tier1-22.jpg'
+    ],
+    indoor: [
+      'tier1-26.jpg','tier1-27.jpg','tier1-28.jpg','tier1-29.jpg','tier1-30.jpg',
+      'tier1-31.jpg','tier1-32.jpg','tier1-34.jpg','tier1-35.jpg','tier1-36.jpg',
+      'tier1-38.jpg','tier1-39.jpg','tier1-40.jpg'
+    ],
+    character: [
+      'tier1-03.jpg','tier1-04.jpg','tier1-10.jpg','tier1-11.jpg','tier1-12.jpg',
+      'tier1-13.jpg','tier1-14.jpg','tier1-20.jpg','tier1-23.jpg','tier1-24.jpg',
+      'tier1-25.jpg','tier1-33.jpg','tier1-37.jpg'
+    ]
+  },
+  2: {
+    outdoor: [
+      'tier2-01.jpg','tier2-02.jpg','tier2-03.jpg','tier2-04.jpg','tier2-05.jpg',
+      'tier2-08.jpg','tier2-10.jpg','tier2-11.jpg','tier2-12.jpg','tier2-15.jpg'
+    ],
+    indoor: [
+      'tier2-16.jpg','tier2-18.jpg','tier2-19.jpg','tier2-20.jpg','tier2-24.jpg',
+      'tier2-25.jpg','tier2-26.jpg','tier2-27.jpg','tier2-28.jpg','tier2-29.jpg'
+    ],
+    character: [
+      'tier2-06.jpg','tier2-07.jpg','tier2-09.jpg','tier2-13.jpg','tier2-14.jpg',
+      'tier2-17.jpg','tier2-21.jpg','tier2-22.jpg','tier2-23.jpg','tier2-30.jpg'
+    ]
+  },
+  3: {
+    outdoor: [
+      'tier3-02.jpg','tier3-04.jpg','tier3-06.jpg','tier3-07.jpg','tier3-08.jpg',
+      'tier3-09.jpg','tier3-10.jpg'
+    ],
+    indoor: [
+      'tier3-11.jpg','tier3-12.jpg','tier3-13.jpg','tier3-15.jpg','tier3-16.jpg',
+      'tier3-17.jpg','tier3-20.jpg'
+    ],
+    character: [
+      'tier3-01.jpg','tier3-03.jpg','tier3-05.jpg','tier3-14.jpg','tier3-18.jpg',
+      'tier3-19.jpg'
+    ]
+  }
+};
+const CARD_ART_INDEX = {};
+const _artCounter = {1:0, 2:0, 3:0};
+const _artStyleCounter = {
+  1:{outdoor:0, indoor:0, character:0},
+  2:{outdoor:0, indoor:0, character:0},
+  3:{outdoor:0, indoor:0, character:0}
+};
+ALL_CARDS.forEach(card => {
+  const key = cardEffectKey(card);
+  if (!CARD_ART_INDEX[key]) {
+    const style = CARD_ART_PATTERN[_artCounter[card.tier] % CARD_ART_PATTERN.length];
+    const pool = CARD_ART_POOLS[card.tier][style];
+    CARD_ART_INDEX[key] = pool[_artStyleCounter[card.tier][style] % pool.length];
+    _artCounter[card.tier]++;
+    _artStyleCounter[card.tier][style]++;
+  }
+});
+const CARD_ART_BY_ID = {};
+const _gemArtCounter = {w:0,u:0,g:0,r:0,k:0};
+ALL_CARDS.forEach(card => {
+  const pool = GEM_CARD_ART[card.bonus] || [];
+  CARD_ART_BY_ID[card.id] = pool[_gemArtCounter[card.bonus]++] || CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
+});
+
+// ── Game State ───────────────────────────────────────────────────────────
+let G = {};
+
+function updateDeviceLayout() {
+  const mobile = window.matchMedia('(max-width:760px), (pointer:coarse) and (max-width:900px)').matches;
+  document.documentElement.dataset.layout = mobile ? 'mobile' : 'desktop';
+  document.body.classList.toggle('is-mobile', mobile);
+  document.body.classList.toggle('is-desktop', !mobile);
+}
+updateDeviceLayout();
+window.addEventListener('resize', updateDeviceLayout);
+window.addEventListener('orientationchange', updateDeviceLayout);
+
+// ── Setup ────────────────────────────────────────────────────────────────
+let numP = 2;
+function setN(n) {
+  numP = n;
+  document.querySelectorAll('.btn-num').forEach((b,i)=>b.classList.toggle('active',i===n-2));
+  buildInputs();
+}
+function buildInputs() {
+  const el = document.getElementById('pinputs');
+  el.innerHTML = '';
+  ['玩家1','玩家2','玩家3','玩家4'].slice(0,numP).forEach((def,i) => {
+    el.innerHTML += `<div class="p-row">
+      <div class="swatch" style="background:${PC[i]}"></div>
+      <input id="pn${i}" value="${def}" maxlength="10" type="text">
+    </div>`;
+  });
+}
+buildInputs();
+
+function shuffle(a) {
+  for (let i=a.length-1;i>0;i--) { const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function _buildG(names) {
+  const decks={1:[],2:[],3:[]};
+  ALL_CARDS.forEach(c=>decks[c.tier].push({...c,cost:{...c.cost}}));
+  [1,2,3].forEach(t=>shuffle(decks[t]));
+  const board={};
+  [1,2,3].forEach(t=>{board[t]=[decks[t].pop(),decks[t].pop(),decks[t].pop(),decks[t].pop()];});
+  const missions=shuffle([...MISSION_DB]).slice(0,3).map(m=>({...m,claimedBy:null}));
+  const gc=GEMCNT[numP];
+  const bank={w:gc,u:gc,g:gc,r:gc,k:gc,gold:5};
+  return {
+    numP, players:names.map((name,i)=>({
+      name, color:PC[i],
+      gems:{w:0,u:0,g:0,r:0,k:0,gold:0},
+      bonuses:{w:0,u:0,g:0,r:0,k:0},
+      cards:[], reserved:[], points:0,
+    })),
+    bank, decks, board, missions,
+    cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false,
+    ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
+  };
+}
+
+function startGame() {
+  // Local mode only
+  const names = Array.from({length:numP},(_,i)=>document.getElementById(`pn${i}`)?.value.trim()||`玩家${i+1}`);
+  G = _buildG(names);
+  showOnly('screen-game');
+  document.body.classList.add('intro-running');
+  render();
+  runStartCeremony(()=>showTurnNotification(0, startTimer));
+}
+
+function startGameOnline(names) {
+  // Host only — build G and push to Firebase
+  G = _buildG(names);
+  _knownDisc = new Set();
+  pushG(); // Triggers listenWait → game starts for all clients
+  listenPresence(roomCode);
+}
+
+// ── Core helpers ─────────────────────────────────────────────────────────
+function gsum(gems) { return CI.reduce((s,c)=>s+(gems[c]||0),0)+(gems.gold||0); }
+
+function effCost(pl,card) {
+  const e={};
+  CI.forEach(c=>e[c]=Math.max(0,(card.cost[c]||0)-(pl.bonuses[c]||0)));
+  return e;
+}
+
+function canBuy(pl,card) {
+  const e=effCost(pl,card);
+  let need=0;
+  CI.forEach(c=>need+=Math.max(0,(e[c]||0)-(pl.gems[c]||0)));
+  return need<=(pl.gems.gold||0);
+}
+
+// ── Card animation ───────────────────────────────────────────────────────
+function cardCostHtml(card) {
+  return CI.filter(c=>(card.cost[c]||0)>0).map(c=>
+    `<div class="cost-ln">${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`
+  ).join('');
+}
+
+function flyingCardHtml(card) {
+  return `
+    <div class="card-top ${CHC[card.bonus]}" style="padding:8px 10px;min-height:44px">
+      <span class="card-pts" style="font-size:2em">${card.pts||''}</span>
+      ${gemSVG(card.bonus,26)}
+    </div>
+    <div class="card-body" style="padding:7px">
+      <div class="cost-stack">${cardCostHtml(card)}</div>
+    </div>`;
+}
+
+function deckBackStyle(tier) {
+  return {
+    3:"background:url('splendor-card-art/deck-tier3-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
+    2:"background:url('splendor-card-art/deck-tier2-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
+    1:"background:url('splendor-card-art/deck-tier1-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));"
+  }[tier] || '';
+}
+
+function preloadCardArt(card) {
+  return new Promise(resolve=>{
+    const name = card ? cardArtName(card) : '';
+    if (!name) { resolve(); return; }
+    const img = new Image();
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    img.onload = finish;
+    img.onerror = finish;
+    img.src = `splendor-card-art/${name}`;
+    if (img.complete) finish();
+    setTimeout(finish, 1400);
+  });
+}
+
+function completeRefillThen(refill, nextStep) {
+  const artReady = refill && refill.newCard ? preloadCardArt(refill.newCard) : Promise.resolve();
+  animateRefillFromDeck(refill, ()=>{
+    artReady.then(()=>{
+      if (refill && refill.newCard) render();
+      setTimeout(nextStep, refill && refill.newCard ? 500 : 0);
+    });
+  });
+}
+
+function animateCardAcquired(card, playerIdx, label, callback) {
+  playClick('card');
+  const pl = G.players[playerIdx];
+  const src = document.querySelector(`.dev-card[data-card-id="${card.id}"]`);
+  const sr = src ? src.getBoundingClientRect() : null;
+  const W = sr ? sr.width : 130, H = sr ? sr.height : 175;
+  if (src) src.style.visibility = 'hidden';
+
+  const dim = document.createElement('div');
+  dim.style.cssText='position:fixed;inset:0;background:rgba(0,0,15,.42);z-index:500;pointer-events:none;transition:opacity .35s;';
+  document.body.appendChild(dim);
+
+  const lbl = document.createElement('div');
+  lbl.textContent = label;
+  lbl.style.cssText=`position:fixed;top:${sr?Math.max(18,sr.top-42)+'px':`calc(50% - ${H/2+44}px)`};left:${sr?sr.left+W/2+'px':'50%'};
+    transform:translateX(-50%);color:${pl.color};font-size:1.2em;font-weight:900;z-index:522;pointer-events:none;
+    text-shadow:0 0 20px ${pl.color},0 1px 4px rgba(0,0,0,.9);white-space:nowrap;transition:opacity .35s,left .6s,top .6s;`;
+  document.body.appendChild(lbl);
+
+  const fly = document.createElement('div');
+  fly.className=`dev-card t${card.tier} ${cardArtClass(card)}`;
+  fly.innerHTML=flyingCardHtml(card);
+  const sx=sr ? sr.left : window.innerWidth/2-W/2;
+  const sy=sr ? sr.top : window.innerHeight/2-H/2+20;
+  fly.style.cssText=`position:fixed;width:${W}px;height:${H}px;min-height:${H}px;left:${sx}px;top:${sy}px;
+    z-index:521;pointer-events:none;box-shadow:0 0 42px ${pl.color},0 0 18px rgba(255,255,255,.28);
+    transition:left .68s cubic-bezier(.4,0,.2,1),top .68s cubic-bezier(.4,0,.2,1),
+               transform .68s,opacity .68s;--card-bar-h:44px;${cardBgStyle(card)}`;
+  document.body.appendChild(fly);
+
+  setTimeout(()=>{
+    const tgt = document.querySelector(`.pi-card[data-player="${playerIdx}"]`);
+    const r = tgt ? tgt.getBoundingClientRect() : null;
+    if (r) {
+      fly.style.left=(r.left+r.width*.68-W*.08)+'px';
+      fly.style.top=(r.top+r.height*.28-H*.08)+'px';
+      fly.style.transform='scale(.16) rotate(7deg)';
+      lbl.style.left=(r.left+r.width*.58)+'px';
+      lbl.style.top=Math.max(10,r.top-28)+'px';
+    }
+    fly.style.opacity='0';
+    lbl.style.opacity='0';
+    dim.style.opacity='0';
+    setTimeout(()=>{ dim.remove(); lbl.remove(); fly.remove(); callback(); }, 720);
+  }, 180);
+}
+
+function animateRefillFromDeck(refill, callback) {
+  if (!refill || !refill.newCard) { callback(); return; }
+  playClick('card');
+  const deck = document.querySelector(`.deck-box[data-deck-tier="${refill.tier}"]`);
+  const target = document.querySelector(`.dev-card[data-tier="${refill.tier}"][data-slot="${refill.slot}"]`);
+  if (!deck || !target) { callback(); return; }
+  const dr=deck.getBoundingClientRect(), tr=target.getBoundingClientRect();
+  const fly=document.createElement('div');
+  fly.className='refill-card-back';
+  fly.style.cssText=`left:${dr.left+dr.width/2-tr.width/2}px;top:${dr.top+dr.height/2-tr.height/2}px;
+    width:${tr.width}px;height:${tr.height}px;transform:scale(.58) rotate(-7deg);${deckBackStyle(refill.tier)}`;
+  document.body.appendChild(fly);
+  setTimeout(()=>{
+    fly.style.left=tr.left+'px';
+    fly.style.top=tr.top+'px';
+    fly.style.transform='scale(1) rotate(0deg)';
+  }, 40);
+  setTimeout(()=>{ fly.style.opacity='0'; setTimeout(()=>{ fly.remove(); callback(); }, 160); }, 560);
+}
+
+// ── Opening ceremony ─────────────────────────────────────────────────────
+let _startCeremonyRunning = false;
+function introWait(ms) { return new Promise(resolve=>setTimeout(resolve, ms)); }
+
+function makeStartIntroOverlay() {
+  const el = document.createElement('div');
+  el.id = 'game-start-intro';
+  el.innerHTML = `<div class="intro-panel">
+    <div class="intro-stage">遊戲即將開始</div>
+    <div class="intro-count">3</div>
+    <div class="intro-status">遊戲載入中</div>
+  </div>`;
+  document.body.appendChild(el);
+  return el;
+}
+
+function setIntroText(overlay, stage, count, status) {
+  const st = overlay.querySelector('.intro-stage');
+  const ct = overlay.querySelector('.intro-count');
+  const ss = overlay.querySelector('.intro-status');
+  if (st) {
+    st.textContent = stage;
+    st.style.display = stage ? '' : 'none';
+  }
+  if (ct) {
+    ct.textContent = count;
+    ct.classList.toggle('word', String(count).length > 2);
+    ct.classList.remove('pop');
+    void ct.offsetWidth;
+    ct.classList.add('pop');
+  }
+  if (ss) {
+    ss.textContent = status;
+    ss.style.display = status ? '' : 'none';
+  }
+}
+
+function getOpeningBoardCards() {
+  const cards = [];
+  [3,2,1].forEach(t=>{
+    (G.board[t]||[]).forEach(card=>{ if (card) cards.push(card); });
+  });
+  return cards;
+}
+
+function createIntroDeckFlyer(tier, idx) {
+  const target = document.querySelector(`.deck-box[data-deck-tier="${tier}"]`);
+  const tr = target ? target.getBoundingClientRect() : null;
+  if (!tr) return null;
+  const starts = [
+    {x:-tr.width-80, y:Math.max(16, tr.top-70), r:-22},
+    {x:window.innerWidth/2-tr.width/2, y:-tr.height-90, r:8},
+    {x:window.innerWidth+80, y:Math.min(window.innerHeight-tr.height-16, tr.top+80), r:24},
+  ];
+  const s = starts[idx] || starts[0];
+  const el = document.createElement('div');
+  el.className = `intro-deck-fly intro-deck-${tier}`;
+  el.style.cssText = `left:${s.x}px;top:${s.y}px;width:${tr.width}px;height:${tr.height}px;transform:rotate(${s.r}deg) scale(.86);${deckBackStyle(tier)}`;
+  document.body.appendChild(el);
+  return {tier, el, rect:tr};
+}
+
+async function flyIntroDecks() {
+  const decks = [3,2,1].map((tier, idx)=>createIntroDeckFlyer(tier, idx)).filter(Boolean);
+  playClick('shuffle');
+  await introWait(60);
+  decks.forEach((d, idx)=>{
+    setTimeout(()=>{
+      d.el.style.left = d.rect.left + 'px';
+      d.el.style.top = d.rect.top + 'px';
+      d.el.style.transform = 'rotate(0deg) scale(1)';
+    }, idx * 90);
+  });
+  await introWait(840);
+  decks.forEach(d=>d.el.classList.add('settled'));
+  return decks;
+}
+
+function findIntroDeckRect(decks, tier) {
+  const deck = decks.find(d=>d.tier===tier);
+  if (deck) return deck.el.getBoundingClientRect();
+  const target = document.querySelector(`.deck-box[data-deck-tier="${tier}"]`);
+  return target ? target.getBoundingClientRect() : null;
+}
+
+async function dealOpeningBoardCards(decks) {
+  const flyers = [];
+  const order = [];
+  [3,2,1].forEach(t=>[0,1,2,3].forEach(slot=>order.push({tier:t, slot})));
+  order.forEach(({tier, slot}, i)=>{
+    setTimeout(()=>{
+      const card = G.board[tier] && G.board[tier][slot];
+      const target = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"]`);
+      const tr = target ? target.getBoundingClientRect() : null;
+      const dr = findIntroDeckRect(decks, tier);
+      if (!card || !tr || !dr) return;
+      const el = document.createElement('div');
+      el.className = `intro-deal-card dev-card t${tier} ${cardArtClass(card)}`;
+      const startX = dr.left + dr.width * .5 - tr.width * .5;
+      const startY = dr.top + dr.height * .5 - tr.height * .5;
+      const rot = ((slot % 2 ? 1 : -1) * (4 + tier));
+      el.style.cssText = `left:${startX}px;top:${startY}px;width:${tr.width}px;height:${tr.height}px;min-height:${tr.height}px;transform:scale(.62) rotate(${rot}deg);${deckBackStyle(tier)}`;
+      document.body.appendChild(el);
+      flyers.push(el);
+      requestAnimationFrame(()=>{
+        el.classList.add('on');
+        el.style.left = tr.left + 'px';
+        el.style.top = tr.top + 'px';
+        el.style.transform = `scale(1) rotate(${(slot-1.5)*1.2}deg)`;
+      });
+      setTimeout(()=>{
+        playClick('deal');
+        el.classList.add('face-up');
+        el.style.cssText += `--card-bar-h:44px;${cardBgStyle(card)}`;
+        el.style.backgroundSize = 'cover';
+        el.innerHTML = flyingCardHtml(card);
+      }, 240);
+    }, i * 86);
+  });
+  await introWait(order.length * 86 + 720);
+  return flyers;
+}
+
+function runStartCeremony(callback) {
+  if (_startCeremonyRunning) return;
+  _startCeremonyRunning = true;
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pace = reduced ? .78 : 1;
+  let overlay = null;
+  let deckFlyers = [];
+  let cardFlyers = [];
+
+  (async()=>{
+    overlay = makeStartIntroOverlay();
+    const artReady = Promise.all(getOpeningBoardCards().map(preloadCardArt));
+    await introWait(30);
+    overlay.classList.add('on');
+    for (const n of [3,2,1]) {
+      setIntroText(overlay, '遊戲即將開始', String(n), n === 1 ? '牌桌就緒' : '遊戲載入中');
+      playClick('count');
+      await introWait(720 * pace);
+    }
+    setIntroText(overlay, '', '遊戲開始', '');
+    await introWait(1500);
+    overlay.classList.remove('on');
+    deckFlyers = await flyIntroDecks();
+    await artReady;
+    await introWait(180 * pace);
+    cardFlyers = await dealOpeningBoardCards(deckFlyers);
+    playClick('confirm');
+    await introWait(520 * pace);
+    document.body.classList.remove('intro-running');
+    [...deckFlyers.map(d=>d.el), ...cardFlyers].forEach(el=>{ el.style.opacity = '0'; });
+    overlay.classList.remove('on');
+    await introWait(280);
+  })().catch(()=>{}).finally(()=>{
+    document.body.classList.remove('intro-running');
+    deckFlyers.forEach(d=>d.el.remove());
+    cardFlyers.forEach(el=>el.remove());
+    if (overlay) overlay.remove();
+    _startCeremonyRunning = false;
+    if (typeof callback === 'function') callback();
+  });
+}
+
+// ── Buy / Reserve ─────────────────────────────────────────────────────────
+function execBuy(card, fromRes) {
+  const pl=G.players[G.cur];
+  if (!canBuy(pl,card)) { toast('寶石不足，無法購買'); return false; }
+  const e=effCost(pl,card);
+  let gused=0;
+  CI.forEach(c=>{
+    const have=pl.gems[c]||0, need=e[c]||0;
+    if (have>=need){ pl.gems[c]=have-need; G.bank[c]+=need; }
+    else { G.bank[c]+=have; const s=need-have; pl.gems[c]=0; pl.gems.gold=(pl.gems.gold||0)-s; gused+=s; }
+  });
+  G.bank.gold+=gused;
+  pl.cards.push(card);
+  pl.bonuses[card.bonus]=(pl.bonuses[card.bonus]||0)+1;
+  pl.points+=card.pts;
+  if (fromRes){ pl.reserved=pl.reserved.filter(c=>c.id!==card.id); }
+  G.ui.acted=true; G.ui.pendCard=null;
+  closeM('m-card');
+  animateCardAcquired(card, G.cur, `${pl.name} 購得寶石卡！`, ()=>{
+    const refill = fromRes ? null : fillBoard(card);
+    completeRefillThen(refill, ()=>{ afterAct(); render(); });
+  });
+  return true;
+}
+
+function execReserve(card, tier, bi) {
+  const pl=G.players[G.cur];
+  if (pl.reserved.length>=3){ toast('最多預留3張牌'); return false; }
+  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...G.ui.pending},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks))};
+  pl.reserved.push(card);
+  if (G.bank.gold>0){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; }
+  G.ui.acted=true; G.ui.pendCard=null;
+  closeM('m-card');
+  animateCardAcquired(card, G.cur, `${pl.name} 預留寶石卡！`, ()=>{
+    const refill = tier!==null && bi!==null ? fillBoard(card) : null;
+    completeRefillThen(refill, ()=>{
+      if (gsum(pl.gems)>10){ render(); showRetMod(); }
+      else { afterAct(); render(); }
+    });
+  });
+  return true;
+}
+
+function fillBoard(card) {
+  for (const t of [1,2,3]) {
+    const idx=G.board[t].findIndex(c=>c&&c.id===card.id);
+    if (idx!==-1){
+      const newCard=G.decks[t].length>0?G.decks[t].pop():null;
+      G.board[t][idx]=newCard;
+      return {tier:t, slot:idx, newCard};
+    }
+  }
+  return null;
+}
+
+function animateGemsToPlayer(selection, playerIdx, callback) {
+  const entries=[];
+  [...CI,'gold'].forEach(col=>{
+    for(let i=0;i<(selection[col]||0);i++) entries.push(col);
+  });
+  if (!entries.length) { callback(); return; }
+  const target=document.querySelector(`.pi-card[data-player="${playerIdx}"] .pi-gems`)
+    || document.querySelector(`.pi-card[data-player="${playerIdx}"]`);
+  const tr=target ? target.getBoundingClientRect() : null;
+  const tx=tr ? tr.left+Math.max(4, Math.min(tr.width-24, 8)) : window.innerWidth*.18;
+  const ty=tr ? tr.top+Math.max(4, Math.min(tr.height-24, 6)) : window.innerHeight*.65;
+  let longest=0;
+  entries.forEach((col,i)=>{
+    const src=document.querySelector(`.bank-row[data-col="${col}"]`);
+    const sr=src ? src.getBoundingClientRect() : null;
+    const sx=sr ? sr.left+18+(i%2)*5 : window.innerWidth*.16;
+    const sy=sr ? sr.top+sr.height/2-15 : window.innerHeight*.45;
+    const el=document.createElement('div');
+    el.className='gem-fly';
+    el.innerHTML=gemSVG(col,30);
+    el.style.left=sx+'px';
+    el.style.top=sy+'px';
+    el.style.transform=`scale(1) rotate(${(i%3-1)*8}deg)`;
+    document.body.appendChild(el);
+    const delay=i*85;
+    longest=Math.max(longest, delay+680);
+    setTimeout(()=>{
+      el.style.left=(tx+(i%4)*18)+'px';
+      el.style.top=(ty+(Math.floor(i/4)%2)*14)+'px';
+      el.style.transform='scale(.42) rotate(420deg)';
+      el.style.opacity='0';
+    }, delay+30);
+    setTimeout(()=>el.remove(), delay+780);
+  });
+  setTimeout(callback, longest);
+}
+
+// ── Take gems ─────────────────────────────────────────────────────────────
+// [Change 4] Block confirmation when player takes fewer gems than possible
+function execTakeGems() {
+  if (G.ui.acted) return;
+  const p=G.ui.pending;
+  const tot=CI.reduce((s,c)=>s+(p[c]||0),0);
+  if (!tot){ toast('請先選擇寶石'); return; }
+
+  const isSame=CI.some(c=>(p[c]||0)===2);
+
+  // Must take 3 different OR 2 same — block suboptimal takes
+  if (!isSame && tot<3) {
+    const moreAvail=CI.filter(c=>(G.bank[c]||0)>0 && !(p[c]||0));
+    if (moreAvail.length>0) {
+      const canAdd=Math.min(3-tot, moreAvail.length);
+      toast(`⚠ 還可以再取 ${canAdd} 枚不同色寶石（必須取足3枚不同色，或改選2枚同色）`);
+      return; // Hard-block
+    }
+  }
+
+  const pl=G.players[G.cur];
+  const take={...p};
+  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...take},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks))};
+  G.ui.acted=true;
+  render();
+  animateGemsToPlayer(take, G.cur, ()=>{
+    CI.forEach(c=>{ pl.gems[c]=(pl.gems[c]||0)+(take[c]||0); G.bank[c]-=(take[c]||0); });
+    G.ui.pending={w:0,u:0,g:0,r:0,k:0};
+    if (gsum(pl.gems)>10){ render(); showRetMod(); }
+    else { afterAct(); render(); }
+  });
+}
+
+function afterAct() {
+  deactivateAllZones();
+  checkMissions();
+  advanceTurn();
+}
+
+// ── Mission checking ──────────────────────────────────────────────────────
+function checkMissions() {
+  const pl=G.players[G.cur];
+  G.missions.forEach(m=>{
+    if (m.claimedBy!==null) return;
+    if (m.check(pl)){
+      m.claimedBy=G.cur;
+      pl.points+=m.pts;
+      toast(`🎯 ${pl.name} 完成任務「${m.name}」！獲得 ${m.pts} 分！`);
+    }
+  });
+}
+
+function advanceTurn() {
+  const pl=G.players[G.cur];
+  if (!G.lastRound && pl.points>=15){ G.lastRound=true; G.lastStarter=G.cur; }
+  let next=(G.cur+1)%G.numP;
+  while(G.players[next]&&G.players[next].disconnected) next=(next+1)%G.numP;
+  if (G.lastRound && next===G.lastStarter){ endGame(); return; }
+  G.turnCount=(G.turnCount||0)+1;
+  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false;
+  stopTimer(); render();
+  if (onlineMode) {
+    pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
+    pushG();
+    // listenGame won't fire turn notification for us (G.cur already changed locally), so do it here
+    showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
+  } else { showTurnNotification(G.cur, startTimer); }
+}
+
+function endGame() {
+  stopTimer(); G.over=true;
+  let mx=Math.max(...G.players.map(p=>p.points));
+  let w=G.players.filter(p=>p.points===mx);
+  if (w.length>1){ const mn=Math.min(...w.map(p=>p.cards.length)); w=w.filter(p=>p.cards.length===mn); }
+  G.winners=w; render();
+  if (onlineMode) { pushG(); } // listener triggers showOverMod for all
+  else { showOverMod(); }
+}
+
+// ── Gem bank clicking ─────────────────────────────────────────────────────
+function clickBank(col) {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  if (G.ui.pendGold){ toast('已選金幣，請先確認或取消'); return; }
+  deactivateZone('g-cards');
+  const p=G.ui.pending, b=G.bank, cnt=p[col]||0;
+  const total=CI.reduce((s,c)=>s+(p[c]||0),0);
+  const has2=CI.some(c=>(p[c]||0)===2);
+  const others=CI.filter(c=>c!==col&&(p[c]||0)>0);
+
+  if (cnt===2){ p[col]=0; render(); pushCursor({pending:{...p}}); return; }
+  if (cnt===1) {
+    if (!others.length){
+      if ((b[col]||0)>=4){ p[col]=2; }
+      else { toast(`${CN[col]}寶石不足4枚，無法取2枚同色`); p[col]=0; }
+    } else { p[col]=0; }
+    render(); pushCursor({pending:{...p}}); return;
+  }
+  if ((b[col]||0)<=0){ toast(`${CN[col]}寶石已用盡`); return; }
+  if (has2){ toast('已選2枚同色，無法再選其他'); return; }
+  if (total>=3){ toast('最多選3枚'); return; }
+  p[col]=1; render(); pushCursor({pending:{...p}});
+}
+
+function pendValid() {
+  const p=G.ui.pending, tot=CI.reduce((s,c)=>s+(p[c]||0),0);
+  if (!tot) return false;
+  return CI.some(c=>(p[c]||0)===2) ? tot===2 : tot<=3;
+}
+
+function clearPend(){ G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.pendGold=false; pushCursor({pending:{w:0,u:0,g:0,r:0,k:0}}); render(); if(!G.ui.acted) activateZones(); }
+
+function takeGold() {
+  if (!isMyTurn()||G.ui.acted||(G.bank.gold||0)<=0) return;
+  const pl=G.players[G.cur];
+  if (gsum(pl.gems)>=10){ toast('寶石已達上限（10枚）'); return; }
+  G.ui.acted=true;
+  render();
+  animateGemsToPlayer({gold:1}, G.cur, ()=>{
+    G.bank.gold--;
+    pl.gems.gold=(pl.gems.gold||0)+1;
+    G.ui.pendGold=false;
+    afterAct();
+  });
+}
+
+function tryEnd() {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (!G.ui.acted){ toast('請先執行行動（取寶石、購買或預留）'); return; }
+  checkMissions();
+  advanceTurn();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function gdot(col, sz=24) {
+  return `<div class="g-circle ${GCC[col]}" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px"></div>`;
+}
+
+function cardEffectKey(card) {
+  return [
+    card.tier, card.pts, card.bonus,
+    card.cost.w||0, card.cost.u||0, card.cost.g||0, card.cost.r||0, card.cost.k||0
+  ].join('|');
+}
+
+function cardArtName(card) {
+  return CARD_ART_BY_ID[card.id] || CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
+}
+
+function cardArtClass(card) {
+  return cardArtName(card).includes('gem-') ? 'gem-art' : '';
+}
+
+function cardBgStyle(card) {
+  const url = `url('splendor-card-art/${cardArtName(card)}?v=${CARD_ART_VERSION}')`;
+  return `--card-art:${url};background-image:${url};background-size:cover;background-position:center;background-repeat:no-repeat;`;
+}
+
+function render() {
+  rMissions(); rBank(); rCards(); rPlayers();
+  if (onlineMode) applyOpponentCursors();
+}
+
+function missionReqHtml(m) {
+  if (m.req) {
+    return CI.filter(c=>(m.req[c]||0)>0).map(c=>
+      `<span class="mission-token">${gemSVG(c,12)}<span>×${m.req[c]}</span></span>`
+    ).join('');
+  }
+  if (m.mark) return `<span class="mission-token"><span class="mission-mark">✦</span><span>${m.mark}</span></span>`;
+  return `<span class="mission-token"><span class="mission-mark">✦</span><span>王室令</span></span>`;
+}
+
+// Mission card display
+function rMissions() {
+  if (!G.missions||!G.missions.length) return;
+  let h=``;
+  G.missions.forEach((m,i)=>{
+    const claimed=m.claimedBy!==null;
+    const claimer=claimed?G.players[m.claimedBy]:null;
+    h+=`<div class="mission-card ${claimed?'claimed':''}">
+      <div class="mission-top">
+        <span class="mission-name">懸賞令${i+1}：${m.name}</span>
+        <span class="mission-pts">${m.pts}</span>
+      </div>
+      <div class="mission-icons">${missionReqHtml(m)}</div>
+      <div class="mission-desc">${m.desc}</div>
+      ${claimed?`<div class="mission-winner" style="color:${claimer.color}">✓ ${claimer.name}達成</div>`:''}
+    </div>`;
+  });
+  document.getElementById('g-missions').innerHTML=h;
+}
+
+function rBank() {
+  const pend=G.ui.pending, pg=G.ui.pendGold;
+  const myTurn=isMyTurn()&&!G.ui.acted;
+  const tot=CI.reduce((s,c)=>s+(pend[c]||0),0);
+  let h=`<div class="panel-label" style="margin-top:10px">寶石庫</div>`;
+  [...CI,'gold'].forEach(col=>{
+    const cnt=G.bank[col]||0, pk=pend[col]||0, isGold=col==='gold';
+    const goldSel=isGold&&pg;
+    const clickFn=isGold?'clickGold()':'clickBank(\''+col+'\')';
+    h+=`<div class="bank-row ${pk||goldSel?'picked':''}" data-col="${col}" onclick="${clickFn}">
+      ${gemSVG(col,16)}
+      <span class="g-name">${CN[col]}</span>
+      <span class="g-cnt">${cnt}</span>
+      ${pk?`<span class="pick-badge">+${pk}</span>`:''}
+    </div>`;
+  });
+  // Action buttons inside bank panel
+  if (myTurn && pg) {
+    h+=`<div style="display:flex;gap:5px;margin-top:8px">
+      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="takeGold()">確認領取金幣</button>
+      <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
+    </div>`;
+  } else if (myTurn && tot>0) {
+    h+=`<div style="display:flex;gap:5px;margin-top:8px">
+      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認領取寶石</button>
+      <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
+    </div>`;
+  }
+  if (G.lastRound) {
+    h+=`<div style="font-size:.65em;color:#ff9955;margin-top:8px;line-height:1.4">⚠ 最終輪<br>${G.players[G.lastStarter].name}已達15分</div>`;
+  }
+  document.getElementById('g-bank').innerHTML=h;
+}
+
+function clickGold() {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動'); return; }
+  if (CI.some(c=>(G.ui.pending[c]||0)>0)){ toast('請先清除已選的寶石'); return; }
+  if ((G.bank.gold||0)<=0){ toast('金幣已用盡'); return; }
+  if (gsum(G.players[G.cur].gems)>=10){ toast('寶石已達上限（10枚）'); return; }
+  G.ui.pendGold = !G.ui.pendGold;
+  render();
+}
+
+function rCards() {
+  // In online mode always highlight based on your own wallet, not the current player's
+  const pl = (onlineMode && myIdx >= 0) ? G.players[myIdx] : G.players[G.cur];
+  let h='';
+  [3,2,1].forEach(t=>{
+    const tc={3:'#ffe066',2:'#8ec8ff',1:'#d6aa72'}[t];
+    const dc=G.decks[t].length;
+    h+=`<div class="tier-row">
+      <div class="deck-box deck-tier-${t} ${dc?'':'empty'}" data-deck-tier="${t}">
+        <div class="deck-card-icon"><span class="deck-sigil"></span></div>
+        <div class="deck-rank" style="color:${tc}">${{3:'高級',2:'中級',1:'初級'}[t]}</div>
+        <div class="deck-n">${dc}<span class="deck-lbl">張</span></div>
+      </div>`;
+    G.board[t].forEach((card,bi)=>{
+      if (!card){ h+=`<div class="card-empty-slot"></div>`; return; }
+      const afford=canBuy(pl,card), e=effCost(pl,card);
+      const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
+        const covered=(e[c]||0)===0;
+        return `<div class="cost-ln ${covered?'covered':''}">
+          ${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`;
+      }).join('');
+      h+=`<div class="dev-card t${t} ${afford?'afford':'dim'} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
+        <div class="card-top ${CHC[card.bonus]}">
+          <span class="card-pts">${card.pts||''}</span>
+          ${gemSVG(card.bonus,20)}
+        </div>
+        <div class="card-body">
+          <div class="cost-stack">${costH}</div>
+        </div>
+      </div>`;
+    });
+    h+='</div>';
+  });
+  document.getElementById('g-cards').innerHTML=h;
+}
+
+function rBottom() {
+  const pend=G.ui.pending, tot=CI.reduce((s,c)=>s+(pend[c]||0),0);
+  const pendH=CI.filter(c=>(pend[c]||0)>0).map(c=>
+    `<div class="pending-chip">${gemSVG(c,16)}<span>×${pend[c]}</span></div>`
+  ).join('');
+  document.getElementById('g-bottom').innerHTML=`
+    <div class="act-area" style="width:100%">
+      <div class="act-label">行動</div>
+      ${tot?`<div class="pending-row">${pendH}</div>
+        <div class="btn-row">
+          <button class="btn btn-go" data-sound="treasure" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認領取寶石</button>
+          <button class="btn btn-grey" onclick="clearPend()">清除</button>
+        </div>`:''}
+      <div class="btn-row" style="margin-top:6px">
+        <button class="btn btn-end" onclick="tryEnd()" ${G.ui.acted?'':'disabled'}>結束回合 →</button>
+      </div>
+      ${G.lastRound?`<div style="font-size:.72em;color:#ff9955;margin-top:4px">⚠ 最終輪 — ${G.players[G.lastStarter].name}已達15分</div>`:''}
+    </div>`;
+}
+
+function rPlayers() {
+  const pct=(_timerSec/60*100).toFixed(2);
+  const timerCol=_timerSec<=20?'#ff4444':'#55cc88';
+  const h=G.players.map((p,i)=>{
+    const cur=i===G.cur;
+    const bonH=CI.map(c=>{
+      const b=p.bonuses[c]||0; return b?`<div class="bonus-chip">${gemSVG(c,13)}<span style="margin-left:1px">×${b}</span></div>`:'';
+    }).join('');
+    const gemH=[...CI,'gold'].map(c=>{
+      const n=p.gems[c]||0; if(!n) return '';
+      return `<div class="pi-gem-item">${gemSVG(c,14)}<span>${n}</span></div>`;
+    }).join('');
+    let resH='';
+    if(p.reserved.length){
+      resH=`<div style="font-size:.62em;opacity:.45;margin-top:7px;margin-bottom:3px">預留牌</div><div style="display:flex;flex-direction:column;gap:3px">`;
+      p.reserved.forEach((card,ri)=>{
+        const afford=cur&&canBuy(p,card);
+        resH+=`<div onclick="viewResCard(${i},${ri})" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,${afford?'.2':'.08'})">
+          ${gemSVG(card.bonus,12)}
+          <span style="font-size:.68em;opacity:.7;flex:1">${{1:'初級',2:'中級',3:'高級'}[card.tier]}${card.pts?` +${card.pts}分`:''}</span>
+          ${afford?`<span style="font-size:.6em;color:#55cc88">可買</span>`:''}
+        </div>`;
+      });
+      resH+=`</div>`;
+    }
+    const timerBadge=cur&&_timerExpired?'<span class="time-up-alert">時間到!</span>':cur&&_timerSec<=15?'<span class="time-up-alert warn">⌛ 時光不等人</span>':'';
+    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}${p.disconnected?';opacity:.45':''}">
+      ${timerBadge}
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="pi-pts" style="color:${p.color};flex-shrink:0">${p.points}分</div>
+        <div class="pi-name" style="color:${p.color};flex-shrink:0">${p.name}</div>
+        ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:''}
+      </div>
+      <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
+      <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
+      <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:5px;margin-bottom:1px">寶石代幣</div>
+      <div class="pi-gems">${gemH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
+      <div class="pi-mini" style="margin-top:5px">牌${p.cards.length}${p.reserved.length?` 預留${p.reserved.length}`:''}</div>
+      ${resH}
+    </div>`;
+    if(cur) return `<div id="pi-timer-wrap" class="pi-timer-outer" style="background:conic-gradient(from 0deg,${timerCol} ${pct}%,rgba(255,255,255,.08) ${pct}%)">${inner}</div>`;
+    return inner;
+  }).join('');
+  document.getElementById('g-players').innerHTML=h;
+}
+
+// ── Card modals ───────────────────────────────────────────────────────────
+function openBoardCard(cardId, t, bi) {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  const card=G.board[t].find(c=>c&&c.id===cardId);
+  if (!card) return;
+  G.ui.pendCard={card,t,bi,fromRes:false};
+  showCardMod(card,false);
+}
+
+function openResCard(ri) {
+  if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  const card=G.players[G.cur].reserved[ri];
+  if (!card) return;
+  G.ui.pendCard={card,ri,fromRes:true};
+  showCardMod(card,true);
+}
+
+function viewResCard(pi, ri) {
+  const p=G.players[pi];
+  const card=p&&p.reserved[ri];
+  if (!card) return;
+  // If it's my own card and it's my turn → allow buy
+  const isMine = onlineMode ? pi===myIdx : pi===G.cur;
+  if (isMine && isMyTurn() && !G.ui.acted) { openResCard(ri); return; }
+  // Read-only view
+  const tierN={1:'初級卡',2:'中級卡',3:'高級卡'}[card.tier];
+  const bonN=GEM_NAME[card.bonus]||card.bonus;
+  const costRows=CI.filter(c=>(card.cost[c]||0)>0).map(c=>
+    `<div class="cost-detail-row">${gemSVG(c,16)}<span>${CN[c]} ×${card.cost[c]}</span></div>`
+  ).join('');
+  document.getElementById('m-card').style.display='flex';
+  document.getElementById('m-card').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+    <div class="m-title">預留牌（${p.name}）— ${tierN}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      ${gemSVG(card.bonus,36)}
+      <div>
+        <div style="font-weight:bold">加成：${bonN} ×1</div>
+        ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
+      </div>
+    </div>
+    <div class="card-preview ${cardArtClass(card)}" style="${cardBgStyle(card)}"></div>
+    <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用：</div>
+    ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn btn-grey" onclick="closeM('m-card')">關閉</button>
+    </div>
+  </div>`;
+  document.getElementById('m-card').onclick=()=>closeM('m-card');
+}
+
+function showCardMod(card, fromRes) {
+  const pl=G.players[G.cur], afford=canBuy(pl,card), e=effCost(pl,card);
+  const canRes=!fromRes && pl.reserved.length<3;
+  const tierN={1:'初級卡',2:'中級卡',3:'高級卡'}[card.tier];
+  const bonN={w:'白鑽',u:'藍寶石',g:'翡翠',r:'紅寶石',k:'紫水晶'}[card.bonus];
+  const costRows=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
+    const disc=(card.cost[c]||0)-(e[c]||0);
+    const short=Math.max(0,(e[c]||0)-(pl.gems[c]||0));
+    return `<div class="cost-detail-row">
+      ${gemSVG(c,18)}
+      <span>${CN[c]} ×${card.cost[c]}</span>
+      ${disc>0?`<span style="color:#88ff88;font-size:.82em">-${disc}折</span>`:''}
+      <span style="margin-left:auto;font-size:.82em;color:${short>0?'#ff8888':'#88ff88'}">${short>0?'缺'+short+'枚':'✓'}</span>
+    </div>`;
+  }).join('');
+  const goldShort=CI.reduce((s,c)=>s+Math.max(0,(e[c]||0)-(pl.gems[c]||0)),0);
+  document.getElementById('m-card').style.display='flex';
+  document.getElementById('m-card').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+    <div class="m-title">${fromRes?'預留牌':'寶石卡'} — ${tierN}</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      ${gemSVG(card.bonus,36)}
+      <div>
+        <div style="font-weight:bold">加成：${bonN} ×1</div>
+        ${card.pts?`<div style="color:#ffcc44;font-size:.88em">聲望：${card.pts}分</div>`:'<div style="opacity:.5;font-size:.82em">無聲望點</div>'}
+      </div>
+    </div>
+    <div class="card-preview ${cardArtClass(card)}" style="${cardBgStyle(card)}"></div>
+    <div style="font-size:.78em;opacity:.5;margin-bottom:5px">費用（持有加成已折抵）：</div>
+    ${costRows||'<div style="opacity:.5;font-size:.85em">免費！</div>'}
+    ${goldShort>0&&afford?`<div style="font-size:.78em;color:#ffcc44;margin-top:4px">將使用${goldShort}枚金色代幣補足</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">
+      <button class="btn btn-go" onclick="modBuy()" ${afford?'':'disabled'}>${afford?'✓ 購買':'✗ 寶石不足'}</button>
+      ${canRes?`<button class="btn btn-grey" onclick="modReserve()">預留 (取金×1)</button>`:''}
+      <button class="btn btn-grey" onclick="closeM('m-card')">取消</button>
+    </div>
+  </div>`;
+  document.getElementById('m-card').onclick=()=>closeM('m-card');
+}
+
+function modBuy()     { const {card,fromRes}=G.ui.pendCard; execBuy(card,fromRes); }
+function modReserve() { const {card,t,bi}=G.ui.pendCard; execReserve(card,t,bi); }
+function closeM(id)   { document.getElementById(id).style.display='none'; G.ui.pendCard=null; }
+
+// ── Return gems modal ─────────────────────────────────────────────────────
+function showRetMod() {
+  window._retPend = {w:0,u:0,g:0,r:0,k:0,gold:0};
+  const pl=G.players[G.cur];
+  function draw() {
+    const orig=gsum(pl.gems);
+    const pendTot=[...CI,'gold'].reduce((s,c)=>s+(window._retPend[c]||0),0);
+    const remain=orig-pendTot, ex=remain-10;
+    const gemsH=[...CI,'gold'].map(c=>{
+      const avail=(pl.gems[c]||0)-(window._retPend[c]||0); if(!avail) return '';
+      return `<div onclick="retGemStage('${c}')" style="cursor:pointer;text-align:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.07);transition:background .12s" onmouseover="this.style.background='rgba(255,80,80,.18)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">
+        ${gemSVG(c,30)}<div style="font-size:.72em;margin-top:3px">${CN[c]}<br>${avail}枚</div></div>`;
+    }).join('');
+    const pendH=[...CI,'gold'].map(c=>{
+      const n=window._retPend[c]||0; if(!n) return '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);border-radius:8px">
+        ${gemSVG(c,22)}<span style="font-size:.85em;flex:1">${CN[c]} ×${n}</span>
+        <button onclick="retGemUndo('${c}')" style="background:none;border:none;color:#ff9988;cursor:pointer;font-size:1.1em;line-height:1;padding:0 4px">✕</button>
+      </div>`;
+    }).join('');
+    document.getElementById('m-ret').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+      <div class="m-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>歸還寶石代幣</span>
+        <button onclick="cancelRet()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.4em;line-height:1;padding:0 4px" title="取消行動">✕</button>
+      </div>
+      <div style="opacity:.8;margin-bottom:10px">持有 <b>${remain}</b> 枚${ex>0?`，需再歸還 <b style="color:#ff8888">${ex}</b> 枚`:'，數量符合上限 ✓'}（點選欲歸還的寶石）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${pendH?'10':'16'}px">${gemsH||'<span style="opacity:.4;font-size:.85em">已無寶石</span>'}</div>
+      ${pendH?`<div style="font-size:.68em;opacity:.55;margin-bottom:6px;letter-spacing:1px">待歸還</div><div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px">${pendH}</div>`:''}
+      <button class="btn btn-go" onclick="confRet()" ${remain<=10?'':'disabled'}>
+        ${remain<=10?`✅ 確認歸還（${remain}/10）`:`還需歸還 ${remain-10} 枚`}
+      </button>
+    </div>`;
+  }
+  document.getElementById('m-ret').style.display='flex';
+  document.getElementById('m-ret').onclick=null;
+  draw(); window._retDraw=draw;
+}
+
+function retGemStage(col) {
+  const pl=G.players[G.cur];
+  if ((pl.gems[col]||0)-(window._retPend[col]||0)<=0) return;
+  window._retPend[col]=(window._retPend[col]||0)+1;
+  window._retDraw();
+}
+
+function retGemUndo(col) {
+  if (!(window._retPend[col]||0)) return;
+  window._retPend[col]--;
+  window._retDraw();
+}
+
+function confRet() {
+  const pl=G.players[G.cur];
+  const pend=window._retPend||{};
+  const remain=gsum(pl.gems)-[...CI,'gold'].reduce((s,c)=>s+(pend[c]||0),0);
+  if(remain>10) return;
+  for(const c of [...CI,'gold']){
+    const n=pend[c]||0;
+    if(n>0){ pl.gems[c]-=n; G.bank[c]=(G.bank[c]||0)+n; }
+  }
+  window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
+  document.getElementById('m-ret').style.display='none';
+  afterAct(); render();
+}
+
+function cancelRet() {
+  const snap=window._retSnapshot;
+  if (!snap) return;
+  const pl=G.players[G.cur];
+  pl.gems=snap.gems; G.bank=snap.bank;
+  pl.reserved=snap.reserved;
+  G.board=snap.board; G.decks=snap.decks;
+  G.ui.pending=snap.pending; G.ui.acted=false;
+  G.ui.pendCard=null; G.ui.pendGold=false;
+  window._retSnapshot=null;
+  window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
+  document.getElementById('m-ret').style.display='none';
+  render();
+}
+
+// ── Game over ─────────────────────────────────────────────────────────────
+function showOverMod() {
+  const sorted=[...G.players].sort((a,b)=>b.points-a.points||a.cards.length-b.cards.length);
+  const medals=['🥇','🥈','🥉',''];
+  const rows=sorted.map((p,i)=>{
+    const isW=G.winners.includes(p);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1)">
+      <span style="font-size:1.4em">${medals[i]||''}</span>
+      <div style="flex:1">
+        <div style="font-weight:bold;color:${p.color}">${isW?'🏆 ':''}${p.name}</div>
+        <div style="font-size:.75em;opacity:.6">牌${p.cards.length}張 | 任務${G.missions.filter(m=>m.claimedBy!==null&&G.players[m.claimedBy]===p).length}個</div>
+      </div>
+      <div style="font-size:1.9em;font-weight:900;color:${p.color}">${p.points}</div>
+    </div>`;
+  }).join('');
+  const wn=G.winners.map(p=>p.name).join('、');
+  document.getElementById('m-over').style.display='flex';
+  document.getElementById('m-over').innerHTML=`<div class="m-box">
+    <div class="m-title">🎊 遊戲結束！</div>
+    <div style="font-size:1.15em;color:#ffcc44;margin-bottom:14px">🏆 ${wn} 獲勝！</div>
+    ${rows}
+    <button class="btn btn-start" onclick="location.reload()" style="margin-top:18px;width:100%;background:linear-gradient(135deg,#cc6600,#ffaa22);padding:12px">再玩一次</button>
+  </div>`;
+}
+
+// ── Turn Notification ─────────────────────────────────────────────────────
+let _turnNotifCallback = null;
+function showTurnNotification(playerIdx, callback) {
+  const pl = G.players[playerIdx];
+  const el = document.getElementById('turn-notif');
+  document.getElementById('tn-sub').style.color = pl.color;
+  document.getElementById('tn-name').textContent = pl.name;
+  document.getElementById('tn-name').style.color = pl.color;
+  _turnNotifCallback = callback;
+  clearTimeout(window._tndTimer);
+  // Force reflow so opacity transition always restarts from 0
+  el.classList.remove('on');
+  void el.offsetWidth;
+  el.classList.add('on');
+  window._tndTimer = setTimeout(dismissTurnNotif, 1200);
+}
+function dismissTurnNotif() {
+  const el = document.getElementById('turn-notif');
+  if (!el.classList.contains('on')) return;
+  el.classList.remove('on');
+  clearTimeout(window._tndTimer);
+  const cb = _turnNotifCallback;
+  _turnNotifCallback = null;
+  if (cb) cb();
+}
+
+// ── Turn Timer ────────────────────────────────────────────────────────────
+let _timerInterval = null;
+let _timerSec = 60;
+let _timerExpired = false;
+
+function activateZones() {
+  if ((G.turnCount||0) >= 2 * G.numP) return; // Stop guiding after 2 full rounds
+  ['g-bank','g-cards'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('zone-active');
+    void el.offsetWidth;
+    el.classList.add('zone-active');
+  });
+}
+function deactivateZone(id) {
+  document.getElementById(id)?.classList.remove('zone-active');
+}
+function deactivateAllZones() {
+  ['g-bank','g-cards'].forEach(id => deactivateZone(id));
+}
+
+function showUrgeBanner(msg) {
+  const el = document.getElementById('urge-banner');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideUrgeBanner() {
+  const el = document.getElementById('urge-banner');
+  if (el) el.style.display = 'none';
+}
+function refreshPlayerTimers() {
+  if (G.players && document.getElementById('g-players')) rPlayers();
+}
+
+function startTimer() {
+  clearInterval(_timerInterval);
+  _timerSec = 60;
+  _timerExpired = false;
+  hideUrgeBanner();
+  _updateTimerEl();
+  refreshPlayerTimers();
+  activateZones();
+  _timerInterval = setInterval(() => {
+    _timerSec--;
+    _updateTimerEl();
+    if (_timerSec === 15) refreshPlayerTimers();
+    if (_timerSec <= 0) {
+      clearInterval(_timerInterval);
+      _timerExpired = true;
+      refreshPlayerTimers();
+    }
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(_timerInterval);
+  _timerInterval = null;
+  _timerSec = 60;
+  _timerExpired = false;
+  hideUrgeBanner();
+  _updateTimerEl();
+  refreshPlayerTimers();
+}
+
+// Passive countdown for non-active players (display only, no game effects)
+function startTimerDisplay() {
+  clearInterval(_timerInterval);
+  _timerSec = 60;
+  _timerExpired = false;
+  _updateTimerEl();
+  refreshPlayerTimers();
+  _timerInterval = setInterval(() => {
+    _timerSec--;
+    _updateTimerEl();
+    if (_timerSec <= 0) {
+      clearInterval(_timerInterval);
+      _timerExpired = true;
+      refreshPlayerTimers();
+    }
+  }, 1000);
+}
+function _updateTimerEl() {
+  const s = Math.max(0, _timerSec);
+  const color = s <= 20 ? '#ff4444' : '#55cc88';
+  const pct = (s / 60 * 100).toFixed(2);
+  const wrap = document.getElementById('pi-timer-wrap');
+  if (wrap) wrap.style.background = `conic-gradient(from 0deg,${color} ${pct}%,rgba(255,255,255,.08) ${pct}%)`;
+}
+
+// ── Sound Effects ─────────────────────────────────────────────────────────
+let _audioCtx = null;
+function _ac() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(()=>{});
+  return _audioCtx;
+}
+function playClick(type = 'tap') {
+  try {
+    const ctx = _ac(), t = ctx.currentTime;
+
+    // 雜訊爆音輔助（用於撞擊感）
+    const noise = (startT, dur, vol, freq, filterType='lowpass', q=.6) => {
+      const len = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 6);
+      const src = ctx.createBufferSource();
+      const filt = ctx.createBiquadFilter(); filt.type = filterType; filt.frequency.value = freq; filt.Q.value = q;
+      const g = ctx.createGain();
+      src.buffer = buf; src.connect(filt); filt.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(vol, startT); g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+      src.start(startT); src.stop(startT + dur + 0.01);
+    };
+    const tone = (startT, freq, vol, dur, freqEnd) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.connect(g); g.connect(ctx.destination);
+      o.frequency.setValueAtTime(freq, startT);
+      if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, startT + dur);
+      g.gain.setValueAtTime(vol, startT); g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+      o.start(startT); o.stop(startT + dur + 0.01);
+    };
+
+    if (type === 'chip' || type === 'coin') {
+      // 籌碼：硬塑膠短促疊碰，收尾乾淨不拖金屬尾音
+      noise(t,       0.012, 0.48, 3200, 'bandpass', 7);
+      noise(t+0.012, 0.020, 0.30, 1600, 'bandpass', 4);
+      tone(t,        640,  0.032, 0.035, 520);
+      tone(t+0.018,  780,  0.022, 0.026, 650);
+    } else if (type === 'mouse') {
+      // 滑鼠點擊：短、乾、沒有遊戲獎勵感
+      noise(t,       0.006, 0.18, 5200, 'highpass', .7);
+      tone(t+0.002,  920,  0.026, 0.026, 650);
+    } else if (type === 'card') {
+      // 翻書：較厚紙頁翻動，低頻紙面摩擦加一個收尾拍合
+      noise(t,       0.085, 0.18, 1250, 'bandpass', .75);
+      noise(t+0.045, 0.075, 0.13, 2600, 'bandpass', .9);
+      noise(t+0.108, 0.018, 0.16, 900,  'lowpass', .7);
+      tone(t+0.025,  155,  0.020, 0.075, 118);
+    } else if (type === 'shuffle') {
+      // 洗牌：一串乾爽紙邊摩擦，最後輕拍成疊
+      for (let i=0;i<6;i++) {
+        noise(t+i*0.045, 0.035, 0.13, 1900+i*180, 'bandpass', 1.2);
+      }
+      noise(t+0.285, 0.038, 0.18, 900, 'lowpass', .8);
+      tone(t+0.26, 180, 0.025, 0.07, 140);
+    } else if (type === 'deal') {
+      // 發牌：短促紙牌切過桌面，再有一個落桌拍合
+      noise(t,       0.018, 0.20, 4200, 'highpass', .8);
+      noise(t+0.018, 0.034, 0.15, 1250, 'bandpass', 1.1);
+      noise(t+0.044, 0.014, 0.12, 720,  'lowpass', .7);
+      tone(t+0.012,  235,  0.018, 0.048, 170);
+    } else if (type === 'treasure') {
+      // 寶物：低沉一點的寶石落袋聲，保留短促光澤但不尖亮
+      noise(t,       0.026, 0.18, 2600, 'bandpass', 5);
+      noise(t+0.055, 0.042, 0.22, 760,  'bandpass', 3);
+      tone(t,        420,  0.050, 0.070, 560);
+      tone(t+0.070,  680,  0.058, 0.090, 920);
+      tone(t+0.145,  1040, 0.044, 0.100, 1280);
+      noise(t+0.185, 0.035, 0.14, 1700, 'bandpass', 5);
+    } else if (type === 'deposit') {
+      // 存錢：硬幣投入、落底，再接一個短促清脆確認音
+      noise(t,       0.018, 0.24, 3400, 'bandpass', 7);
+      tone(t+0.004,  1320, 0.045, 0.045, 1120);
+      noise(t+0.070, 0.030, 0.28, 1250, 'bandpass', 4);
+      tone(t+0.080,  520,  0.040, 0.050, 430);
+      tone(t+0.145,  980,  0.060, 0.075, 1480);
+      tone(t+0.205,  1560, 0.045, 0.085, 1760);
+    } else if (type === 'tick') {
+      // 機械鐘滴答：乾脆雜訊爆音，無音調感
+      noise(t, 0.018, 0.55, 5000);
+      noise(t, 0.010, 0.30, 1200);
+    } else if (type === 'count') {
+      tone(t,       360, 0.055, 0.075, 520);
+      tone(t+0.055, 720, 0.050, 0.095, 860);
+    } else if (type === 'confirm') {
+      tone(t, 500, 0.13, 0.16, 800);
+    } else if (type === 'end') {
+      tone(t,       420, 0.11, 0.10);
+      tone(t+0.09,  630, 0.11, 0.13);
+    } else {
+      tone(t, 360, 0.07, 0.07);
+    }
+  } catch(e) {}
+}
+// 統一攔截所有按鈕 / 寶石庫列點擊
+document.addEventListener('click', e => {
+  const btn  = e.target.closest('.btn:not(:disabled)');
+  const bank = e.target.closest('.bank-row:not(.no-click)');
+  const card = e.target.closest('.dev-card');
+  if (bank) playClick('chip');
+  if (card && !btn && !bank) playClick('mouse');
+  if (btn) {
+    if (btn.dataset.sound) playClick(btn.dataset.sound);
+    else if (btn.classList.contains('btn-end')) playClick('end');
+    else if (btn.classList.contains('btn-go') && btn.closest('#g-bank')) playClick('deposit');
+    else if (btn.classList.contains('btn-go')) playClick('confirm');
+    else playClick('tap');
+  }
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+let _tt;
+function showResTooltip(el, playerIdx) {
+  const p = G.players[playerIdx];
+  if (!p || !p.reserved.length) return;
+  const tip = document.getElementById('res-tip');
+  tip.innerHTML = p.reserved.map(card => {
+    const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
+      `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
+    ).join('');
+    return `<div class="dev-card t${card.tier} ${cardArtClass(card)}" style="${cardBgStyle(card)}--card-bar-h:38px;width:90px;height:128px;min-height:128px;cursor:default;transform:none">
+      <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
+        <span class="card-pts" style="font-size:1.5em">${card.pts||''}</span>
+        ${gemSVG(card.bonus,16)}
+      </div>
+      <div class="card-body" style="padding:5px">
+        <div class="cost-stack" style="min-height:40px">${costH}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const rect = el.getBoundingClientRect();
+  const tipW = p.reserved.length * 98 + 28;
+  let left = rect.right + 10;
+  if (left + tipW > window.innerWidth - 8) left = rect.left - tipW - 10;
+  tip.style.left = Math.max(8, left) + 'px';
+  tip.style.top  = Math.max(8, rect.top - 10) + 'px';
+  tip.style.display = 'flex';
+}
+function hideResTooltip() {
+  document.getElementById('res-tip').style.display = 'none';
+}
+
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('on'),2800);
+}
+</script>
+</body>
+</html>
