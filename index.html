@@ -409,9 +409,9 @@ body {
   background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
   backdrop-filter:blur(2px);
 }
-.cost-ln { display:flex; align-items:center; gap:5px; min-height:14px; }
-.cost-dot { width:11px; height:11px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
-.cost-n { font-size:.88em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
+.cost-ln { display:flex; align-items:center; gap:5px; min-height:16px; }
+.cost-dot { width:13px; height:13px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
+.cost-n { font-size:1.05em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
 .cost-ln.covered { opacity:.35; }
 .card-empty-slot { width:var(--card-w); height:var(--card-h); flex-shrink:0; border-radius:10px; border:1px dashed rgba(255,255,255,.08); }
 
@@ -910,8 +910,8 @@ body.intro-running #g-cards .card-empty-slot {
   .card-pts { font-size:1.15em; }
   .card-body { padding:32px 4px 5px; }
   .cost-stack { padding:2px 4px; border-radius:5px; gap:0; }
-  .cost-ln { min-height:10px; gap:2px; }
-  .cost-n { font-size:.68em; }
+  .cost-ln { min-height:12px; gap:2px; }
+  .cost-n { font-size:.82em; }
 
   .pi-card { border-radius:8px; padding:7px 8px; }
   .pi-pts { font-size:1.22em; }
@@ -1810,7 +1810,7 @@ function canBuy(pl,card) {
 // ── Card animation ───────────────────────────────────────────────────────
 function cardCostHtml(card) {
   return CI.filter(c=>(card.cost[c]||0)>0).map(c=>
-    `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
+    `<div class="cost-ln">${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`
   ).join('');
 }
 
@@ -2438,7 +2438,7 @@ function rCards() {
       const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
         const covered=(e[c]||0)===0;
         return `<div class="cost-ln ${covered?'covered':''}">
-          ${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`;
+          ${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`;
       }).join('');
       h+=`<div class="dev-card t${t} ${afford?'afford':'dim'} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
         <div class="card-top ${CHC[card.bonus]}">
@@ -2503,9 +2503,9 @@ function rPlayers() {
     const timerBadge=cur&&_timerExpired?'<span class="time-up-alert">時間到!</span>':cur&&_timerSec<=15?'<span class="time-up-alert warn">⌛ 時光不等人</span>':'';
     const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}${p.disconnected?';opacity:.45':''}">
       ${timerBadge}
-      <div style="display:flex;align-items:center;gap:6px;${timerBadge?'padding-right:90px':''}">
-        <div class="pi-pts" style="color:${p.color}">${p.points}分</div>
-        <div class="pi-name" style="color:${p.color}">${p.name}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="pi-pts" style="color:${p.color};flex-shrink:0">${p.points}分</div>
+        <div class="pi-name" style="color:${p.color};flex-shrink:0">${p.name}</div>
         ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:''}
       </div>
       <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
