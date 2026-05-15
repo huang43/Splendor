@@ -1770,8 +1770,10 @@ ALL_CARDS.forEach(card => {
   }
 });
 const CARD_ART_BY_ID = {};
+const _gemArtCounter = {w:0,u:0,g:0,r:0,k:0};
 ALL_CARDS.forEach(card => {
-  CARD_ART_BY_ID[card.id] = `tier${card.tier}-01.png`;
+  const pool = GEM_CARD_ART[card.bonus] || [];
+  CARD_ART_BY_ID[card.id] = pool[_gemArtCounter[card.bonus]++] || CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
 });
 
 // ── Game State ───────────────────────────────────────────────────────────
