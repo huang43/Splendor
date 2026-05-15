@@ -331,23 +331,15 @@ body {
   border:0;
   z-index:0;
   background:transparent center / contain no-repeat;
-  box-shadow:
-    3px 3px 0 rgba(0,0,0,.42),
-    5px 5px 0 rgba(0,0,0,.26),
-    7px 7px 0 rgba(0,0,0,.14),
-    0 12px 28px rgba(0,0,0,.72);
+  box-shadow:0 8px 22px rgba(0,0,0,.65), 0 2px 6px rgba(0,0,0,.4);
   margin-top:0;
   margin-bottom:0;
   overflow:visible;
   transition:transform .15s, box-shadow .15s;
 }
 .deck-box:hover:not(.empty) .deck-card-icon {
-  transform:translateY(-6px);
-  box-shadow:
-    3px 3px 0 rgba(0,0,0,.42),
-    5px 5px 0 rgba(0,0,0,.26),
-    7px 7px 0 rgba(0,0,0,.14),
-    0 20px 36px rgba(0,0,0,.78);
+  transform:translateY(-5px);
+  box-shadow:0 16px 32px rgba(0,0,0,.72), 0 4px 10px rgba(0,0,0,.45);
 }
 .deck-card-icon::before,
 .deck-card-icon::after {
@@ -424,15 +416,14 @@ body {
   box-shadow:none;
 }
 .dev-card::before {
-  content:""; position:absolute; inset:0; z-index:3; pointer-events:none; border-radius:inherit;
-  background:radial-gradient(ellipse at 50% -10%, rgba(255,255,255,.28) 0%, rgba(255,255,255,.06) 45%, transparent 68%);
+  display:none;
 }
 .dev-card.gem-art {
   background-image:none !important;
   background-color:#090b12;
 }
 .dev-card.gem-art::before {
-  background:radial-gradient(ellipse at 50% -10%, rgba(255,255,255,.22) 0%, rgba(255,255,255,.04) 45%, transparent 68%);
+  display:none;
 }
 .dev-card.gem-art::after {
   content:""; position:absolute; left:0; right:0; top:var(--card-bar-h); bottom:0;
