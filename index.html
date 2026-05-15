@@ -15,7 +15,6 @@
   --deck-icon-h:148px;
   --board-gap:7px;
   --table-surface-image:url('splendor-card-art/table-surface-frame.png');
-  --table-edge-image:url('splendor-card-art/table-edge-strip.png');
   --mission-parchment-image:url('splendor-card-art/mission-parchment.png');
 }
 body {
@@ -305,52 +304,50 @@ body {
     radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.28) 100%);
   z-index:0;
 }
-#g-right::after {
-  content:""; pointer-events:none;
-  position:absolute; left:16px; right:16px; bottom:10px; height:86px;
-  border-radius:0 0 14px 14px;
-  background:
-    linear-gradient(180deg, rgba(255,217,128,.05), rgba(7,3,1,.36)),
-    var(--table-edge-image) center / 100% 100% no-repeat;
-  border:1px solid rgba(210,145,62,.2);
-  border-top-color:rgba(255,221,135,.14);
-  box-shadow:
-    inset 0 1px 0 rgba(255,230,150,.12),
-    inset 0 -24px 40px rgba(0,0,0,.38),
-    0 -8px 26px rgba(0,0,0,.22);
-  z-index:0;
-}
 #g-right > * { position:relative; z-index:1; }
 
 #g-cards { display:flex; flex-direction:column; gap:8px; }
 .tier-row { display:flex; gap:var(--board-gap); }
 
 .deck-box {
-  width:var(--card-w); height:var(--card-h); min-height:var(--card-h); border-radius:10px; flex-shrink:0;
+  width:var(--card-w); height:var(--card-h); min-height:var(--card-h); flex-shrink:0;
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-  border:2px solid rgba(255,255,255,.18); cursor:pointer; transition:all .15s;
-  position:relative; overflow:hidden;
+  border:none; cursor:pointer; transition:all .15s;
+  position:relative; overflow:visible;
   padding-top:19px;
-  background:linear-gradient(160deg,rgba(18,15,18,.92),rgba(45,31,20,.9));
-  box-shadow:inset 0 0 18px rgba(0,0,0,.55), 0 5px 14px rgba(0,0,0,.28);
+  background:transparent;
+  box-shadow:none;
   --deck-edge-hi:#e8eef4; --deck-edge-mid:#aebac6; --deck-edge-lo:#667484;
   --deck-face-border:#e8dcc0;
   --deck-back-a:#0d0d0a; --deck-back-b:#19130a; --deck-line:#d6aa45; --deck-line-soft:rgba(214,170,69,.42);
   --deck-mark-bg:#15100a; --deck-mark-fg:#ffe28a;
 }
-.deck-box:hover:not(.empty) { filter:brightness(1.1); border-color:rgba(255,224,138,.55); }
+.deck-box:hover:not(.empty) { filter:brightness(1.12); }
 .deck-box.empty { cursor:default; opacity:.28; }
 .deck-card-icon {
-  position:relative; width:var(--deck-icon-w); height:var(--deck-icon-h); border-radius:0;
+  position:relative; width:var(--deck-icon-w); height:var(--deck-icon-h); border-radius:6px;
   transform:rotate(0deg);
   transform-origin:center center;
   border:0;
   z-index:0;
   background:transparent center / contain no-repeat;
-  box-shadow:none;
+  box-shadow:
+    3px 3px 0 rgba(0,0,0,.42),
+    5px 5px 0 rgba(0,0,0,.26),
+    7px 7px 0 rgba(0,0,0,.14),
+    0 12px 28px rgba(0,0,0,.72);
   margin-top:0;
   margin-bottom:0;
   overflow:visible;
+  transition:transform .15s, box-shadow .15s;
+}
+.deck-box:hover:not(.empty) .deck-card-icon {
+  transform:translateY(-6px);
+  box-shadow:
+    3px 3px 0 rgba(0,0,0,.42),
+    5px 5px 0 rgba(0,0,0,.26),
+    7px 7px 0 rgba(0,0,0,.14),
+    0 20px 36px rgba(0,0,0,.78);
 }
 .deck-card-icon::before,
 .deck-card-icon::after {
@@ -370,7 +367,6 @@ body {
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 7px transparent;
 }
 .deck-tier-3 {
-  border-color:rgba(255,213,83,.62);
   --deck-edge-hi:#ffeaa0; --deck-edge-mid:#d9a532; --deck-edge-lo:#8b520d;
   --deck-face-border:#fff0a4;
   --deck-back-a:#050504; --deck-back-b:#21180b; --deck-line:#dfb34c; --deck-line-soft:rgba(223,179,76,.48);
@@ -379,7 +375,6 @@ body {
 .deck-tier-3 .deck-card-icon { background-image:url('splendor-card-art/deck-tier3-real.png'); }
 .deck-tier-3 .deck-sigil::before { content:"✦"; }
 .deck-tier-2 {
-  border-color:rgba(104,176,255,.58);
   --deck-edge-hi:#8fc8ff; --deck-edge-mid:#2f78ad; --deck-edge-lo:#0d355d;
   --deck-face-border:#9dd3ff;
   --deck-back-a:#061a32; --deck-back-b:#15558d; --deck-line:#9bd2ff; --deck-line-soft:rgba(155,210,255,.5);
@@ -388,7 +383,6 @@ body {
 .deck-tier-2 .deck-card-icon { background-image:url('splendor-card-art/deck-tier2-real.png'); }
 .deck-tier-2 .deck-sigil::before { content:"✦"; }
 .deck-tier-1 {
-  border-color:rgba(184,148,91,.55);
   --deck-edge-hi:#9fd596; --deck-edge-mid:#3f8a4d; --deck-edge-lo:#173f22;
   --deck-face-border:#9fdd93;
   --deck-back-a:#092416; --deck-back-b:#24693a; --deck-line:#a5df95; --deck-line-soft:rgba(165,223,149,.48);
@@ -979,7 +973,7 @@ body.intro-running #g-cards .card-empty-slot {
     scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
   }
   .tier-row { min-width:max-content; scroll-snap-align:start; }
-  .deck-box { border-radius:8px; padding-top:15px; }
+  .deck-box { padding-top:15px; }
   .deck-rank { top:3px; height:13px; line-height:13px; font-size:.58em; letter-spacing:.8px; }
   .deck-n { bottom:7px; font-size:.72em; }
   .deck-lbl { font-size:.7em; }
