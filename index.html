@@ -1625,8 +1625,9 @@ let _cid = 0;
 const ALL_CARDS  = RAW.map(r => ({id:_cid++, tier:r[0], pts:r[1], bonus:CI[r[2]], cost:{w:r[3],u:r[4],g:r[5],r:r[6],k:r[7]}}));
 const CARD_ART_VERSION = 'gem-90-v5-bar-aligned';
 const GEM_CARD_ART = {};
+const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
 CI.forEach(c => {
-  GEM_CARD_ART[c] = Array.from({length:18}, (_,i)=>`gem-${c}-${String(i+1).padStart(2,'0')}.jpg`);
+  GEM_CARD_ART[c] = Array.from({length:18}, (_,i)=>`${GEM_FOLDER[c]}/gem-${c}-${String(i+1).padStart(2,'0')}.jpg`);
 });
 const CARD_ART_PATTERN = ['outdoor','indoor','character'];
 const CARD_ART_POOLS = {
@@ -2318,7 +2319,7 @@ function cardArtName(card) {
 }
 
 function cardArtClass(card) {
-  return cardArtName(card).startsWith('gem-') ? 'gem-art' : '';
+  return cardArtName(card).includes('gem-') ? 'gem-art' : '';
 }
 
 function cardBgStyle(card) {
