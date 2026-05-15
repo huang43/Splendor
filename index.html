@@ -130,7 +130,7 @@ body {
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .mission-pts  {
-  font-size:.7em; font-weight:900; color:#2a1707; flex-shrink:0;
+  font-size:1.1em; font-weight:900; color:#2a1707; flex-shrink:0;
   background:rgba(122,38,18,.14); border:1px solid rgba(70,35,11,.3);
   border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
 }
@@ -483,14 +483,27 @@ body {
 .pi-gem-item { display:flex; align-items:center; gap:2px; font-size:.7em; font-weight:bold; opacity:.85; }
 .pi-mini { font-size:.68em; opacity:.55; margin-top:4px; }
 .time-up-alert {
+  position:absolute; top:6px; right:8px;
   display:inline-flex; align-items:center; justify-content:center;
-  padding:2px 6px; border-radius:6px; margin-left:auto;
+  padding:2px 6px; border-radius:6px;
   color:#fff6d8; background:linear-gradient(135deg,#8f1111,#e43a22);
   border:1px solid rgba(255,226,120,.65);
   font-size:.62em; font-weight:900; letter-spacing:.8px;
   text-shadow:0 1px 2px rgba(0,0,0,.8);
   box-shadow:0 0 12px rgba(255,56,28,.68);
   animation:time-up-flash .48s steps(2,end) infinite, time-up-shake .22s linear infinite;
+  white-space:nowrap;
+}
+.time-up-alert.warn {
+  position:absolute; top:6px; right:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:2px 6px; border-radius:6px;
+  color:#ffe4a0; background:linear-gradient(135deg,#7a4800,#cc7700);
+  border:1px solid rgba(255,200,80,.55);
+  font-size:.62em; font-weight:900; letter-spacing:.8px;
+  text-shadow:0 1px 2px rgba(0,0,0,.8);
+  box-shadow:0 0 10px rgba(255,160,30,.5);
+  animation:pulse .8s ease-in-out infinite;
   white-space:nowrap;
 }
 @keyframes time-up-flash {
@@ -1922,7 +1935,7 @@ function makeStartIntroOverlay() {
   el.innerHTML = `<div class="intro-panel">
     <div class="intro-stage">遊戲即將開始</div>
     <div class="intro-count">3</div>
-    <div class="intro-status">請準備好你的寶石商隊</div>
+    <div class="intro-status">遊戲載入中</div>
   </div>`;
   document.body.appendChild(el);
   return el;
@@ -2050,7 +2063,7 @@ function runStartCeremony(callback) {
     await introWait(30);
     overlay.classList.add('on');
     for (const n of [3,2,1]) {
-      setIntroText(overlay, '遊戲即將開始', String(n), n === 1 ? '牌桌就緒' : '請準備好你的寶石商隊');
+      setIntroText(overlay, '遊戲即將開始', String(n), n === 1 ? '牌桌就緒' : '遊戲載入中');
       playClick('count');
       await introWait(720 * pace);
     }
@@ -2352,7 +2365,7 @@ function rMissions() {
     h+=`<div class="mission-card ${claimed?'claimed':''}">
       <div class="mission-top">
         <span class="mission-name">懸賞令${i+1}：${m.name}</span>
-        <span class="mission-pts">+${m.pts}</span>
+        <span class="mission-pts">${m.pts}</span>
       </div>
       <div class="mission-icons">${missionReqHtml(m)}</div>
       <div class="mission-desc">${m.desc}</div>
@@ -2386,7 +2399,7 @@ function rBank() {
     </div>`;
   } else if (myTurn && tot>0) {
     h+=`<div style="display:flex;gap:5px;margin-top:8px">
-      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認取寶石</button>
+      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認領取寶石</button>
       <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
     </div>`;
   }
@@ -2452,7 +2465,7 @@ function rBottom() {
       <div class="act-label">行動</div>
       ${tot?`<div class="pending-row">${pendH}</div>
         <div class="btn-row">
-          <button class="btn btn-go" data-sound="treasure" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認取寶石</button>
+          <button class="btn btn-go" data-sound="treasure" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認領取寶石</button>
           <button class="btn btn-grey" onclick="clearPend()">清除</button>
         </div>`:''}
       <div class="btn-row" style="margin-top:6px">
@@ -2487,12 +2500,13 @@ function rPlayers() {
       });
       resH+=`</div>`;
     }
+    const timerBadge=cur&&_timerExpired?'<span class="time-up-alert">時間到!</span>':cur&&_timerSec<=15?'<span class="time-up-alert warn">⌛ 時光不等人</span>':'';
     const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426':''}${p.disconnected?';opacity:.45':''}">
-      <div style="display:flex;align-items:center;gap:6px">
+      ${timerBadge}
+      <div style="display:flex;align-items:center;gap:6px;${timerBadge?'padding-right:90px':''}">
         <div class="pi-pts" style="color:${p.color}">${p.points}分</div>
         <div class="pi-name" style="color:${p.color}">${p.name}</div>
         ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:''}
-        ${cur&&_timerExpired?'<span class="time-up-alert">時間到!</span>':''}
       </div>
       <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
       <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
@@ -2780,11 +2794,10 @@ function startTimer() {
   _timerInterval = setInterval(() => {
     _timerSec--;
     _updateTimerEl();
-    if (_timerSec === 15) showUrgeBanner('⌛ 時光不等人');
+    if (_timerSec === 15) refreshPlayerTimers();
     if (_timerSec <= 0) {
       clearInterval(_timerInterval);
       _timerExpired = true;
-      showUrgeBanner('時間到!');
       refreshPlayerTimers();
     }
   }, 1000);
