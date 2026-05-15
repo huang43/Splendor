@@ -584,6 +584,7 @@ body {
   position:fixed; inset:0; background:rgba(0,0,10,.84);
   display:flex; align-items:center; justify-content:center; z-index:100;
 }
+#m-over { z-index:9000; }
 .m-box {
   background:linear-gradient(160deg,#1c1c3a,#2a1a3a); border:2px solid rgba(140,90,255,.28);
   border-radius:18px; padding:26px 30px; max-width:440px; width:92%;
@@ -1494,10 +1495,9 @@ function listenGame(code) {
   db.ref(`rooms/${code}/state`).on('value', snap => {
     const data = snap.val(); if (!data) return;
     const prevCur = typeof G.cur==='number' ? G.cur : -1;
-    const wasOver = G.over;
     applyRemoteState(data);
     render();
-    if (G.over && !wasOver) { stopTimer(); showOverMod(); return; }
+    if (G.over) { showOverMod(); return; }
     if (G.cur !== prevCur) {
       stopTimer();
       showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
@@ -2321,14 +2321,20 @@ function advanceTurn() {
   } else { showTurnNotification(G.cur, startTimer); }
 }
 
+function computeWinners() {
+  const players=(G.players||[]).filter(Boolean);
+  if (!players.length) return [];
+  const mx=Math.max(...players.map(p=>p.points||0));
+  let w=players.filter(p=>(p.points||0)===mx);
+  if (w.length>1){ const mn=Math.min(...w.map(p=>(p.cards||[]).length)); w=w.filter(p=>(p.cards||[]).length===mn); }
+  return w;
+}
+
 function endGame() {
   stopTimer(); G.over=true;
-  let mx=Math.max(...G.players.map(p=>p.points));
-  let w=G.players.filter(p=>p.points===mx);
-  if (w.length>1){ const mn=Math.min(...w.map(p=>p.cards.length)); w=w.filter(p=>p.cards.length===mn); }
-  G.winners=w; render();
-  if (onlineMode) { pushG(); } // listener triggers showOverMod for all
-  else { showOverMod(); }
+  G.winners=computeWinners(); render();
+  if (onlineMode) pushG();
+  showOverMod();
 }
 
 // ── Gem bank clicking ─────────────────────────────────────────────────────
@@ -2768,6 +2774,12 @@ function cancelRet() {
 
 // ── Game over ─────────────────────────────────────────────────────────────
 function showOverMod() {
+  stopTimer();
+  clearTimeout(window._tndTimer);
+  _turnNotifCallback = null;
+  document.getElementById('turn-notif')?.classList.remove('on');
+  ['m-card','m-ret'].forEach(id=>{ const el=document.getElementById(id); if (el) el.style.display='none'; });
+  if (!G.winners || !G.winners.length) G.winners=computeWinners();
   const sorted=[...G.players].sort((a,b)=>b.points-a.points||a.cards.length-b.cards.length);
   const medals=['🥇','🥈','🥉',''];
   const rows=sorted.map((p,i)=>{
