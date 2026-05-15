@@ -353,15 +353,20 @@ body {
 .dev-card {
   width:var(--card-w); height:var(--card-h); min-height:var(--card-h); border-radius:10px; flex-shrink:0;
   display:flex; flex-direction:column; overflow:hidden; cursor:pointer;
-  border:2px solid rgba(255,255,255,.13); transition:transform .15s,box-shadow .15s;
+  border:2px solid rgba(255,255,255,.28); transition:transform .15s,box-shadow .15s;
   position:relative; background-size:cover; background-position:center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 2px 8px rgba(0,0,0,.4);
+}
+.dev-card::before {
+  content:""; position:absolute; inset:0; z-index:3; pointer-events:none; border-radius:inherit;
+  background:radial-gradient(ellipse at 50% -10%, rgba(255,255,255,.28) 0%, rgba(255,255,255,.06) 45%, transparent 68%);
 }
 .dev-card.gem-art {
   background-image:none !important;
   background-color:#090b12;
 }
 .dev-card.gem-art::before {
-  display:none;
+  background:radial-gradient(ellipse at 50% -10%, rgba(255,255,255,.22) 0%, rgba(255,255,255,.04) 45%, transparent 68%);
 }
 .dev-card.gem-art::after {
   content:""; position:absolute; left:0; right:0; top:var(--card-bar-h); bottom:0;
@@ -382,9 +387,9 @@ body {
   50%     { box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 20px rgba(120,255,160,.5), 0 0 8px rgba(120,255,160,.25); }
 }
 .dev-card.afford { animation:afford-glow 2.2s ease-in-out infinite; }
-.dev-card.t1 { background:linear-gradient(160deg,#4a3818,#2e2410); }
-.dev-card.t2 { background:linear-gradient(160deg,#1e3858,#101e38); }
-.dev-card.t3 { background:linear-gradient(160deg,#32144a,#180a28); }
+.dev-card.t1 { background:linear-gradient(160deg,#6e5230,#42300e); }
+.dev-card.t2 { background:linear-gradient(160deg,#2a4e78,#162848); }
+.dev-card.t3 { background:linear-gradient(160deg,#481a68,#260e3c); }
 .card-top {
   position:absolute; top:0; left:0; right:0; z-index:4;
   display:flex; justify-content:space-between; align-items:center;
@@ -397,10 +402,10 @@ body {
 .card-body {
   position:absolute; inset:0; z-index:2; min-height:0; padding:48px 7px 7px;
   display:flex; flex-direction:column; justify-content:flex-end; gap:3px;
-  background:linear-gradient(to bottom,rgba(0,0,0,.08) 0%,rgba(0,0,0,.02) 42%,rgba(0,0,0,.62) 76%,rgba(0,0,0,.9) 100%);
+  background:linear-gradient(to bottom,rgba(0,0,0,.04) 0%,rgba(0,0,0,0) 42%,rgba(0,0,0,.48) 76%,rgba(0,0,0,.78) 100%);
 }
 .dev-card.gem-art .card-body {
-  background:linear-gradient(to bottom,rgba(0,0,0,.08) 0%,rgba(0,0,0,0) 34%,rgba(0,0,0,.58) 76%,rgba(0,0,0,.9) 100%);
+  background:linear-gradient(to bottom,rgba(0,0,0,.04) 0%,rgba(0,0,0,0) 34%,rgba(0,0,0,.44) 76%,rgba(0,0,0,.78) 100%);
 }
 .cost-stack {
   display:flex; flex-direction:column; justify-content:flex-end; gap:1px;
