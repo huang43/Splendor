@@ -314,7 +314,7 @@ body {
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
   border:none; cursor:pointer; transition:all .15s;
   position:relative; overflow:visible;
-  padding-top:19px;
+  padding:0;
   background:transparent;
   box-shadow:none;
   --deck-edge-hi:#e8eef4; --deck-edge-mid:#aebac6; --deck-edge-lo:#667484;
@@ -322,24 +322,24 @@ body {
   --deck-back-a:#0d0d0a; --deck-back-b:#19130a; --deck-line:#d6aa45; --deck-line-soft:rgba(214,170,69,.42);
   --deck-mark-bg:#15100a; --deck-mark-fg:#ffe28a;
 }
-.deck-box:hover:not(.empty) { filter:brightness(1.12); }
+.deck-box:hover:not(.empty) { filter:none; }
 .deck-box.empty { cursor:default; opacity:.28; }
 .deck-card-icon {
-  position:relative; width:var(--deck-icon-w); height:var(--deck-icon-h); border-radius:6px;
+  position:absolute; inset:0; width:100%; height:100%; border-radius:10px;
   transform:rotate(0deg);
   transform-origin:center center;
   border:0;
   z-index:0;
-  background:transparent center / contain no-repeat;
-  box-shadow:0 8px 22px rgba(0,0,0,.65), 0 2px 6px rgba(0,0,0,.4);
+  background:transparent center / 100% 100% no-repeat;
+  filter:drop-shadow(0 10px 10px rgba(0,0,0,.6)) drop-shadow(0 2px 3px rgba(0,0,0,.45));
   margin-top:0;
   margin-bottom:0;
   overflow:visible;
-  transition:transform .15s, box-shadow .15s;
+  transition:transform .15s, filter .15s;
 }
 .deck-box:hover:not(.empty) .deck-card-icon {
   transform:translateY(-5px);
-  box-shadow:0 16px 32px rgba(0,0,0,.72), 0 4px 10px rgba(0,0,0,.45);
+  filter:drop-shadow(0 16px 14px rgba(0,0,0,.72)) drop-shadow(0 4px 6px rgba(0,0,0,.48));
 }
 .deck-card-icon::before,
 .deck-card-icon::after {
@@ -364,7 +364,7 @@ body {
   --deck-back-a:#050504; --deck-back-b:#21180b; --deck-line:#dfb34c; --deck-line-soft:rgba(223,179,76,.48);
   --deck-mark-bg:#0c0a07; --deck-mark-fg:#ffe993;
 }
-.deck-tier-3 .deck-card-icon { background-image:url('splendor-card-art/deck-tier3-real.png'); }
+.deck-tier-3 .deck-card-icon { background-image:url('splendor-card-art/deck-tier3-hearthlike.png'); }
 .deck-tier-3 .deck-sigil::before { content:"✦"; }
 .deck-tier-2 {
   --deck-edge-hi:#8fc8ff; --deck-edge-mid:#2f78ad; --deck-edge-lo:#0d355d;
@@ -372,7 +372,7 @@ body {
   --deck-back-a:#061a32; --deck-back-b:#15558d; --deck-line:#9bd2ff; --deck-line-soft:rgba(155,210,255,.5);
   --deck-mark-bg:#072746; --deck-mark-fg:#e3f3ff;
 }
-.deck-tier-2 .deck-card-icon { background-image:url('splendor-card-art/deck-tier2-real.png'); }
+.deck-tier-2 .deck-card-icon { background-image:url('splendor-card-art/deck-tier2-hearthlike.png'); }
 .deck-tier-2 .deck-sigil::before { content:"✦"; }
 .deck-tier-1 {
   --deck-edge-hi:#9fd596; --deck-edge-mid:#3f8a4d; --deck-edge-lo:#173f22;
@@ -380,7 +380,7 @@ body {
   --deck-back-a:#092416; --deck-back-b:#24693a; --deck-line:#a5df95; --deck-line-soft:rgba(165,223,149,.48);
   --deck-mark-bg:#0c321d; --deck-mark-fg:#e4ffd6;
 }
-.deck-tier-1 .deck-card-icon { background-image:url('splendor-card-art/deck-tier1-real.png'); }
+.deck-tier-1 .deck-card-icon { background-image:url('splendor-card-art/deck-tier1-hearthlike.png'); }
 .deck-tier-1 .deck-sigil::before { content:"✦"; }
 .deck-rank {
   position:absolute; left:0; right:0; top:4px; z-index:2;
@@ -964,7 +964,7 @@ body.intro-running #g-cards .card-empty-slot {
     scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
   }
   .tier-row { min-width:max-content; scroll-snap-align:start; }
-  .deck-box { padding-top:15px; }
+  .deck-box { padding:0; }
   .deck-rank { top:3px; height:13px; line-height:13px; font-size:.58em; letter-spacing:.8px; }
   .deck-n { bottom:7px; font-size:.72em; }
   .deck-lbl { font-size:.7em; }
@@ -1889,9 +1889,9 @@ function flyingCardHtml(card) {
 
 function deckBackStyle(tier) {
   return {
-    3:"background:url('splendor-card-art/deck-tier3-cardback.png') center / cover no-repeat;border-color:#fff0a4;",
-    2:"background:url('splendor-card-art/deck-tier2-cardback.png') center / cover no-repeat;border-color:#9dd3ff;",
-    1:"background:url('splendor-card-art/deck-tier1-cardback.png') center / cover no-repeat;border-color:#9fdd93;"
+    3:"background:url('splendor-card-art/deck-tier3-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
+    2:"background:url('splendor-card-art/deck-tier2-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
+    1:"background:url('splendor-card-art/deck-tier1-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));"
   }[tier] || '';
 }
 
@@ -2390,7 +2390,7 @@ function cardEffectKey(card) {
 }
 
 function cardArtName(card) {
-  return CARD_ART_BY_ID[card.id] || CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.png`;
+  return CARD_ART_BY_ID[card.id] || CARD_ART_INDEX[cardEffectKey(card)] || `tier${card.tier}-01.jpg`;
 }
 
 function cardArtClass(card) {
