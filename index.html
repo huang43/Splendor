@@ -14,6 +14,9 @@
   --deck-icon-w:120px;
   --deck-icon-h:148px;
   --board-gap:7px;
+  --table-surface-image:url('splendor-card-art/table-surface-frame.png');
+  --table-edge-image:url('splendor-card-art/table-edge-strip.png');
+  --mission-parchment-image:url('splendor-card-art/mission-parchment.png');
 }
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -101,45 +104,70 @@ body {
 
 /* Mission cards */
 .mission-card {
-  position:relative; border-radius:5px; padding:7px 10px 8px 12px; flex:1; min-width:0;
-  border:1.5px solid rgba(86,51,18,.55);
+  position:relative; border-radius:7px; padding:8px 11px 9px 13px; flex:1; min-width:0;
+  border:1.5px solid rgba(97,54,17,.78);
   background:
-    radial-gradient(circle at 12% 8%,rgba(255,255,255,.36),transparent 22%),
-    linear-gradient(135deg,#ead19a,#c59a5a 52%,#f0dcae);
+    linear-gradient(180deg,rgba(255,244,190,.18),rgba(91,43,8,.08)),
+    radial-gradient(circle at 15% 12%,rgba(255,233,156,.36),transparent 26%),
+    radial-gradient(circle at 86% 10%,rgba(255,211,117,.28),transparent 25%),
+    var(--mission-parchment-image) center / 100% 100% no-repeat,
+    linear-gradient(135deg,#dca55b,#b8752f 58%,#e8bd72);
   color:#1c1309; font-family:Georgia,'Noto Serif TC','Times New Roman',serif;
-  box-shadow:0 2px 7px rgba(0,0,0,.34), inset 0 0 16px rgba(98,57,21,.22);
+  box-shadow:
+    0 7px 14px rgba(0,0,0,.34),
+    0 1px 0 rgba(255,236,176,.14),
+    inset 0 0 0 1px rgba(255,233,171,.2),
+    inset 0 0 18px rgba(83,43,12,.26);
   overflow:hidden;
 }
 .mission-card::before {
-  content:""; position:absolute; inset:4px; border:1px dashed rgba(44,25,8,.28);
+  content:""; position:absolute; inset:5px; border:1px dashed rgba(68,36,9,.32);
   border-radius:4px; pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(62,31,8,.06),transparent 18%,transparent 82%,rgba(62,31,8,.08)),
+    repeating-linear-gradient(0deg,rgba(61,35,12,.035) 0 1px,transparent 1px 7px);
+  box-shadow:inset 0 0 12px rgba(255,238,172,.1);
+  z-index:0;
 }
+.mission-card > * { position:relative; z-index:1; }
 .mission-card.claimed {
-  border-color:rgba(80,52,18,.42); opacity:.76;
-  filter:saturate(.72);
+  border-color:rgba(79,44,15,.62); opacity:.78;
+  filter:saturate(.72) sepia(.08);
 }
 .mission-card.claimed::after {
   content:"已領"; position:absolute; right:8px; bottom:5px;
-  color:rgba(110,22,18,.55); border:1.5px solid rgba(110,22,18,.45);
+  color:rgba(101,15,11,.72); border:1.5px solid rgba(108,23,16,.62);
   transform:rotate(-10deg); font-size:.7em; font-weight:900;
-  padding:1px 5px; border-radius:3px;
+  padding:1px 6px; border-radius:3px; z-index:2;
+  background:rgba(136,24,14,.08);
 }
 .mission-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; position:relative; z-index:1; }
 .mission-name {
-  font-size:.72em; font-weight:900; color:#1d1308; letter-spacing:.8px;
+  font-size:.72em; font-weight:900; color:#211006; letter-spacing:.8px;
+  text-shadow:0 1px 0 rgba(255,225,151,.45);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .mission-pts  {
-  font-size:1.1em; font-weight:900; color:#2a1707; flex-shrink:0;
-  background:rgba(122,38,18,.14); border:1px solid rgba(70,35,11,.3);
+  font-size:1.08em; font-weight:900; color:#ffedbc; flex-shrink:0;
+  background:
+    radial-gradient(circle at 35% 28%,#d85d32 0%,#8c2f1a 48%,#4f160d 100%);
+  border:1.5px solid rgba(255,211,128,.48);
   border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  box-shadow:
+    inset 0 1px 0 rgba(255,229,170,.26),
+    inset 0 -5px 8px rgba(53,10,6,.45),
+    0 2px 5px rgba(46,16,4,.32);
+  text-shadow:0 1px 2px rgba(0,0,0,.5);
 }
-.mission-desc { font-size:.62em; color:#30200e; margin-top:3px; line-height:1.32; position:relative; z-index:1; }
+.mission-desc { font-size:.62em; color:#35200b; margin-top:3px; line-height:1.32; position:relative; z-index:1; text-shadow:0 1px 0 rgba(255,229,161,.28); }
 .mission-icons { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; position:relative; z-index:1; }
 .mission-token {
   display:inline-flex; align-items:center; gap:2px; padding:1px 5px;
-  border-radius:10px; background:rgba(55,31,9,.12); border:1px solid rgba(42,23,6,.2);
-  font-size:.64em; font-weight:900; color:#1d1308;
+  border-radius:10px;
+  background:linear-gradient(180deg,rgba(70,34,8,.18),rgba(45,22,6,.11));
+  border:1px solid rgba(61,31,6,.24);
+  box-shadow:inset 0 1px 0 rgba(255,239,180,.16);
+  font-size:.64em; font-weight:900; color:#231206;
 }
 .mission-mark { font-size:.9em; opacity:.78; margin-right:1px; }
 .mission-winner { font-size:.62em; margin-top:3px; position:relative; z-index:1; font-weight:900; }
@@ -252,24 +280,44 @@ body {
 #g-right {
   display:flex; flex-direction:column; gap:10px;
   position:relative;
+  overflow:hidden;
+  isolation:isolate;
   background:
-    repeating-linear-gradient(162deg, transparent 0px, transparent 6px, rgba(160,100,30,.014) 6px, rgba(160,100,30,.014) 7px),
-    repeating-linear-gradient(72deg,  transparent 0px, transparent 9px, rgba(0,0,0,.04)       9px, rgba(0,0,0,.04)       10px),
-    radial-gradient(ellipse at 58% 18%, #2a1c0a 0%, #180e06 42%, #0c0804 100%);
+    linear-gradient(180deg, rgba(10,6,3,.04), rgba(8,4,2,.18)),
+    radial-gradient(ellipse at 54% 8%, rgba(255,218,135,.24) 0%, transparent 48%),
+    var(--table-surface-image) center / 100% 100% no-repeat,
+    #1b0f07;
   border-radius:18px;
-  padding:14px 16px 20px;
-  border:1.5px solid rgba(110,70,22,.32);
+  padding:14px 16px 24px;
+  border:1.5px solid rgba(201,139,61,.38);
   box-shadow:
     0 14px 55px rgba(0,0,0,.75),
     0 4px 12px rgba(0,0,0,.5),
-    inset 0 1px 0 rgba(255,205,110,.06),
-    inset 0 0 70px rgba(0,0,0,.22);
+    inset 0 1px 0 rgba(255,205,110,.16),
+    inset 0 0 74px rgba(0,0,0,.34);
 }
 /* table rim highlight — top edge */
 #g-right::before {
   content:""; pointer-events:none;
   position:absolute; inset:0; border-radius:inherit;
-  background:linear-gradient(to bottom, rgba(255,200,100,.07) 0%, transparent 18%);
+  background:
+    linear-gradient(to bottom, rgba(255,216,126,.13) 0%, transparent 16%),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.28) 100%);
+  z-index:0;
+}
+#g-right::after {
+  content:""; pointer-events:none;
+  position:absolute; left:16px; right:16px; bottom:10px; height:86px;
+  border-radius:0 0 14px 14px;
+  background:
+    linear-gradient(180deg, rgba(255,217,128,.05), rgba(7,3,1,.36)),
+    var(--table-edge-image) center / 100% 100% no-repeat;
+  border:1px solid rgba(210,145,62,.2);
+  border-top-color:rgba(255,221,135,.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255,230,150,.12),
+    inset 0 -24px 40px rgba(0,0,0,.38),
+    0 -8px 26px rgba(0,0,0,.22);
   z-index:0;
 }
 #g-right > * { position:relative; z-index:1; }
