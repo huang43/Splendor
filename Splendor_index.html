@@ -1696,6 +1696,8 @@ let _roomListRef = null;
 let _hostRoomRef = null;
 let _presenceRef = null;
 let _presenceUnloadHandler = null;
+let _lastPlayedRemoteAnimId = '';
+let _remoteAnimRunId = 0;
 
 function isMyTurn() { return !onlineMode || G.cur === myIdx; }
 function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
@@ -2031,6 +2033,7 @@ function pushG() {
     })),
     log: G.log || [],
   };
+  if (G.lastAnim)         serial.lastAnim         = G.lastAnim;
   if (G.winners)          serial.winnerIndices    = G.winners.map(w=>G.players.indexOf(w));
   if (G.heroPool)         serial.heroPool         = G.heroPool;
   if (G.heroes)           serial.heroes           = G.heroes;
@@ -2124,6 +2127,7 @@ function applyRemoteState(data) {
     board:  JSON.parse(data.boardJson||'{"1":[null,null,null,null],"2":[null,null,null,null],"3":[null,null,null,null]}'),
     missions,
     log: toArr(data.log),
+    lastAnim: data.lastAnim || null,
   };
   if (data.winnerIndices)   G.winners          = toArr(data.winnerIndices).map(i=>G.players[i]);
   if (data.heroPool)        G.heroPool         = toArr(data.heroPool).map(p=>toArr(p));
@@ -2135,11 +2139,14 @@ function applyRemoteState(data) {
 }
 
 function listenGame(code) {
-  db.ref(`rooms/${code}/state`).on('value', snap => {
+  db.ref(`rooms/${code}/state`).on('value', async snap => {
     const data = snap.val(); if (!data) return;
     const prevCur = typeof G.cur==='number' ? G.cur : -1;
     applyRemoteState(data);
     render();
+    const runId = ++_remoteAnimRunId;
+    await playSyncedRemoteAnim(G.lastAnim);
+    if (runId !== _remoteAnimRunId) return;
     if (G.over) { showOverMod(); return; }
     if (G.cur !== prevCur) {
       stopTimer();
@@ -3920,6 +3927,37 @@ function animateGemsToPlayer(selection, playerIdx, callback) {
   setTimeout(callback, longest);
 }
 
+function cleanGemSelection(selection) {
+  const out={w:0,u:0,g:0,r:0,k:0,gold:0};
+  [...CI,'gold'].forEach(col=>{
+    out[col] = Math.max(0, Number(selection && selection[col]) || 0);
+  });
+  return out;
+}
+
+function markGemFlyAnim(selection, playerIdx) {
+  if (!G || !onlineMode) return;
+  G.lastAnim = {
+    id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+    type:'gems-to-player',
+    playerIdx,
+    selection:cleanGemSelection(selection)
+  };
+}
+
+function playSyncedRemoteAnim(anim) {
+  if (!onlineMode || !anim || anim.type !== 'gems-to-player') return Promise.resolve(false);
+  const id = String(anim.id || '');
+  if (!id || id === _lastPlayedRemoteAnimId) return Promise.resolve(false);
+  const playerIdx = Number(anim.playerIdx);
+  if (!Number.isFinite(playerIdx) || playerIdx === myIdx) return Promise.resolve(false);
+  _lastPlayedRemoteAnimId = id;
+  const selection = cleanGemSelection(anim.selection);
+  return new Promise(resolve => {
+    setTimeout(()=>animateGemsToPlayer(selection, playerIdx, ()=>resolve(true)), 80);
+  });
+}
+
 // ── Take gems ─────────────────────────────────────────────────────────────
 // [Change 4] Block confirmation when player takes fewer gems than possible
 function execTakeGems() {
@@ -3943,6 +3981,7 @@ function execTakeGems() {
   const pl=G.players[G.cur];
   const take={...p};
   window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...take},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks)),log:[...(G.log||[])]};
+  markGemFlyAnim(take, G.cur);
   G.ui.acted=true;
   render();
   animateGemsToPlayer(take, G.cur, ()=>{
@@ -4046,6 +4085,7 @@ function takeGold() {
   if (!isMyTurn()||G.ui.acted||(G.bank.gold||0)<=0) return;
   const pl=G.players[G.cur];
   if (gsum(pl.gems)>=10){ toast('寶石已達上限（10枚）'); return; }
+  markGemFlyAnim({gold:1}, G.cur);
   G.ui.acted=true;
   render();
   animateGemsToPlayer({gold:1}, G.cur, ()=>{
