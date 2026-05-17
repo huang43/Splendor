@@ -648,6 +648,14 @@ body {
   animation:pulse .8s ease-in-out infinite;
   white-space:nowrap;
 }
+.time-up-alert.tenpai-alert {
+  color:#161100;
+  background:linear-gradient(135deg,#ffd93d,#fff176);
+  border:1px solid rgba(42,31,0,.65);
+  text-shadow:none;
+  box-shadow:0 0 12px rgba(255,216,56,.72);
+  animation:pulse .8s ease-in-out infinite;
+}
 @keyframes time-up-flash {
   0%,100% { opacity:1; filter:brightness(1.25); }
   50% { opacity:.42; filter:brightness(.72); }
@@ -665,12 +673,89 @@ body {
   display:flex; align-items:center; justify-content:center; z-index:100;
 }
 #m-over { z-index:9000; }
+#m-over .m-box {
+  width:min(92vw,560px);
+  max-width:560px;
+  padding:24px;
+}
 .m-box {
   background:linear-gradient(160deg,#1c1c3a,#2a1a3a); border:2px solid rgba(140,90,255,.28);
   border-radius:18px; padding:26px 30px; max-width:440px; width:92%;
   box-shadow:0 0 60px rgba(100,50,255,.18);
 }
 .m-title { font-size:1.35em; font-weight:bold; color:#ffcc44; margin-bottom:14px; }
+.over-winner {
+  font-size:1.08em; color:#ffcc44; margin-bottom:14px; font-weight:800;
+}
+.over-rows {
+  display:flex; flex-direction:column; gap:8px;
+}
+.over-row {
+  display:grid; grid-template-columns:34px 50px minmax(0,1fr) auto;
+  align-items:center; gap:10px; padding:10px 12px;
+  border:1px solid rgba(255,255,255,.1); border-radius:10px;
+  background:rgba(255,255,255,.045);
+}
+.over-row.winner {
+  border-color:rgba(255,204,68,.42);
+  background:rgba(255,204,68,.08);
+}
+.over-rank { font-size:1.3em; text-align:center; }
+.over-avatar-wrap {
+  width:46px; height:46px; position:relative; flex-shrink:0;
+}
+.over-avatar,
+.over-avatar-fallback {
+  width:46px; height:46px; border-radius:50%; object-fit:cover;
+  border:2px solid currentColor; box-sizing:border-box;
+}
+.over-avatar-fallback {
+  display:none; align-items:center; justify-content:center;
+  font-size:1.45em; background:rgba(255,255,255,.08);
+}
+.over-info { min-width:0; }
+.over-player {
+  font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.over-hero {
+  margin-top:2px; font-size:.76em; color:rgba(255,255,255,.72);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.over-meta {
+  margin-top:4px; display:flex; gap:6px; flex-wrap:wrap;
+  font-size:.7em; color:rgba(255,255,255,.52);
+}
+.over-score {
+  min-width:44px; text-align:right; font-size:1.75em; font-weight:950;
+}
+.over-restart {
+  width:100%; margin-top:16px; padding:12px;
+  background:linear-gradient(135deg,#cc6600,#ffaa22);
+}
+#m-over.game-over-overlay {
+  display:grid; place-items:center; align-items:center; justify-content:center;
+  padding:24px; overflow:auto; box-sizing:border-box;
+}
+#m-over .over-box {
+  width:min(560px, calc(100vw - 48px));
+  max-height:calc(100vh - 48px);
+  overflow:auto;
+  box-sizing:border-box;
+  background:linear-gradient(160deg,#1c1c3a,#2a1a3a);
+  border:2px solid rgba(140,90,255,.32);
+  border-radius:18px;
+  padding:24px;
+  box-shadow:0 0 60px rgba(100,50,255,.22);
+}
+#m-over .over-title {
+  font-size:1.35em; font-weight:900; color:#ffcc44; margin-bottom:12px;
+}
+#m-over .over-restart {
+  display:block; width:100%; box-sizing:border-box; margin-top:16px;
+  border:0; border-radius:10px; padding:12px; cursor:pointer;
+  color:#fff; font-weight:900; font-size:1em; letter-spacing:1.2px;
+  background:linear-gradient(135deg,#cc6600,#ffaa22);
+}
 .cost-detail-row { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:.88em; }
 
 /* Gem colors */
@@ -723,10 +808,27 @@ body {
 #turn-notif .tn-name { font-size:3.2em; font-weight:900; letter-spacing:4px;
   text-shadow:0 0 35px currentColor; }
 #turn-notif .tn-hint { font-size:.72em; opacity:.4; margin-top:18px; }
+#tenpai-notif {
+  position:fixed; top:22px; left:50%; transform:translate(-50%,-18px) scale(.96);
+  z-index:430; pointer-events:none; opacity:0;
+  padding:12px 22px; border-radius:10px;
+  color:#161100; background:linear-gradient(135deg,#ffd93d,#fff176);
+  border:1px solid rgba(42,31,0,.7);
+  font-size:1.05em; font-weight:900; letter-spacing:.06em;
+  box-shadow:0 12px 34px rgba(0,0,0,.42), 0 0 20px rgba(255,216,56,.65);
+  transition:opacity .18s ease, transform .18s ease;
+  white-space:nowrap;
+}
+#tenpai-notif.on {
+  opacity:1;
+  transform:translate(-50%,0) scale(1);
+}
 
 /* Opening ceremony */
 body.intro-running #g-cards .dev-card,
-body.intro-running #g-cards .card-empty-slot {
+body.intro-running #g-cards .card-empty-slot,
+body.trump-deal-running #g-cards .dev-card,
+body.trump-deal-running #g-cards .card-empty-slot {
   opacity:0;
   pointer-events:none;
 }
@@ -735,7 +837,8 @@ body.intro-running #g-cards .deck-box {
   pointer-events:none;
 }
 .intro-deck-fly.intro-dealing-source,
-body.intro-running #g-cards .deck-box.intro-dealing-source {
+body.intro-running #g-cards .deck-box.intro-dealing-source,
+body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   filter:drop-shadow(0 0 18px rgba(255,224,138,.6));
 }
 #game-start-intro {
@@ -870,6 +973,17 @@ body.intro-running #g-cards .deck-box.intro-dealing-source {
 }
 
 /* Help button */
+#btn-bgm {
+  position:fixed; top:10px; right:54px; z-index:450;
+  width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(255,224,138,.32);
+  background:rgba(255,255,255,.08); color:#fff1b8;
+  font-size:1em; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; backdrop-filter:blur(4px);
+  box-shadow:0 0 14px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.08);
+}
+#btn-bgm:hover { background:rgba(255,200,50,.2); border-color:#ffcc44; color:#ffcc44; }
+#btn-bgm.muted { color:rgba(255,255,255,.55); border-color:rgba(255,255,255,.18); }
 #btn-help {
   position:fixed; top:10px; right:14px; z-index:450;
   width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(255,255,255,.25);
@@ -1093,6 +1207,7 @@ body.intro-running #g-cards .deck-box.intro-dealing-source {
   #g-hdr {
     position:sticky; top:0; z-index:320; padding:8px 12px; text-align:center;
   }
+  #btn-bgm { top:7px; right:44px; width:30px; height:30px; z-index:520; font-size:.95em; }
   #btn-help { top:7px; right:8px; width:30px; height:30px; z-index:520; }
   #g-main {
     flex-direction:column; align-items:stretch; justify-content:flex-start;
@@ -1337,7 +1452,7 @@ body.intro-running #g-cards .deck-box.intro-dealing-source {
 .pi-skill-btn.used { background:linear-gradient(135deg,#444,#666); border-color:rgba(200,200,200,.25); }
 .pi-skill-btn:hover:not(.used) { transform:translateY(-50%) scale(1.12); }
 /* Confirm skill modal */
-#hero-skill-confirm, #buffett-return-modal {
+#hero-skill-confirm, #buffett-return-modal, #soros-return-modal {
   position:fixed; inset:0; z-index:820;
   background:rgba(0,0,0,.75);
   display:flex; align-items:center; justify-content:center;
@@ -1655,7 +1770,9 @@ body.intro-running #g-cards .deck-box.intro-dealing-source {
   box-shadow:0 0 18px rgba(255,60,30,.4);animation:urge-pulse 1.2s ease-in-out infinite"></div>
 <div id="res-tip"></div>
 
+<button id="btn-bgm" onclick="toggleBgmMute(event)" title="靜音背景音樂" aria-label="靜音背景音樂">🔊</button>
 <button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="說明書">?</button>
+<audio id="bgm-audio" src="audio/bgm-warm-guitar-somewhere-sunny.mp3" loop preload="auto"></audio>
 
 <div id="m-help" onclick="if(event.target===this)this.style.display='none'">
   <div class="hbox">
@@ -1746,7 +1863,9 @@ let _hostRoomRef = null;
 let _presenceRef = null;
 let _presenceUnloadHandler = null;
 let _lastPlayedRemoteAnimId = '';
+let _playedRemoteAnimIds = new Set();
 let _remoteAnimRunId = 0;
+let _pendingSkillChainAnim = null;
 
 function isMyTurn() { return !onlineMode || G.cur === myIdx; }
 function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
@@ -1972,6 +2091,7 @@ function listenWait(code) {
       function _beginOnlineGame() {
         beginOpeningCeremony(()=>showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{}));
         listenGame(code);
+        listenLiveAnim(code);
       }
       if (G.heroPool && !G.heroes) {
         showOnlineHeroSelect(code, _beginOnlineGame);
@@ -2091,6 +2211,11 @@ function pushG() {
   db.ref(`rooms/${roomCode}/state`).set(serial);
 }
 
+function pushLiveAnim(anim) {
+  if (!onlineMode || !db || !roomCode || !anim) return;
+  db.ref(`rooms/${roomCode}/anim`).set(anim);
+}
+
 // ── Opponent cursor broadcast ─────────────────────────────────────────────
 function pushCursor(data) {
   if (!onlineMode || !db || !roomCode || myIdx < 0) return;
@@ -2201,6 +2326,14 @@ function listenGame(code) {
       stopTimer();
       showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
     }
+  });
+}
+
+function listenLiveAnim(code) {
+  db.ref(`rooms/${code}/anim`).on('value', snap => {
+    const anim = snap.val();
+    if (!anim) return;
+    playSyncedRemoteAnim(anim);
   });
 }
 
@@ -2500,10 +2633,10 @@ const HEROES = [
   {id:5,  key:'altman',    name:'山姆◆奧特曼',  skill:'搖錢樹',           desc:'從聲望超過3分的玩家手裡隨機奪取一顆寶石代幣',             uses:3,        passive:false, quote:'「給我看激勵機制，我就能預測結果。」'},
   {id:6,  key:'munger',    name:'查理◆芒格',    skill:'預言家',           desc:'同時查看三個牌堆各頂部1張牌，可免費預留其中1張並取得1枚金幣', uses:1,        passive:false, quote:'「永遠都要逆向思考。」'},
   {id:7,  key:'satoshi',   name:'中本聰',        skill:'財富重分配',       desc:'將自身全部寶石與指定玩家互換，但交換對象寶石/金幣總數不得超過4顆', uses:1,        passive:false, quote:'「如果你不理解，或者不相信，對不起我沒時間說服你。」'},
-  {id:8,  key:'soros',     name:'喬治◆索羅斯',   skill:'做空狙擊',         desc:'從寶石庫隨機拿取1顆五色寶石（不拿金幣）',                  uses:2,        passive:false, quote:'「只有認識到人類理解的不完美，才是真正的智慧。」'},
-  {id:9,  key:'tzuyu',     name:'周子瑜',        skill:'紫瑜我愛你',       desc:'購買黑色寶石卡片時額外加1分（每局最多2次）',              uses:2,        passive:true,  passiveBonus:'k'},
+  {id:8,  key:'soros',     name:'喬治◆索羅斯',   skill:'做空狙擊',         desc:'指定一名對手，隨機做空其1顆五色寶石並歸還寶石庫',          uses:2,        passive:false, quote:'「只有認識到人類理解的不完美，才是真正的智慧。」'},
+  {id:9,  key:'tzuyu',     name:'周子瑜',        skill:'紫瑜我愛你',       desc:'購買黑色寶石卡片時額外加1分（每局最多2次）',              uses:2,        passive:true,  passiveBonus:'k', quote:'「我是一名驕傲的韓國人。」'},
   {id:10, key:'jaychou',   name:'周杰倫',        skill:'你算什麼藍人',     desc:'購買藍色藍寶石卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'u', quote:'「我只能永遠讀著對白，讀著我給你的傷害。」'},
-  {id:11, key:'hudong',    name:'胡漢龑',        skill:'開心、開心、開心', desc:'購買紅色紅寶石卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'r'},
+  {id:11, key:'hudong',    name:'胡漢龑',        skill:'開心、開心、開心', desc:'購買紅色紅寶石卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'r', quote:'「你看，紅色的，好吉利！」'},
   {id:12, key:'willsmith', name:'威爾◆史密斯',  skill:'帽子歪了，請戴正', desc:'購買綠色祖母綠卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'g', quote:'「我不會讓任何人說你做不到，包括我自己。」'},
   {id:13, key:'trump',     name:'唐納◆特朗普',  skill:'TACO交易',         desc:'重新洗牌：將場上所有等級的牌全部收回牌堆重洗，重新發牌，並獲得2枚金幣', uses:1,        passive:false, quote:'「讓美國再次偉大！」'},
 ];
@@ -2803,8 +2936,8 @@ function activateHeroSkill(playerIdx) {
   if (hero.id === 7 && !G.players.some((p,i) => i!==playerIdx && gsum(p.gems)<=4)) {
     toast('₿ 沒有寶石/金幣總數4顆以下的交換對象'); return;
   }
-  if (hero.id === 8 && !CI.some(c=>(G.bank[c]||0)>0)) {
-    toast('🎯 寶石庫沒有可拿取的五色寶石'); return;
+  if (hero.id === 8 && !G.players.some((p,i) => i!==playerIdx && coloredGemSum(p.gems)>0)) {
+    toast('🎯 沒有持有五色寶石的對手可做空'); return;
   }
 
   // Satoshi: show target picker first, skip standard confirm
@@ -2812,6 +2945,7 @@ function activateHeroSkill(playerIdx) {
   if (hero.id === 1) { showGemDepositPicker(playerIdx); return; }
   if (hero.id === 3) { showLehmanPicker(playerIdx); return; }
   if (hero.id === 5) { showStealGemPicker(playerIdx); return; }
+  if (hero.id === 8) { showSorosShortPicker(playerIdx); return; }
   if (hero.id === 13) { showTierShufflePicker(playerIdx); return; }
 
   // Show confirm
@@ -2865,6 +2999,11 @@ function playQuoteReveal(quote, onDone) {
   }, fadeStart);
 }
 
+function heroQuoteText(hero) {
+  if (!hero) return '';
+  return hero.quote || (hero.skill ? `「${hero.skill}。」` : '');
+}
+
 function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
   const hero = getPlayerHero(playerIdx);
   if (!hero) return;
@@ -2874,10 +3013,16 @@ function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
   if (!G.heroActedThisTurn) G.heroActedThisTurn = Array(G.numP).fill(false);
   G.heroActedThisTurn[playerIdx] = true;
 
-  const doAnim = () => playHeroAnimation(hero, playerIdx, () => onExecute(hero, playerIdx), animOptions);
-  // Play quote reveal first (if hero has a quote), then skill animation
-  if (hero.quote) {
-    playQuoteReveal(hero.quote, doAnim);
+  const executeAfterHero = () => {
+    beginSkillChainAnim(hero, playerIdx, animOptions);
+    onExecute(hero, playerIdx);
+    flushPendingSkillChainAnim();
+  };
+  const doAnim = () => playHeroAnimation(hero, playerIdx, executeAfterHero, animOptions);
+  // Play quote reveal first, then skill animation
+  const quote = heroQuoteText(hero);
+  if (quote) {
+    playQuoteReveal(quote, doAnim);
   } else {
     doAnim();
   }
@@ -3002,7 +3147,7 @@ function executeHeroSkill(hero, playerIdx) {
     case 7: // 中本聰 財富重分配 — handled by confirmHeroSkillWithTarget, unreachable
       break;
     case 8: // 喬治索羅斯 做空狙擊
-      doSorosShopGem(playerIdx);
+      showSorosShortPicker(playerIdx);
       break;
     case 13: // 川普 TACO交易
       showTierShufflePicker(playerIdx);
@@ -3112,11 +3257,83 @@ window.doStealGem = function(playerIdx, targetIdx) {
   const avail = [...CI,'gold'].filter(c=>(tgt.gems[c]||0)>0);
   if (!avail.length) { toast('目標沒有寶石或金幣'); return; }
   const col = avail[Math.floor(Math.random()*avail.length)];
-  tgt.gems[col]--; G.players[playerIdx].gems[col] = (G.players[playerIdx].gems[col]||0)+1;
-  const label = col==='gold'?'金幣':`${col}色寶石`;
-  addLog('skill', `發動「搖錢樹」，從 ${tgt.name} 隨機奪取 ${gemToken(col,1)}`, playerIdx);
-  toast(`🌳 從 ${tgt.name} 奪取了1顆${label}！`); render();
+  const selection = cleanGemSelection({[col]:1});
+  deferSkillChainFollow();
+  animateGemsBetweenPlayers(selection, targetIdx, playerIdx, () => {
+    tgt.gems[col]--; G.players[playerIdx].gems[col] = (G.players[playerIdx].gems[col]||0)+1;
+    const label = col==='gold'?'金幣':gemColorName(col);
+    addLog('skill', `發動「搖錢樹」，從 ${tgt.name} 隨機奪取 ${gemToken(col,1)}`, playerIdx);
+    markSkillGemAnim('gem-player-transfer', {
+      actorIdx: playerIdx,
+      fromIdx: targetIdx,
+      toIdx: playerIdx,
+      selection,
+    });
+    toast(`🌳 從 ${tgt.name} 奪取了1顆${label}！`);
+    renderAndSyncSkill();
+  });
 };
+
+function showSorosShortPicker(playerIdx) {
+  const others = G.players.map((p,i)=>({p,i})).filter(({i,p})=> i!==playerIdx && coloredGemSum(p.gems)>0);
+  if (!others.length) { toast('沒有持有五色寶石的對手可做空'); return; }
+  const box = document.createElement('div');
+  box.id = 'hero-skill-confirm';
+  box.innerHTML = `<div class="hero-skill-confirm-box">
+    <h3>🎯 做空狙擊</h3><p>選擇一名對手，隨機做空其1顆五色寶石並歸還寶石庫。</p>
+    <div class="btn-row" style="flex-wrap:wrap">
+      ${others.map(({p,i})=>`<button class="btn-action" onclick="confirmSorosShortTarget(${playerIdx},${i})">
+        ${p.name}<br><small style="opacity:.55;font-size:.75em">${coloredGemSum(p.gems)} 顆五色寶石</small>
+      </button>`).join('')}
+      <button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button>
+    </div>
+  </div>`;
+  document.body.appendChild(box);
+}
+
+window.confirmSorosShortTarget = function(playerIdx, targetIdx) {
+  document.getElementById('hero-skill-confirm')?.remove();
+  runConfirmedHeroSkill(playerIdx, () => doSorosShortGem(playerIdx, targetIdx));
+};
+
+function showSorosReturnedModal(col, actorIdx) {
+  if (!CI.includes(col)) return;
+  document.getElementById('soros-return-modal')?.remove();
+  const actor = G.players && G.players[Number(actorIdx)];
+  const actorName = actor ? actor.name : '索羅斯';
+  const box = document.createElement('div');
+  box.id = 'soros-return-modal';
+  box.innerHTML = `<div class="hero-skill-confirm-box">
+    <h3>🎯 做空狙擊</h3>
+    <p>${htmlEsc(actorName)} 發動做空狙擊。<br>你的 <span style="color:#ffe08a;font-weight:800">${gemColorName(col)}</span> 被歸還到寶石庫了。</p>
+    <div class="btn-row">
+      <button class="btn-action" onclick="document.getElementById('soros-return-modal')?.remove()">知道了</button>
+    </div>
+  </div>`;
+  document.body.appendChild(box);
+}
+
+function doSorosShortGem(playerIdx, targetIdx) {
+  const tgt = G.players[targetIdx];
+  if (!tgt) { toast('找不到指定對手'); return; }
+  const avail = CI.filter(c=>(tgt.gems[c]||0)>0);
+  if (!avail.length) { toast('目標沒有五色寶石可做空'); return; }
+  const col = avail[Math.floor(Math.random()*avail.length)];
+  const selection = cleanGemSelection({[col]:1});
+  deferSkillChainFollow();
+  animateGemsToBank(selection, targetIdx, () => {
+    tgt.gems[col]--; G.bank[col] = (G.bank[col]||0)+1;
+    addLog('skill', `發動「做空狙擊」，做空 ${tgt.name} 的 ${gemToken(col,1)} 並歸還寶石庫`, playerIdx);
+    markSkillGemAnim('gem-return-to-bank', {
+      actorIdx: playerIdx,
+      targetIdx,
+      selection,
+      modal: {kind:'soros-returned', col},
+    });
+    toast(`🎯 已做空 ${tgt.name} 的${gemColorName(col)}，代幣歸還寶石庫！`);
+    renderAndSyncSkill();
+  });
+}
 
 function peekCardHtml(card) {
   const tierBg = {1:'linear-gradient(160deg,#6e5230,#42300e)',2:'linear-gradient(160deg,#2a4e78,#162848)',3:'linear-gradient(160deg,#481a68,#260e3c)'}[card.tier]||'#222';
@@ -3178,6 +3395,7 @@ window.doMungerReserve = function(playerIdx, tier) {
   if (gsum(pl.gems)>10) showRetMod({mode:'skill'});
   toast(gotGold ? '🔮 預言家免費預留1張牌，並取得1枚金幣！' : '🔮 預言家免費預留1張牌，但金幣庫已空。');
   render();
+  if (onlineMode) pushG();
 };
 
 function showGemSwapTargetPicker(playerIdx) {
@@ -3217,11 +3435,25 @@ window.confirmHeroSkillWithTarget = function(playerIdx, targetIdx) {
   if (gsum(G.players[targetIdx].gems)>4) { toast('₿ 交換對象寶石/金幣超過4顆，無法發動'); return; }
   const doSwap = () => {
     const pa = G.players[playerIdx], pb = G.players[targetIdx];
-    const mine = gemListLog(pa.gems) || '0顆';
-    const theirs = gemListLog(pb.gems) || '0顆';
-    const tmp = pa.gems; pa.gems = pb.gems; pb.gems = tmp;
-    addLog('skill', `發動「財富重分配」，與 ${pb.name} 交換全部寶石/金幣：交出 ${mine}，取得 ${theirs}`, playerIdx);
-    toast(`₿ 與 ${pb.name} 完成財富重分配！`); render();
+    const mineSel = cleanGemSelection(pa.gems);
+    const theirsSel = cleanGemSelection(pb.gems);
+    const mine = gemListLog(mineSel) || '0顆';
+    const theirs = gemListLog(theirsSel) || '0顆';
+    deferSkillChainFollow();
+    animateGemSwap(playerIdx, targetIdx, mineSel, theirsSel, () => {
+      pa.gems = {...theirsSel};
+      pb.gems = {...mineSel};
+      addLog('skill', `發動「財富重分配」，與 ${pb.name} 交換全部寶石/金幣：交出 ${mine}，取得 ${theirs}`, playerIdx);
+      markSkillGemAnim('gem-player-swap', {
+        actorIdx: playerIdx,
+        playerAIdx: playerIdx,
+        playerBIdx: targetIdx,
+        aToB: mineSel,
+        bToA: theirsSel,
+      });
+      toast(`₿ 與 ${pb.name} 完成財富重分配！`);
+      renderAndSyncSkill();
+    });
   };
   runConfirmedHeroSkill(playerIdx, doSwap);
 };
@@ -3284,27 +3516,23 @@ window.confirmLehmanExchange = function(playerIdx) {
 };
 window.doLehmanExchange = function(playerIdx, selection=null) {
   const pl = G.players[playerIdx];
-  const sel = selection || window._lehmanSel || {};
-  Object.entries(sel).forEach(([c, n]) => {
-    if (n > 0) { pl.gems[c] = (pl.gems[c]||0) - n; G.bank[c] = (G.bank[c]||0) + n; }
+  const sel = cleanGemSelection(selection || window._lehmanSel || {});
+  deferSkillChainFollow();
+  animateGemsToBank(sel, playerIdx, () => {
+    Object.entries(sel).forEach(([c, n]) => {
+      if (n > 0) { pl.gems[c] = (pl.gems[c]||0) - n; G.bank[c] = (G.bank[c]||0) + n; }
+    });
+    pl.points += 3;
+    addLog('skill', `發動「槓桿套利」，歸還 ${gemListLog(sel)}，獲得3分`, playerIdx);
+    markSkillGemAnim('gem-return-to-bank', {
+      actorIdx: playerIdx,
+      targetIdx: playerIdx,
+      selection: sel,
+    });
+    toast('📉 歸還2顆代幣，獲得3分！');
+    renderAndSyncSkill();
   });
-  pl.points += 3;
-  addLog('skill', `發動「槓桿套利」，歸還 ${gemListLog(sel)}，獲得3分`, playerIdx);
-  toast('📉 歸還2顆代幣，獲得3分！');
-  render();
 };
-
-function doSorosShopGem(playerIdx) {
-  const avail = CI.filter(c=>(G.bank[c]||0)>0);
-  if (!avail.length) { toast('寶石庫沒有可拿取的五色寶石'); return; }
-  const col = avail[Math.floor(Math.random()*avail.length)];
-  G.bank[col]--;
-  G.players[playerIdx].gems[col] = (G.players[playerIdx].gems[col]||0)+1;
-  addLog('skill', `發動「做空狙擊」，從寶石庫隨機拿取 ${gemToken(col,1)}`, playerIdx);
-  if (gsum(G.players[playerIdx].gems)>10) showRetMod({mode:'skill'});
-  toast(`🎯 索羅斯從寶石庫拿取1顆${CN[col]}色寶石！`);
-  render();
-}
 
 function showTierShufflePicker(playerIdx) {
   const box = document.createElement('div'); box.id='hero-skill-confirm';
@@ -3325,18 +3553,21 @@ window.confirmAllTierShuffle = function(playerIdx) {
 
 window.doAllTierShuffle = function(playerIdx) {
   document.getElementById('hero-skill-confirm')?.remove();
-  // Put all board cards back into decks and reshuffle
+  // Put all board cards back into decks, reshuffle, then prepare the new board
+  // before animating so every client can deal the same face-up cards after the skill.
   [1,2,3].forEach(t => {
     G.board[t].forEach(c => { if(c) G.decks[t].unshift(c); });
     shuffle(G.decks[t]);
-    G.board[t] = [null, null, null, null];
+    G.board[t] = [
+      G.decks[t].pop() || null,
+      G.decks[t].pop() || null,
+      G.decks[t].pop() || null,
+      G.decks[t].pop() || null
+    ];
   });
-  // Animate dealing: fly cards from each deck to each slot staggered
+  const artReady = Promise.all(getOpeningBoardCards().map(preloadCardArt));
+  deferSkillChainFollow();
   animateTrumpDeal(() => {
-    // After animation: actually fill the board
-    [1,2,3].forEach(t => {
-      G.board[t] = [G.decks[t].pop()||null, G.decks[t].pop()||null, G.decks[t].pop()||null, G.decks[t].pop()||null];
-    });
     const pl = G.players[playerIdx];
     const goldGain = Math.min(2, G.bank.gold||0);
     if (goldGain > 0) {
@@ -3345,50 +3576,44 @@ window.doAllTierShuffle = function(playerIdx) {
     }
     addLog('skill', `發動「TACO交易」，重洗並重發所有牌堆${goldGain ? `，拿取${gemToken('gold',goldGain)}` : `，未拿到${gemIconToken('gold')}`}`, playerIdx);
     render();
+    markTrumpDealAnim(playerIdx);
+    if (onlineMode) pushG();
     if (gsum(pl.gems)>10) showRetMod({mode:'skill'});
     toast(goldGain ? `🦅 TACO交易！所有牌堆重新洗牌發牌，並獲得${goldGain}枚金幣！` : '🦅 TACO交易！所有牌堆重新洗牌發牌，但金幣庫已空。');
-  });
+  }, artReady);
 };
 
-function animateTrumpDeal(callback) {
-  // First render empty board (null slots show placeholder)
-  render();
-  const delays = [];
-  let idx = 0;
-  // Deal order: tier 3 slots 0-3, tier 2 slots 0-3, tier 1 slots 0-3
-  [3, 2, 1].forEach(t => {
-    for (let slot = 0; slot < 4; slot++) {
-      delays.push({t, slot, delay: idx * 140});
-      idx++;
-    }
-  });
-  let done = 0;
-  const total = delays.length;
-  delays.forEach(({t, slot, delay}) => {
-    setTimeout(() => {
-      const deck = document.querySelector(`.deck-box[data-deck-tier="${t}"]`);
-      const target = document.querySelector(`.dev-card[data-tier="${t}"][data-slot="${slot}"]`);
-      if (!deck || !target) { if (++done >= total) callback(); return; }
-      const dr = deck.getBoundingClientRect(), tr = target.getBoundingClientRect();
-      const fly = document.createElement('div');
-      fly.className = 'refill-card-back';
-      fly.style.cssText = `left:${dr.left+dr.width/2-tr.width/2}px;top:${dr.top+dr.height/2-tr.height/2}px;
-        width:${tr.width}px;height:${tr.height}px;transform:scale(.5) rotate(${(Math.random()-0.5)*20}deg);opacity:0;${refillDeckCardStyle(t)}`;
-      document.body.appendChild(fly);
-      requestAnimationFrame(() => {
-        fly.style.opacity = '1';
-        fly.style.left = tr.left + 'px';
-        fly.style.top = tr.top + 'px';
-        fly.style.transform = 'scale(1) rotate(0deg)';
-        setTimeout(() => {
-          fly.style.opacity = '0';
-          setTimeout(() => {
-            fly.remove();
-            if (++done >= total) callback();
-          }, 160);
-        }, 480);
-      });
-    }, delay);
+function animateTrumpDeal(callback, artReady=Promise.resolve()) {
+  let cardFlyers = [];
+  let callbackDone = false;
+  const done = () => {
+    if (callbackDone) return;
+    callbackDone = true;
+    if (typeof callback === 'function') callback();
+  };
+
+  (async()=>{
+    document.body.classList.add('trump-deal-running');
+    render();
+    await Promise.resolve(artReady).catch(()=>{});
+    cardFlyers = await dealOpeningBoardCards(null);
+    playClick('confirm');
+    await introWait(260);
+    document.querySelectorAll('#g-cards .dev-card').forEach(el=>{
+      el.classList.add('refill-just-rendered');
+      setTimeout(()=>el.classList.remove('refill-just-rendered'), 1500);
+    });
+    document.body.classList.remove('trump-deal-running');
+    cardFlyers.forEach(el=>{ el.style.opacity = '0'; });
+    done();
+    await introWait(280);
+  })().catch(()=>{
+    document.body.classList.remove('trump-deal-running');
+    done();
+  }).finally(()=>{
+    document.body.classList.remove('trump-deal-running');
+    cardFlyers.forEach(el=>el.remove());
+    document.querySelectorAll('#g-cards .deck-box.intro-dealing-source').forEach(el=>el.classList.remove('intro-dealing-source'));
   });
 }
 
@@ -3602,6 +3827,63 @@ function hasMuskableCard(playerIdx) {
   return false;
 }
 
+let _tenpaiPrev = [];
+let _tenpaiNotifTimer = null;
+
+function projectedCardPoints(playerIdx, card) {
+  let pts = Number(card?.pts || 0);
+  const hero = G.heroes ? getPlayerHero(playerIdx) : null;
+  const usesLeft = (G.heroUsed && hero) ? G.heroUsed[playerIdx] : 0;
+  if (hero && hero.passive && hero.passiveBonus === card.bonus && usesLeft > 0) pts += 1;
+  return pts;
+}
+
+function playerCanReach15WithCard(playerIdx, card) {
+  const pl = G.players && G.players[playerIdx];
+  if (!pl || !card || pl.points >= 15) return false;
+  return canBuy(pl, card) && (pl.points + projectedCardPoints(playerIdx, card) >= 15);
+}
+
+function isPlayerTenpai(playerIdx) {
+  const pl = G.players && G.players[playerIdx];
+  if (!pl || pl.disconnected || pl.points >= 15) return false;
+  const reserved = Array.isArray(pl.reserved) ? pl.reserved : [];
+  if (reserved.some(card => playerCanReach15WithCard(playerIdx, card))) return true;
+  for (const t of [1,2,3]) {
+    const row = (G.board && G.board[t]) || [];
+    if (row.some(card => playerCanReach15WithCard(playerIdx, card))) return true;
+  }
+  return false;
+}
+
+function showTenpaiNotification(playerIdx) {
+  const pl = G.players && G.players[playerIdx];
+  if (!pl) return;
+  let el = document.getElementById('tenpai-notif');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'tenpai-notif';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<span style="color:${htmlEsc(pl.color || '#161100')}">${htmlEsc(pl.name)}</span> 玩家已聽牌!`;
+  clearTimeout(_tenpaiNotifTimer);
+  el.classList.remove('on');
+  void el.offsetWidth;
+  el.classList.add('on');
+  _tenpaiNotifTimer = setTimeout(() => el.classList.remove('on'), 2600);
+}
+
+function updateTenpaiNotifications() {
+  if (!G || !G.players || G.over) return;
+  G.players.forEach((_, i) => {
+    const now = isPlayerTenpai(i);
+    const was = !!_tenpaiPrev[i];
+    if (now && !was) showTenpaiNotification(i);
+    _tenpaiPrev[i] = now;
+  });
+  _tenpaiPrev.length = G.players.length;
+}
+
 // ── Card animation ───────────────────────────────────────────────────────
 function cardCostHtml(card) {
   return CI.filter(c=>(card.cost[c]||0)>0).map(c=>
@@ -3689,10 +3971,30 @@ function completeRefillThen(refill, nextStep) {
   });
 }
 
-function animateCardAcquired(card, playerIdx, label, callback) {
+function cloneAnimCard(card) {
+  return card ? JSON.parse(JSON.stringify(card)) : null;
+}
+
+function boardCardSlotFor(card) {
+  if (!card || !G || !G.board) return null;
+  for (const t of [1,2,3]) {
+    const slot = (G.board[t]||[]).findIndex(c=>c&&c.id===card.id);
+    if (slot !== -1) return {kind:'board', tier:t, slot};
+  }
+  return null;
+}
+
+function previewBoardRefill(source) {
+  if (!source || source.kind !== 'board') return null;
+  const deck = G.decks && G.decks[source.tier] ? G.decks[source.tier] : [];
+  const newCard = deck.length ? deck[deck.length - 1] : null;
+  return {tier:source.tier, slot:source.slot, newCard:cloneAnimCard(newCard)};
+}
+
+function animateCardAcquired(card, playerIdx, label, callback, sourceEl=null) {
   playClick('card');
   const pl = G.players[playerIdx];
-  const src = document.querySelector(`.dev-card[data-card-id="${card.id}"]`);
+  const src = sourceEl || document.querySelector(`.dev-card[data-card-id="${card.id}"]`);
   const sr = src ? src.getBoundingClientRect() : null;
   const W = sr ? sr.width : 130, H = sr ? sr.height : 175;
   if (src) src.style.visibility = 'hidden';
@@ -3978,6 +4280,8 @@ function runStartCeremony(callback) {
 function execBuy(card, fromRes) {
   const pl=G.players[G.cur];
   if (!canBuy(pl,card)) { toast('寶石不足，無法購買'); return false; }
+  const animSource = fromRes ? {kind:'reserved'} : (boardCardSlotFor(card) || {kind:'center'});
+  const refillPreview = fromRes ? null : previewBoardRefill(animSource);
   const e=effCost(pl,card);
   let gused=0;
   const paid={w:0,u:0,g:0,r:0,k:0,gold:0};
@@ -4014,18 +4318,28 @@ function execBuy(card, fromRes) {
   else { G.ui.acted = true; }
   G.ui.pendCard=null;
   closeM('m-card');
+  const passiveFollowHero = _passiveHero ? {followHero:{hero:_passiveHero, playerIdx:_passiveCurIdx}} : {};
+  if (!_passiveHero) {
+    const liveAnim = markCardActionAnim('buy', G.cur, card, animSource, refillPreview, passiveFollowHero);
+    if (liveAnim) pushLiveAnim(liveAnim);
+  }
   animateCardAcquired(card, G.cur, `${pl.name} 購得寶石卡！`, ()=>{
     const refill = fromRes ? null : fillBoard(card);
+    if (_passiveHero) {
+      const passiveLiveAnim = markCardActionAnim('buy', G.cur, card, animSource, refill, passiveFollowHero);
+      if (passiveLiveAnim) pushLiveAnim(passiveLiveAnim);
+    }
     completeRefillThen(refill, ()=>{
       if (_passiveHero) {
         const doAnim = () => playHeroAnimation(_passiveHero, _passiveCurIdx, () => {
-          if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); }
+          if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
           else { afterAct(); render(); }
         });
-        if (_passiveHero.quote) playQuoteReveal(_passiveHero.quote, doAnim);
+        const quote = heroQuoteText(_passiveHero);
+        if (quote) playQuoteReveal(quote, doAnim);
         else doAnim();
       } else {
-        if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); }
+        if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
         else { afterAct(); render(); }
       }
     });
@@ -4036,6 +4350,8 @@ function execBuy(card, fromRes) {
 function execReserve(card, tier, bi) {
   const pl=G.players[G.cur];
   if (pl.reserved.length>=3){ toast('最多預留3張牌'); return false; }
+  const animSource = tier!==null && bi!==null ? {kind:'board', tier, slot:bi} : {kind:'deck', tier:card.tier};
+  const refillPreview = tier!==null && bi!==null ? previewBoardRefill(animSource) : null;
   window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...G.ui.pending},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks)),log:[...(G.log||[])]};
   pl.reserved.push(card);
   const gotGold = G.bank.gold>0;
@@ -4049,11 +4365,14 @@ function execReserve(card, tier, bi) {
     : `從${tierLabel(card.tier)}牌堆預留1張牌`;
   addLog('reserve', `${reserveText}，${gotGold?`拿取${gemToken('gold',1)}`:`未拿到${gemIconToken('gold')}`}`, G.cur);
   closeM('m-card');
+  const reserveNeedsReturn = gsum(pl.gems)>10;
+  const liveAnim = markCardActionAnim('reserve', G.cur, card, animSource, refillPreview);
+  if (liveAnim && !reserveNeedsReturn) pushLiveAnim(liveAnim);
   animateCardAcquired(card, G.cur, `${pl.name} 預留寶石卡！`, ()=>{
     const refill = tier!==null && bi!==null ? fillBoard(card) : null;
     completeRefillThen(refill, ()=>{
       if (gsum(pl.gems)>10){ render(); showRetMod(muskRes ? {mode:'musk'} : {}); }
-      else if (muskRes) { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); }
+      else if (muskRes) { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
       else { afterAct(); render(); }
     });
   });
@@ -4109,6 +4428,108 @@ function animateGemsToPlayer(selection, playerIdx, callback) {
   setTimeout(callback, longest);
 }
 
+function gemSelectionEntries(selection) {
+  const entries = [];
+  [...CI,'gold'].forEach(col => {
+    const n = Math.max(0, Number(selection && selection[col]) || 0);
+    for (let i=0; i<n; i++) entries.push(col);
+  });
+  return entries;
+}
+
+function gemEndpointRect(endpoint, col) {
+  if (!endpoint) return null;
+  if (endpoint.type === 'bank') {
+    const row = document.querySelector(`.bank-row[data-col="${col}"]`);
+    return row ? row.getBoundingClientRect() : null;
+  }
+  if (endpoint.type === 'player') {
+    const idx = Number(endpoint.playerIdx);
+    const gems = document.querySelector(`.pi-card[data-player="${idx}"] .pi-gems`);
+    const card = document.querySelector(`.pi-card[data-player="${idx}"]`);
+    return (gems || card) ? (gems || card).getBoundingClientRect() : null;
+  }
+  return null;
+}
+
+function gemEndpointPoint(endpoint, col, index, total) {
+  const rect = gemEndpointRect(endpoint, col);
+  if (rect) {
+    if (endpoint.type === 'bank') {
+      return {
+        x: rect.left + 18 + (index % 2) * 5,
+        y: rect.top + rect.height / 2 - 15,
+      };
+    }
+    return {
+      x: rect.left + Math.max(4, Math.min(rect.width - 24, 8 + (index % 4) * 18)),
+      y: rect.top + Math.max(4, Math.min(rect.height - 24, 6 + (Math.floor(index / 4) % 3) * 14)),
+    };
+  }
+  if (endpoint && endpoint.type === 'bank') {
+    return { x: window.innerWidth * .16, y: window.innerHeight * .45 };
+  }
+  const n = Math.max(1, Number(total)||1);
+  return {
+    x: window.innerWidth * (.28 + (index % n) * .03),
+    y: window.innerHeight * .64,
+  };
+}
+
+function animateGemTransfers(transfers, callback) {
+  if (typeof callback !== 'function') callback = function(){};
+  const jobs = [];
+  transfers.forEach(t => {
+    gemSelectionEntries(t.selection).forEach(col => jobs.push({ col, from:t.from, to:t.to }));
+  });
+  if (!jobs.length) { callback(); return; }
+  let longest = 0;
+  jobs.forEach((job, i) => {
+    const start = gemEndpointPoint(job.from, job.col, i, jobs.length);
+    const end   = gemEndpointPoint(job.to, job.col, i, jobs.length);
+    const el = document.createElement('div');
+    el.className = 'gem-fly';
+    el.innerHTML = gemSVG(job.col, 30);
+    el.style.left = start.x + 'px';
+    el.style.top = start.y + 'px';
+    el.style.transform = `scale(1) rotate(${(i%3-1)*10}deg)`;
+    document.body.appendChild(el);
+    const delay = i * 95;
+    longest = Math.max(longest, delay + 720);
+    setTimeout(() => {
+      el.style.left = (end.x + (i % 3) * 7) + 'px';
+      el.style.top = (end.y + (Math.floor(i / 3) % 2) * 8) + 'px';
+      el.style.transform = 'scale(.46) rotate(480deg)';
+      el.style.opacity = '0';
+    }, delay + 30);
+    setTimeout(() => el.remove(), delay + 820);
+  });
+  setTimeout(callback, longest + 60);
+}
+
+function animateGemsToBank(selection, fromPlayerIdx, callback) {
+  animateGemTransfers([{
+    selection,
+    from: {type:'player', playerIdx:fromPlayerIdx},
+    to: {type:'bank'},
+  }], callback);
+}
+
+function animateGemsBetweenPlayers(selection, fromPlayerIdx, toPlayerIdx, callback) {
+  animateGemTransfers([{
+    selection,
+    from: {type:'player', playerIdx:fromPlayerIdx},
+    to: {type:'player', playerIdx:toPlayerIdx},
+  }], callback);
+}
+
+function animateGemSwap(playerAIdx, playerBIdx, aToB, bToA, callback) {
+  animateGemTransfers([
+    {selection:aToB, from:{type:'player', playerIdx:playerAIdx}, to:{type:'player', playerIdx:playerBIdx}},
+    {selection:bToA, from:{type:'player', playerIdx:playerBIdx}, to:{type:'player', playerIdx:playerAIdx}},
+  ], callback);
+}
+
 function cleanGemSelection(selection) {
   const out={w:0,u:0,g:0,r:0,k:0,gold:0};
   [...CI,'gold'].forEach(col=>{
@@ -4117,26 +4538,297 @@ function cleanGemSelection(selection) {
   return out;
 }
 
-function markGemFlyAnim(selection, playerIdx) {
-  if (!G || !onlineMode) return;
-  G.lastAnim = {
-    id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
-    type:'gems-to-player',
+function makeRemoteAnimId(prefix='anim') {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+}
+
+function beginSkillChainAnim(hero, playerIdx, options={}) {
+  if (!onlineMode || !hero) { _pendingSkillChainAnim = null; return; }
+  _pendingSkillChainAnim = {
+    id:makeRemoteAnimId('skill'),
+    type:'skill-chain',
+    originIdx:myIdx,
     playerIdx,
-    selection:cleanGemSelection(selection)
+    hero:{
+      heroId:hero.id,
+      playerIdx,
+      options:normaliseFollowHeroOptions(options)
+    },
+    after:null,
+    deferred:false
   };
 }
 
-function playSyncedRemoteAnim(anim) {
-  if (!onlineMode || !anim || anim.type !== 'gems-to-player') return Promise.resolve(false);
-  const id = String(anim.id || '');
-  if (!id || id === _lastPlayedRemoteAnimId) return Promise.resolve(false);
+function deferSkillChainFollow() {
+  if (_pendingSkillChainAnim) _pendingSkillChainAnim.deferred = true;
+}
+
+function wrapPendingSkillChain(anim) {
+  if (!_pendingSkillChainAnim) return anim;
+  const chain = {
+    ..._pendingSkillChainAnim,
+    after:anim || null,
+    deferred:false
+  };
+  _pendingSkillChainAnim = null;
+  return chain;
+}
+
+function flushPendingSkillChainAnim() {
+  if (!_pendingSkillChainAnim || _pendingSkillChainAnim.deferred) return;
+  G.lastAnim = wrapPendingSkillChain(null);
+  if (onlineMode) pushG();
+}
+
+function markGemFlyAnim(selection, playerIdx) {
+  if (!G || !onlineMode) return;
+  const anim = {
+    id:makeRemoteAnimId('gems'),
+    type:'gems-to-player',
+    originIdx: myIdx,
+    playerIdx,
+    selection:cleanGemSelection(selection)
+  };
+  G.lastAnim = wrapPendingSkillChain(anim);
+}
+
+function markSkillGemAnim(type, payload={}) {
+  if (!G || !onlineMode) return;
+  const anim = {
+    id:makeRemoteAnimId(type || 'skill-gems'),
+    type,
+    originIdx: myIdx,
+    ...payload,
+  };
+  G.lastAnim = wrapPendingSkillChain(anim);
+}
+
+function markTrumpDealAnim(playerIdx) {
+  if (!G || !onlineMode) return;
+  const anim = {
+    id:makeRemoteAnimId('trump-deal'),
+    type:'trump-deal',
+    originIdx:myIdx,
+    playerIdx,
+    heroId:13
+  };
+  G.lastAnim = wrapPendingSkillChain(anim);
+}
+
+function normaliseCardActionSource(source, card) {
+  if (source && source.kind === 'board') {
+    return {kind:'board', tier:Number(source.tier), slot:Number(source.slot)};
+  }
+  if (source && source.kind === 'deck') {
+    return {kind:'deck', tier:Number(source.tier || (card && card.tier) || 1)};
+  }
+  if (source && source.kind === 'reserved') return {kind:'reserved'};
+  return {kind:'center'};
+}
+
+function normaliseRefillAnim(refill) {
+  if (!refill || !refill.newCard) return null;
+  return {
+    tier:Number(refill.tier),
+    slot:Number(refill.slot),
+    newCard:cloneAnimCard(refill.newCard)
+  };
+}
+
+function normaliseFollowHeroOptions(options={}) {
+  const out = {};
+  if (options && typeof options.showcaseFile === 'string') out.showcaseFile = options.showcaseFile;
+  if (options && typeof options.cutoutFile === 'string') out.cutoutFile = options.cutoutFile;
+  return out;
+}
+
+function normaliseFollowHeroAnim(followHero) {
+  if (!followHero || !followHero.hero) return null;
+  return {
+    heroId:followHero.hero.id,
+    playerIdx:followHero.playerIdx,
+    options:normaliseFollowHeroOptions(followHero.options || {})
+  };
+}
+
+function markCardActionAnim(action, playerIdx, card, source, refill, options={}) {
+  if (!G || !onlineMode || !card) return null;
+  const anim = {
+    id:makeRemoteAnimId('card-action'),
+    type:'card-action',
+    originIdx:myIdx,
+    action,
+    playerIdx,
+    card:cloneAnimCard(card),
+    source:normaliseCardActionSource(source, card),
+    refill:normaliseRefillAnim(refill)
+  };
+  const followHero = normaliseFollowHeroAnim(options.followHero);
+  if (followHero) anim.followHero = followHero;
+  G.lastAnim = wrapPendingSkillChain(anim);
+  return G.lastAnim;
+}
+
+function remoteCardSize() {
+  const sample = document.querySelector('#g-cards .dev-card, #g-cards .card-empty-slot');
+  const r = sample ? sample.getBoundingClientRect() : null;
+  return {width:(r&&r.width)||130, height:(r&&r.height)||175};
+}
+
+function remoteCardSourceRect(source, playerIdx) {
+  const size = remoteCardSize();
+  if (source && source.kind === 'board') {
+    const slot = document.querySelector(`.dev-card[data-tier="${source.tier}"][data-slot="${source.slot}"], .card-empty-slot[data-tier="${source.tier}"][data-slot="${source.slot}"]`);
+    const r = slot ? slot.getBoundingClientRect() : null;
+    if (r) return {left:r.left, top:r.top, width:r.width, height:r.height};
+  }
+  if (source && source.kind === 'deck') {
+    const deck = document.querySelector(`.deck-box[data-deck-tier="${source.tier}"]`);
+    const r = deck ? deck.getBoundingClientRect() : null;
+    if (r) return {left:r.left+r.width/2-size.width/2, top:r.top+r.height/2-size.height/2, width:size.width, height:size.height};
+  }
+  if (source && source.kind === 'reserved') {
+    const panel = document.querySelector(`.pi-card[data-player="${playerIdx}"]`);
+    const r = panel ? panel.getBoundingClientRect() : null;
+    if (r) return {left:r.left+r.width*.56-size.width/2, top:r.top+r.height*.68-size.height/2, width:size.width, height:size.height};
+  }
+  return {left:window.innerWidth/2-size.width/2, top:window.innerHeight/2-size.height/2, width:size.width, height:size.height};
+}
+
+function hideRemoteBoardSlot(source) {
+  if (!source || source.kind !== 'board') return ()=>{};
+  const slot = document.querySelector(`.dev-card[data-tier="${source.tier}"][data-slot="${source.slot}"], .card-empty-slot[data-tier="${source.tier}"][data-slot="${source.slot}"]`);
+  if (!slot) return ()=>{};
+  slot.style.visibility = 'hidden';
+  return ()=>{ if (slot.isConnected) slot.style.visibility = ''; };
+}
+
+function makeRemoteActionSourceCard(card, rect) {
+  const face = boardCardFace(card);
+  const el = document.createElement('div');
+  el.className = `dev-card t${card.tier} ${face.stateClass} refill-just-rendered ${cardArtClass(card)}`;
+  el.dataset.cardId = card.id;
+  el.innerHTML = face.html;
+  el.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;min-height:${rect.height}px;
+    z-index:520;pointer-events:none;--card-bar-h:44px;${cardBgStyle(card)}`;
+  document.body.appendChild(el);
+  return el;
+}
+
+function playFollowHeroAnim(followHero, fallbackPlayerIdx, done) {
+  if (!followHero) { done(); return; }
+  const playerIdx = Number.isFinite(Number(followHero.playerIdx)) ? Number(followHero.playerIdx) : fallbackPlayerIdx;
+  const hero = HEROES.find(h=>h.id === Number(followHero.heroId)) || getPlayerHero(playerIdx);
+  if (!hero) { done(); return; }
+  const finish = () => done();
+  const doAnim = () => playHeroAnimation(hero, playerIdx, finish, normaliseFollowHeroOptions(followHero.options));
+  const quote = heroQuoteText(hero);
+  if (quote) playQuoteReveal(quote, doAnim);
+  else doAnim();
+}
+
+function animateRemoteRefillFromDeck(refill, callback) {
+  if (!refill || !refill.newCard) { callback(); return; }
+  const artReady = preloadCardArt(refill.newCard);
+  animateRefillFromDeck(refill, artReady, ()=>{
+    setTimeout(callback, 260);
+  });
+}
+
+function playRemoteCardAction(anim) {
   const playerIdx = Number(anim.playerIdx);
-  if (!Number.isFinite(playerIdx) || playerIdx === myIdx) return Promise.resolve(false);
+  const card = anim.card;
+  if (!card || !G.players || !G.players[playerIdx]) return Promise.resolve(false);
+  const source = normaliseCardActionSource(anim.source, card);
+  const refill = normaliseRefillAnim(anim.refill);
+  const restoreSlot = hideRemoteBoardSlot(source);
+  const temp = makeRemoteActionSourceCard(card, remoteCardSourceRect(source, playerIdx));
+  const label = `${G.players[playerIdx].name} ${anim.action === 'reserve' ? '預留寶石卡！' : '購得寶石卡！'}`;
+  return new Promise(resolve=>{
+    const finish = () => playFollowHeroAnim(anim.followHero, playerIdx, ()=>resolve(true));
+    animateCardAcquired(card, playerIdx, label, ()=>{
+      temp.remove();
+      if (refill && refill.newCard) {
+        animateRemoteRefillFromDeck(refill, finish);
+      } else {
+        if (source.kind !== 'board') restoreSlot();
+        finish();
+      }
+    }, temp);
+  });
+}
+
+function renderAndSyncSkill() {
+  if (_pendingSkillChainAnim) G.lastAnim = wrapPendingSkillChain(null);
+  render();
+  if (onlineMode) pushG();
+}
+
+function playSyncedRemoteAnim(anim) {
+  if (!onlineMode || !anim) return Promise.resolve(false);
+  const id = String(anim.id || '');
+  if (!id || id === _lastPlayedRemoteAnimId || _playedRemoteAnimIds.has(id)) return Promise.resolve(false);
   _lastPlayedRemoteAnimId = id;
-  const selection = cleanGemSelection(anim.selection);
+  _playedRemoteAnimIds.add(id);
+  if (_playedRemoteAnimIds.size > 80) {
+    const first = _playedRemoteAnimIds.values().next().value;
+    _playedRemoteAnimIds.delete(first);
+  }
+  const originIdx = Number(anim.originIdx);
+  if (Number.isFinite(originIdx) && originIdx === myIdx) return Promise.resolve(false);
   return new Promise(resolve => {
-    setTimeout(()=>animateGemsToPlayer(selection, playerIdx, ()=>resolve(true)), 80);
+    setTimeout(() => {
+      if (anim.type === 'skill-chain') {
+        playFollowHeroAnim(anim.hero, Number(anim.playerIdx), () => {
+          if (anim.after) playSyncedRemoteAnim(anim.after).then(resolve);
+          else resolve(true);
+        });
+        return;
+      }
+      if (anim.type === 'card-action') {
+        playRemoteCardAction(anim).then(resolve);
+        return;
+      }
+      if (anim.type === 'gems-to-player') {
+        const playerIdx = Number(anim.playerIdx);
+        if (!Number.isFinite(playerIdx) || playerIdx === myIdx) { resolve(false); return; }
+        animateGemsToPlayer(cleanGemSelection(anim.selection), playerIdx, () => resolve(true));
+        return;
+      }
+      if (anim.type === 'gem-return-to-bank') {
+        const targetIdx = Number(anim.targetIdx);
+        if (anim.modal && anim.modal.kind === 'soros-returned' && targetIdx === myIdx) {
+          showSorosReturnedModal(anim.modal.col, anim.actorIdx);
+        }
+        animateGemsToBank(cleanGemSelection(anim.selection), targetIdx, () => resolve(true));
+        return;
+      }
+      if (anim.type === 'gem-player-transfer') {
+        animateGemsBetweenPlayers(
+          cleanGemSelection(anim.selection),
+          Number(anim.fromIdx),
+          Number(anim.toIdx),
+          () => resolve(true)
+        );
+        return;
+      }
+      if (anim.type === 'gem-player-swap') {
+        animateGemSwap(
+          Number(anim.playerAIdx),
+          Number(anim.playerBIdx),
+          cleanGemSelection(anim.aToB),
+          cleanGemSelection(anim.bToA),
+          () => resolve(true)
+        );
+        return;
+      }
+      if (anim.type === 'trump-deal') {
+        const artReady = Promise.all(getOpeningBoardCards().map(preloadCardArt));
+        animateTrumpDeal(() => resolve(true), artReady);
+        return;
+      }
+      resolve(false);
+    }, 80);
   });
 }
 
@@ -4315,6 +5007,7 @@ function cardBgStyle(card) {
 function render() {
   rMissions(); rBank(); rCards(); rPlayers(); rActionLog();
   if (onlineMode) applyOpponentCursors();
+  updateTenpaiNotifications();
 }
 
 function rActionLog() {
@@ -4484,7 +5177,14 @@ function rPlayers() {
       });
       resH+=`</div>`;
     }
-    const timerBadge=cur&&_timerExpired?'<span class="time-up-alert">時間到!</span>':cur&&_timerSec<=15?'<span class="time-up-alert warn">⌛ 時光不等人</span>':'';
+    const tenpai = isPlayerTenpai(i);
+    const timerBadge = tenpai
+      ? '<span class="time-up-alert tenpai-alert">聽牌!</span>'
+      : cur&&_timerExpired
+        ? '<span class="time-up-alert">時間到!</span>'
+        : cur&&_timerSec<=15
+          ? '<span class="time-up-alert warn">⌛ 時光不等人</span>'
+          : '';
     // Hero avatar & skill button
     const hero = G.heroes ? getPlayerHero(i) : null;
     const usesLeft = (G.heroUsed && hero) ? G.heroUsed[i] : 0;
@@ -4494,7 +5194,7 @@ function rPlayers() {
       (hero.id === 3 && gsum(p.gems) < 2) ||
       (hero.id === 5 && !G.players.some((op,oi) => oi!==i && op.points>3 && gsum(op.gems)>0)) ||
       (hero.id === 7 && !G.players.some((op,oi) => oi!==i && gsum(op.gems)<=4)) ||
-      (hero.id === 8 && !CI.some(c=>(G.bank[c]||0)>0))
+      (hero.id === 8 && !G.players.some((op,oi) => oi!==i && coloredGemSum(op.gems)>0))
     );
     const canUseSkill = hero && !hero.passive && cur && usesLeft > 0 && !alreadyActedHero && !skillBlocked;
     const skillUsed = hero && !hero.passive && cur && (usesLeft <= 0 || alreadyActedHero);
@@ -4693,7 +5393,7 @@ function confRet() {
   window._retMode=null;
   document.getElementById('m-ret').style.display='none';
   if (mode==='skill') { render(); return; }
-  if (mode==='musk') { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); return; }
+  if (mode==='musk') { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); return; }
   afterAct(); render();
 }
 
@@ -4723,34 +5423,50 @@ function showOverMod() {
   document.getElementById('turn-notif')?.classList.remove('on');
   ['m-card','m-ret'].forEach(id=>{ const el=document.getElementById(id); if (el) el.style.display='none'; });
   if (!G.winners || !G.winners.length) G.winners=computeWinners();
-  const sorted=[...G.players].sort((a,b)=>b.points-a.points||a.cards.length-b.cards.length);
+  const sorted=G.players.map((p,idx)=>({p,idx})).sort((a,b)=>b.p.points-a.p.points||a.p.cards.length-b.p.cards.length);
+  const winnerIdxs = new Set((G.winners||[]).map(w=>G.players.indexOf(w)).filter(i=>i>=0));
   const medals=['🥇','🥈','🥉',''];
-  const rows=sorted.map((p,i)=>{
-    const isW=G.winners.includes(p);
-    const pi=G.players.indexOf(p);
-    const heroId=G.heroes&&G.heroes[pi];
+  const rows=sorted.map(({p,idx},i)=>{
+    const isW=winnerIdxs.has(idx);
+    const heroId=G.heroes&&G.heroes[idx];
     const hero=heroId?HEROES.find(h=>h.id===heroId):null;
-    const avatarHtml=hero
-      ? `<img src="heros/${hero.key}.jpg" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${p.color}" onerror="this.outerHTML='<div style=\\'width:52px;height:52px;border-radius:50%;background:'+${JSON.stringify(p.color)}+';display:flex;align-items:center;justify-content:center;font-size:1.6em;flex-shrink:0\\'>'+(HERO_EMOJI[${JSON.stringify(hero.key)}]||'👤')+'</div>'">`
-      : `<div style="width:52px;height:52px;border-radius:50%;background:${p.color};display:flex;align-items:center;justify-content:center;font-size:1.6em;flex-shrink:0">👤</div>`;
-    return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1)">
-      <span style="font-size:1.4em">${medals[i]||''}</span>
+    const claimed = G.missions.filter(m=>m.claimedBy===idx).length;
+    const heroEmoji = hero ? (HERO_EMOJI[hero.key] || '👤') : '👤';
+    const avatarHtml = hero
+      ? `<div class="over-avatar-wrap" style="color:${htmlEsc(p.color)}">
+          <img class="over-avatar" src="heros/${hero.key}.jpg" alt="${htmlEsc(hero.name)}"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <span class="over-avatar-fallback">${heroEmoji}</span>
+        </div>`
+      : `<div class="over-avatar-wrap" style="color:${htmlEsc(p.color)}">
+          <span class="over-avatar-fallback" style="display:flex">${heroEmoji}</span>
+        </div>`;
+    return `<div class="over-row${isW?' winner':''}">
+      <div class="over-rank">${medals[i]||`#${i+1}`}</div>
       ${avatarHtml}
-      <div style="flex:1">
-        <div style="font-weight:bold;color:${p.color}">${isW?'🏆 ':''}${p.name}</div>
-        <div style="font-size:.75em;opacity:.6">牌${p.cards.length}張 | 任務${G.missions.filter(m=>m.claimedBy!==null&&G.players[m.claimedBy]===p).length}個${hero?` | ${hero.name}`:''}</div>
+      <div class="over-info">
+        <div class="over-player" style="color:${htmlEsc(p.color)}">${isW?'🏆 ':''}${htmlEsc(p.name)}</div>
+        <div class="over-hero">${hero?`${htmlEsc(hero.name)} · ${htmlEsc(hero.skill)}`:'未選角色'}</div>
+        <div class="over-meta">
+          <span>牌 ${p.cards.length} 張</span>
+          <span>任務 ${claimed} 個</span>
+        </div>
       </div>
-      <div style="font-size:1.9em;font-weight:900;color:${p.color}">${p.points}</div>
+      <div class="over-score" style="color:${htmlEsc(p.color)}">${p.points}</div>
     </div>`;
   }).join('');
-  const wn=G.winners.map(p=>p.name).join('、');
-  document.getElementById('m-over').style.display='flex';
-  document.getElementById('m-over').innerHTML=`<div class="m-box">
-    <div class="m-title">🎊 遊戲結束！</div>
-    <div style="font-size:1.15em;color:#ffcc44;margin-bottom:14px">🏆 ${wn} 獲勝！</div>
+  const wn=G.winners.map(p=>htmlEsc(p.name)).join('、');
+  const over = document.getElementById('m-over');
+  over.className = 'm-overlay game-over-overlay';
+  over.style.display = 'grid';
+  over.innerHTML=`<section class="over-box" onclick="event.stopPropagation()">
+    <div class="over-title">🎊 遊戲結束！</div>
+    <div class="over-winner">🏆 ${wn} 獲勝！</div>
+    <div class="over-rows">
     ${rows}
-    <button class="btn btn-start" onclick="location.reload()" style="margin-top:18px;width:100%;background:linear-gradient(135deg,#cc6600,#ffaa22);padding:12px">再玩一次</button>
-  </div>`;
+    </div>
+    <button class="over-restart" onclick="location.reload()">再玩一次</button>
+  </section>`;
 }
 
 window.showSkillBlockReason = function(heroId, playerIdx) {
@@ -4760,7 +5476,7 @@ window.showSkillBlockReason = function(heroId, playerIdx) {
     3: `📉 需要2顆寶石或金幣才能槓桿套利，目前只有 ${gsum(p.gems)} 顆`,
     5: `🌳 沒有聲望超過3分且持有寶石的玩家可奪取`,
     7: `₿ 沒有寶石/金幣總數4顆以下的交換對象`,
-    8: `🎯 寶石庫沒有可拿取的五色寶石`,
+    8: `🎯 沒有持有五色寶石的對手可做空`,
   };
   toast(msgs[heroId] || '⚠ 目前條件不足，技能無法發動');
 };
@@ -4982,6 +5698,74 @@ function playClick(type = 'tap') {
     }
   } catch(e) {}
 }
+
+// ── Background Music ──────────────────────────────────────────────────────
+const BGM_STORAGE_KEY = 'splendor-bgm-muted';
+function bgmMuted() {
+  try { return localStorage.getItem(BGM_STORAGE_KEY) === '1'; }
+  catch(e) { return false; }
+}
+function setBgmMuted(muted) {
+  try { localStorage.setItem(BGM_STORAGE_KEY, muted ? '1' : '0'); }
+  catch(e) {}
+}
+function bgmEl() {
+  return document.getElementById('bgm-audio');
+}
+function updateBgmButton() {
+  const muted = bgmMuted();
+  const audio = bgmEl();
+  const btn = document.getElementById('btn-bgm');
+  if (audio) {
+    audio.volume = 0.12;
+    audio.muted = muted;
+    if (muted) audio.pause();
+  }
+  if (btn) {
+    btn.textContent = muted ? '🔇' : '🔊';
+    btn.title = muted ? '開啟背景音樂' : '靜音背景音樂';
+    btn.setAttribute('aria-label', btn.title);
+    btn.classList.toggle('muted', muted);
+  }
+}
+function startBgm() {
+  const audio = bgmEl();
+  if (!audio || bgmMuted()) {
+    updateBgmButton();
+    return;
+  }
+  audio.volume = 0.12;
+  audio.muted = false;
+  const playPromise = audio.play();
+  if (playPromise && playPromise.catch) playPromise.catch(()=>{});
+  updateBgmButton();
+}
+function toggleBgmMute(ev) {
+  if (ev) ev.stopPropagation();
+  const nextMuted = !bgmMuted();
+  setBgmMuted(nextMuted);
+  if (nextMuted) {
+    const audio = bgmEl();
+    if (audio) audio.pause();
+  } else {
+    startBgm();
+  }
+  updateBgmButton();
+  playClick('tap');
+}
+function initBgm() {
+  updateBgmButton();
+  const unlock = ev => {
+    if (ev && ev.target && ev.target.closest && ev.target.closest('#btn-bgm')) return;
+    startBgm();
+    document.removeEventListener('pointerdown', unlock, true);
+    document.removeEventListener('keydown', unlock, true);
+  };
+  document.addEventListener('pointerdown', unlock, true);
+  document.addEventListener('keydown', unlock, true);
+}
+initBgm();
+
 // 統一攔截所有按鈕 / 寶石庫列點擊
 document.addEventListener('click', e => {
   const btn  = e.target.closest('.btn:not(:disabled)');
