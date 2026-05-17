@@ -1465,6 +1465,21 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 .hero-skill-confirm-box h3 { color:#ffe08a; margin:0 0 6px; }
 .hero-skill-confirm-box p { color:rgba(255,255,255,.75); font-size:.85em; margin:0 0 20px; }
 .hero-skill-confirm-box .btn-row { display:flex; gap:12px; justify-content:center; }
+.shiyuan-gem-card {
+  min-width:118px; border:1.5px solid rgba(255,255,255,.18); border-radius:12px;
+  padding:10px 12px; color:#fff; cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.055));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13), 0 5px 16px rgba(0,0,0,.28);
+  transition:transform .12s, border-color .12s, box-shadow .12s, background .12s;
+}
+.shiyuan-gem-card:hover { transform:translateY(-1px); border-color:rgba(255,204,68,.55); }
+.shiyuan-gem-card.selected {
+  border-color:#ffcc44;
+  background:linear-gradient(180deg,rgba(255,204,68,.24),rgba(255,142,42,.13));
+  box-shadow:0 0 18px rgba(255,204,68,.28), inset 0 1px 0 rgba(255,244,190,.22);
+}
+#shiyuan-confirm-btn:disabled { opacity:.35; cursor:default; filter:grayscale(.3); }
+#shiyuan-gem-timer { color:#ffcc66; font-weight:900; font-size:1.45em; margin:-8px 0 14px; }
 /* Hero activation overlay */
 /* Quote reveal overlay */
 #hero-quote-overlay {
@@ -3319,8 +3334,22 @@ function shiyuanChickenChip(count) {
   </div>`;
 }
 
+function shiyuanAvailableBonusCols(player) {
+  return CI.filter(c => ((player && player.bonuses && player.bonuses[c]) || 0) > 0);
+}
+
+let _shiyuanGemPickTimer = null;
+let _shiyuanGemPickTicker = null;
+
+function clearShiyuanGemPickerTimer() {
+  clearTimeout(_shiyuanGemPickTimer);
+  clearInterval(_shiyuanGemPickTicker);
+  _shiyuanGemPickTimer = null;
+  _shiyuanGemPickTicker = null;
+}
+
 function shiyuanGemChoiceHtml(col, count, playerIdx, targetIdx) {
-  return `<button class="btn-action" onclick="confirmShiyuanFryGem(${playerIdx},${targetIdx},'${col}')">
+  return `<button class="btn-action shiyuan-gem-card" data-shiyuan-col="${col}" onclick="selectShiyuanGemToFry(${playerIdx},${targetIdx},'${col}')">
     <span style="display:flex;align-items:center;justify-content:center;gap:7px">
       ${gemSVG(col,28)}
       <span>${gemColorName(col)}</span>
@@ -3349,33 +3378,90 @@ function showShiyuanTargetPicker(playerIdx) {
 window.showShiyuanGemPicker = function(playerIdx, targetIdx) {
   const target = G.players[targetIdx];
   if (!target || shiyuanBonusTotal(target) === 0) { toast('🍗 該奧客沒有可炸的寶石計分牌'); return; }
+  clearShiyuanGemPickerTimer();
+  const pickId = makeRemoteAnimId('shiyuan-pick');
+  window._shiyuanGemPick = {id:pickId, playerIdx, targetIdx, col:null, deadline:Date.now() + 10000};
   const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
   box.id = 'hero-skill-confirm';
-  const choices = CI.map(c => {
+  const choices = shiyuanAvailableBonusCols(target).map(c => {
     const n = (target.bonuses && target.bonuses[c]) || 0;
-    return n > 0 ? shiyuanGemChoiceHtml(c, n, playerIdx, targetIdx) : '';
+    return shiyuanGemChoiceHtml(c, n, playerIdx, targetIdx);
   }).join('');
   box.innerHTML = `<div class="hero-skill-confirm-box" style="max-width:min(560px,92vw)">
     <h3>🍗 點石成雞</h3>
-    <p>選擇要把 ${htmlEsc(target.name)} 的哪一顆寶石炸成鹹酥雞。</p>
+    <p>選擇要摧毀 ${htmlEsc(target.name)} 的哪一張寶石計分牌。</p>
+    <div id="shiyuan-gem-timer">10</div>
     <div class="btn-row" style="gap:10px;flex-wrap:wrap;justify-content:center">
       ${choices}
     </div>
     <div class="btn-row" style="margin-top:10px">
-      <button class="btn-end" onclick="showShiyuanTargetPicker(${playerIdx})">返回</button>
-      <button class="btn-end" onclick="document.getElementById('hero-skill-confirm')?.remove()">取消</button>
+      <button id="shiyuan-confirm-btn" class="btn-action" onclick="confirmSelectedShiyuanFryGem(${playerIdx},${targetIdx})" disabled style="opacity:.35">確認</button>
     </div>
   </div>`;
   if (!box.parentNode) document.body.appendChild(box);
+  const tick = () => {
+    const state = window._shiyuanGemPick;
+    if (!state || state.id !== pickId) return;
+    const remain = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+    const el = document.getElementById('shiyuan-gem-timer');
+    if (el) {
+      el.textContent = String(remain);
+      el.style.color = remain <= 3 ? '#ff5555' : '#ffcc66';
+    }
+    if (remain <= 0) timeoutShiyuanGemPicker(pickId);
+  };
+  tick();
+  _shiyuanGemPickTicker = setInterval(tick, 250);
+  _shiyuanGemPickTimer = setTimeout(() => timeoutShiyuanGemPicker(pickId), 10080);
 };
 
+window.selectShiyuanGemToFry = function(playerIdx, targetIdx, col) {
+  const state = window._shiyuanGemPick;
+  if (!state || state.playerIdx !== playerIdx || state.targetIdx !== targetIdx) return;
+  if (!CI.includes(col)) return;
+  state.col = col;
+  document.querySelectorAll('.shiyuan-gem-card').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.shiyuanCol === col);
+  });
+  const confirmBtn = document.getElementById('shiyuan-confirm-btn');
+  if (confirmBtn) {
+    confirmBtn.disabled = false;
+    confirmBtn.style.opacity = '1';
+    confirmBtn.textContent = `確認炸掉${gemColorName(col)}計分牌`;
+  }
+};
+
+window.confirmSelectedShiyuanFryGem = function(playerIdx, targetIdx) {
+  const state = window._shiyuanGemPick;
+  if (!state || state.playerIdx !== playerIdx || state.targetIdx !== targetIdx || !state.col) return;
+  confirmShiyuanFryGem(playerIdx, targetIdx, state.col);
+};
+
+function timeoutShiyuanGemPicker(pickId) {
+  const state = window._shiyuanGemPick;
+  if (!state || state.id !== pickId) return;
+  const target = G.players[state.targetIdx];
+  const available = shiyuanAvailableBonusCols(target);
+  if (!available.length) {
+    clearShiyuanGemPickerTimer();
+    window._shiyuanGemPick = null;
+    document.getElementById('hero-skill-confirm')?.remove();
+    toast('🍗 該奧客已經沒有可炸的寶石計分牌');
+    return;
+  }
+  const col = state.col || available[Math.floor(Math.random() * available.length)];
+  confirmShiyuanFryGem(state.playerIdx, state.targetIdx, col);
+}
+
 window.confirmShiyuanFryGem = function(playerIdx, targetIdx, col) {
+  clearShiyuanGemPickerTimer();
+  window._shiyuanGemPick = null;
+  document.getElementById('hero-skill-confirm')?.remove();
   if (!canUseShiyuanSkill(playerIdx)) { toast(shiyuanSkillBlockMessage(playerIdx)); return; }
   const target = G.players[targetIdx];
   if (targetIdx === playerIdx) { toast('🍗 不能指定自己'); return; }
   if (!CI.includes(col)) { toast('🍗 找不到指定的寶石'); return; }
   if (!target || ((target.bonuses && target.bonuses[col]) || 0) <= 0) { toast('🍗 該奧客沒有這顆寶石計分牌'); return; }
-  document.getElementById('hero-skill-confirm')?.remove();
   runConfirmedHeroSkill(playerIdx, () => doShiyuanFryGem(playerIdx, targetIdx, col), {
     showcaseFile:'shiyuan_點石成雞.png',
     cutoutFile:'shiyuan_stall_cutout.png'
