@@ -5696,7 +5696,7 @@ function showOverMod() {
       ${avatarHtml}
       <div class="over-info">
         <div class="over-player" style="color:${htmlEsc(p.color)}">${isW?'🏆 ':''}${htmlEsc(p.name)}</div>
-        <div class="over-hero">${hero?`${htmlEsc(hero.name)} · ${htmlEsc(hero.skill)}`:'未選角色'}</div>
+        <div class="over-hero">${hero?htmlEsc(hero.name):'未選角色'}</div>
         <div class="over-meta">
           <span>牌 ${p.cards.length} 張</span>
           <span>任務 ${claimed} 個</span>
