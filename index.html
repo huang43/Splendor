@@ -2658,7 +2658,7 @@ const HERO_SHOWCASE = {
   willsmith:'willsmith_帽子歪了，請戴正.png', DV:'dv_你還愛我嗎.png',
   shiyuan:'shiyuan_點石成雞.png',
 };
-const HERO_CUTOUT = {DV:'dv_phase2_cutout.png', shiyuan:'shiyuan_cutout.png'};
+const HERO_CUTOUT = {DV:'dv_phase2_cutout.png', shiyuan:'shiyuan_stall_cutout.png'};
 
 function heroImgSrc(key) {
   if (key === 'DV') return 'heros/DVPF_avatar.jpg';
@@ -3378,7 +3378,7 @@ window.confirmShiyuanFryGem = function(playerIdx, targetIdx, col) {
   document.getElementById('hero-skill-confirm')?.remove();
   runConfirmedHeroSkill(playerIdx, () => doShiyuanFryGem(playerIdx, targetIdx, col), {
     showcaseFile:'shiyuan_點石成雞.png',
-    cutoutFile:'shiyuan_cutout.png'
+    cutoutFile:'shiyuan_stall_cutout.png'
   });
 };
 
