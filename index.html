@@ -2287,6 +2287,7 @@ function applyRemoteState(data) {
       reserved: toArr(p.reserved),
       gems:     p.gems    || {w:0,u:0,g:0,r:0,k:0,gold:0},
       bonuses:  p.bonuses || {w:0,u:0,g:0,r:0,k:0},
+      shiyuanChicken: Number(p.shiyuanChicken || 0),
     };
   });
   const missions = toArr(data.missions).map(m=>({
@@ -2643,7 +2644,7 @@ const HEROES = [
   {id:12, key:'willsmith', name:'威爾◆史密斯',  skill:'帽子歪了，請戴正', desc:'購買綠色祖母綠卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'g', quote:'「我不會讓任何人說你做不到，包括我自己。」'},
   {id:13, key:'trump',     name:'唐納◆特朗普',  skill:'TACO交易',         desc:'重新洗牌：將場上所有等級的牌全部收回牌堆重洗，重新發牌，並獲得2枚金幣', uses:1,        passive:false, quote:'「讓美國再次偉大！」'},
   {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'自身至少1顆且對方至少3顆寶石/金幣才可發動；先預設答案問一位玩家，答中對方偷你1顆，答錯你偷對方最多3顆（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
-  {id:15, key:'shiyuan',   name:'詩園鹹酥雞老闆', skill:'點石成雞',         desc:'指定一位玩家，再指定他一張已購買的寶石計分牌並摧毀；對方沒計分牌則不能發動（每局1次）', uses:1, passive:false, quote:'「我們店裡免開發票，到底要我說幾次？」'},
+  {id:15, key:'shiyuan',   name:'詩園鹹酥雞老闆', skill:'點石成雞',         desc:'選擇一名奧客，並把他其中一顆寶石炸成鹹酥雞；該寶石計分牌-1，鹹酥雞計分牌+1（每局1次）', uses:1, passive:false, quote:'「我們店裡免開發票，到底要我說幾次？」'},
 ];
 const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅',DV:'💔',shiyuan:'🍗'};
 // Maps hero key → showcase image filename (names may differ from current skill names)
@@ -3298,39 +3299,46 @@ window.doStealGem = function(playerIdx, targetIdx) {
 };
 
 function canUseShiyuanSkill(playerIdx) {
-  return G.players.some((p,i) => i !== playerIdx && Array.isArray(p.cards) && p.cards.length > 0);
+  return G.players.some((p,i) => i !== playerIdx && CI.some(c => (p.bonuses && (p.bonuses[c]||0) > 0)));
 }
 
 function shiyuanSkillBlockMessage(playerIdx) {
-  return '🍗 沒有持有寶石計分牌的對手可指定';
+  return '🍗 沒有持有寶石計分牌的奧客可指定';
 }
 
-function shiyuanCardChoiceHtml(card, cardIdx) {
-  const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
-    `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
-  ).join('');
-  return `<div class="dev-card t${card.tier} ${cardArtClass(card)}" style="${cardBgStyle(card)}--card-bar-h:38px;width:92px;height:130px;min-height:130px;cursor:pointer;transform:none">
-    <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
-      <span class="card-pts" style="font-size:1.5em">${card.pts||''}</span>
-      ${gemSVG(card.bonus,16)}
-    </div>
-    <div class="card-body" style="padding:5px">
-      <div class="cost-stack" style="min-height:40px">${costH}</div>
-      <div style="font-size:.62em;color:#ffe08a;margin-top:4px">#${cardIdx+1}</div>
-    </div>
+function shiyuanBonusTotal(player) {
+  return CI.reduce((sum,c) => sum + ((player.bonuses && player.bonuses[c]) || 0), 0);
+}
+
+function shiyuanChickenChip(count) {
+  const n = Number(count || 0);
+  if (!n) return '';
+  return `<div class="bonus-chip" title="鹹酥雞計分牌">
+    <span style="font-size:1.05em;line-height:1">🍗</span>
+    <span style="margin-left:1px">×${n}</span>
   </div>`;
 }
 
+function shiyuanGemChoiceHtml(col, count, playerIdx, targetIdx) {
+  return `<button class="btn-action" onclick="confirmShiyuanFryGem(${playerIdx},${targetIdx},'${col}')">
+    <span style="display:flex;align-items:center;justify-content:center;gap:7px">
+      ${gemSVG(col,28)}
+      <span>${gemColorName(col)}</span>
+      <span style="opacity:.7">×${count}</span>
+    </span>
+  </button>`;
+}
+
 function showShiyuanTargetPicker(playerIdx) {
-  const others = G.players.map((p,i)=>({p,i})).filter(({i,p})=> i!==playerIdx && Array.isArray(p.cards) && p.cards.length>0);
+  const others = G.players.map((p,i)=>({p,i})).filter(({i,p})=> i!==playerIdx && shiyuanBonusTotal(p)>0);
   if (!others.length) { toast(shiyuanSkillBlockMessage(playerIdx)); return; }
   const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
   box.id = 'hero-skill-confirm';
   box.innerHTML = `<div class="hero-skill-confirm-box">
-    <h3>🍗 點石成雞</h3><p>先指定一位玩家，再指定要摧毀的寶石計分牌。</p>
+    <h3>🍗 點石成雞</h3><p>選擇一名奧客，並把他其中一顆寶石炸成鹹酥雞。</p>
     <div class="btn-row" style="flex-wrap:wrap">
-      ${others.map(({p,i})=>`<button class="btn-action" onclick="showShiyuanCardPicker(${playerIdx},${i})">
-        ${htmlEsc(p.name)}<br><small style="opacity:.65;font-size:.75em">${p.cards.length} 張計分牌</small>
+      ${others.map(({p,i})=>`<button class="btn-action" onclick="showShiyuanGemPicker(${playerIdx},${i})">
+        奧客 ${htmlEsc(p.name)}<br><small style="opacity:.65;font-size:.75em">${shiyuanBonusTotal(p)} 顆寶石計分牌</small>
       </button>`).join('')}
       <button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button>
     </div>
@@ -3338,18 +3346,20 @@ function showShiyuanTargetPicker(playerIdx) {
   if (!box.parentNode) document.body.appendChild(box);
 }
 
-window.showShiyuanCardPicker = function(playerIdx, targetIdx) {
+window.showShiyuanGemPicker = function(playerIdx, targetIdx) {
   const target = G.players[targetIdx];
-  if (!target || !Array.isArray(target.cards) || target.cards.length === 0) { toast('🍗 該玩家沒有可摧毀的寶石計分牌'); return; }
+  if (!target || shiyuanBonusTotal(target) === 0) { toast('🍗 該奧客沒有可炸的寶石計分牌'); return; }
   const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
   box.id = 'hero-skill-confirm';
-  box.innerHTML = `<div class="hero-skill-confirm-box" style="max-width:min(680px,92vw)">
+  const choices = CI.map(c => {
+    const n = (target.bonuses && target.bonuses[c]) || 0;
+    return n > 0 ? shiyuanGemChoiceHtml(c, n, playerIdx, targetIdx) : '';
+  }).join('');
+  box.innerHTML = `<div class="hero-skill-confirm-box" style="max-width:min(560px,92vw)">
     <h3>🍗 點石成雞</h3>
-    <p>指定 ${htmlEsc(target.name)} 的一張寶石計分牌摧毀。</p>
-    <div class="btn-row" style="gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:center">
-      ${target.cards.map((card,ci)=>`<button class="btn-action" style="padding:6px;background:rgba(0,0,0,.18);border-color:rgba(255,206,72,.45)" onclick="confirmShiyuanDestroyCard(${playerIdx},${targetIdx},${ci})">
-        ${shiyuanCardChoiceHtml(card, ci)}
-      </button>`).join('')}
+    <p>選擇要把 ${htmlEsc(target.name)} 的哪一顆寶石炸成鹹酥雞。</p>
+    <div class="btn-row" style="gap:10px;flex-wrap:wrap;justify-content:center">
+      ${choices}
     </div>
     <div class="btn-row" style="margin-top:10px">
       <button class="btn-end" onclick="showShiyuanTargetPicker(${playerIdx})">返回</button>
@@ -3359,28 +3369,28 @@ window.showShiyuanCardPicker = function(playerIdx, targetIdx) {
   if (!box.parentNode) document.body.appendChild(box);
 };
 
-window.confirmShiyuanDestroyCard = function(playerIdx, targetIdx, cardIdx) {
+window.confirmShiyuanFryGem = function(playerIdx, targetIdx, col) {
   if (!canUseShiyuanSkill(playerIdx)) { toast(shiyuanSkillBlockMessage(playerIdx)); return; }
   const target = G.players[targetIdx];
   if (targetIdx === playerIdx) { toast('🍗 不能指定自己'); return; }
-  if (!target || !Array.isArray(target.cards) || target.cards.length === 0) { toast('🍗 該玩家沒有可摧毀的寶石計分牌'); return; }
-  if (!target.cards[cardIdx]) { toast('🍗 找不到指定的寶石計分牌'); showShiyuanCardPicker(playerIdx, targetIdx); return; }
+  if (!CI.includes(col)) { toast('🍗 找不到指定的寶石'); return; }
+  if (!target || ((target.bonuses && target.bonuses[col]) || 0) <= 0) { toast('🍗 該奧客沒有這顆寶石計分牌'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
-  runConfirmedHeroSkill(playerIdx, () => doShiyuanDestroyCard(playerIdx, targetIdx, cardIdx), {
+  runConfirmedHeroSkill(playerIdx, () => doShiyuanFryGem(playerIdx, targetIdx, col), {
     showcaseFile:'shiyuan_點石成雞.png',
     cutoutFile:'shiyuan_cutout.png'
   });
 };
 
-window.doShiyuanDestroyCard = function(playerIdx, targetIdx, cardIdx) {
+window.doShiyuanFryGem = function(playerIdx, targetIdx, col) {
   const actor = G.players[playerIdx];
   const target = G.players[targetIdx];
-  if (!actor || !target || targetIdx === playerIdx || !Array.isArray(target.cards) || !target.cards[cardIdx]) { toast('🍗 找不到指定的寶石計分牌'); return; }
-  const card = target.cards.splice(cardIdx, 1)[0];
-  if (card.bonus) target.bonuses[card.bonus] = Math.max(0, (target.bonuses[card.bonus]||0) - 1);
-  target.points = Math.max(0, (target.points||0) - (card.pts||0));
-  addLog('skill', `發動「點石成雞」，摧毀 ${target.name} 的 ${cardLogName(card)}`, playerIdx);
-  toast(`🍗 ${target.name} 的${gemColorName(card.bonus)}計分牌被摧毀！`);
+  if (!actor || !target || targetIdx === playerIdx || !CI.includes(col) || ((target.bonuses && target.bonuses[col]) || 0) <= 0) { toast('🍗 找不到指定的寶石計分牌'); return; }
+  target.bonuses[col] = Math.max(0, (target.bonuses[col]||0) - 1);
+  target.shiyuanChicken = Number(target.shiyuanChicken || 0) + 1;
+  const label = gemColorName(col);
+  addLog('skill', `發動「點石成雞」，把 ${target.name} 的 ${label}計分牌炸成鹹酥雞計分牌`, playerIdx);
+  toast(`🍗 ${target.name} 的${label}計分牌 -1，鹹酥雞計分牌 +1！`);
   renderAndSyncSkill();
 };
 
@@ -4009,6 +4019,7 @@ function _buildG(names) {
       name, color:PC[i],
       gems:{w:0,u:0,g:0,r:0,k:0,gold:0},
       bonuses:{w:0,u:0,g:0,r:0,k:0},
+      shiyuanChicken:0,
       cards:[], reserved:[], points:0,
     })),
     bank, decks, board, missions,
@@ -5501,7 +5512,7 @@ function rPlayers() {
     const cur=i===G.cur;
     const bonH=CI.map(c=>{
       const b=p.bonuses[c]||0; return b?`<div class="bonus-chip">${gemSVG(c,13)}<span style="margin-left:1px">×${b}</span></div>`:'';
-    }).join('');
+    }).join('') + shiyuanChickenChip(p.shiyuanChicken);
     const gemH=[...CI,'gold'].map(c=>{
       const n=p.gems[c]||0; if(!n) return '';
       return `<div class="pi-gem-item">${gemSVG(c,14)}<span>${n}</span></div>`;
