@@ -2964,7 +2964,91 @@ function activateHeroSkill(playerIdx) {
   document.body.appendChild(box);
 }
 
-function playQuoteReveal(quote, onDone) {
+const BGM_BASE_VOLUME = 0.12;
+const BGM_VOICE_DUCK_VOLUME = 0.035;
+let _bgmDuckTimer = null;
+
+const HERO_VOICE_PROFILES = {
+  buffett:   {gender:'male',   age:95, profession:'value investor',    rate:.78, pitch:.72},
+  musk:      {gender:'male',   age:54, profession:'tech founder',      rate:1.08, pitch:.92},
+  lehman:    {gender:'male',   age:70, profession:'banker',            rate:.84, pitch:.70},
+  jensen:    {gender:'male',   age:63, profession:'chip CEO',          rate:.96, pitch:.84},
+  altman:    {gender:'male',   age:41, profession:'AI CEO',            rate:1.02, pitch:.98},
+  munger:    {gender:'male',   age:70, profession:'investor thinker',  rate:.72, pitch:.68},
+  satoshi:   {gender:'male',   age:50, profession:'crypto creator',    rate:.86, pitch:.78},
+  soros:     {gender:'male',   age:95, profession:'macro trader',      rate:.78, pitch:.72},
+  tzuyu:     {gender:'female', age:26, profession:'singer dancer',      rate:.96, pitch:1.18},
+  jaychou:   {gender:'male',   age:47, profession:'singer songwriter', rate:.88, pitch:.86},
+  hudong:    {gender:'male',   age:45, profession:'performer',         rate:1.03, pitch:.94},
+  willsmith: {gender:'male',   age:57, profession:'actor rapper',      rate:1.00, pitch:.90},
+  trump:     {gender:'male',   age:79, profession:'politician',        rate:.92, pitch:.76},
+};
+let _speechVoices = [];
+function refreshSpeechVoices() {
+  if (!('speechSynthesis' in window)) return;
+  _speechVoices = window.speechSynthesis.getVoices() || [];
+}
+if ('speechSynthesis' in window) {
+  refreshSpeechVoices();
+  window.speechSynthesis.onvoiceschanged = refreshSpeechVoices;
+}
+function quoteSpeechText(quote) {
+  return String(quote || '').replace(/[「」]/g, '').replace(/◆/g, '').trim();
+}
+function selectHeroSpeechVoice(profile) {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = _speechVoices.length ? _speechVoices : window.speechSynthesis.getVoices();
+  if (!voices || !voices.length) return null;
+  const zh = voices.filter(v => {
+    const key = `${v.lang || ''} ${v.name || ''}`.toLowerCase();
+    return key.includes('zh') || key.includes('chinese') || key.includes('mandarin') || key.includes('國語') || key.includes('中文');
+  });
+  const pool = zh.length ? zh : voices;
+  const femaleHints = ['female','yating','hanhan','xiaoxiao','xiaoyi','huihui','meijia','ting-ting','zhiyu','hsiao'];
+  const maleHints = ['male','yunxi','kangkang','zhiwei','yunjian','yunyang','yaoyao','liang','david'];
+  const hints = profile.gender === 'female' ? femaleHints : maleHints;
+  const hinted = pool.find(v => hints.some(h => (v.name || '').toLowerCase().includes(h)));
+  if (hinted) return hinted;
+  return pool.find(v => /zh[-_]?tw|taiwan|臺灣|台灣/i.test(`${v.lang} ${v.name}`)) || pool[0];
+}
+function estimateQuoteSpeechMs(hero, quote) {
+  const profile = HERO_VOICE_PROFILES[hero?.key] || {rate:.95};
+  const text = quoteSpeechText(quote);
+  return Math.min(3600, Math.max(1800, 520 + text.length * 170 / (profile.rate || .95)));
+}
+function duckBgmForVoice(ms) {
+  const audio = document.getElementById('bgm-audio');
+  if (!audio || bgmMuted() || audio.paused) return;
+  clearTimeout(_bgmDuckTimer);
+  audio.volume = BGM_VOICE_DUCK_VOLUME;
+  _bgmDuckTimer = setTimeout(() => {
+    if (!bgmMuted()) audio.volume = BGM_BASE_VOLUME;
+  }, ms);
+}
+function speakHeroQuote(hero, quote, delay=0) {
+  if (!('speechSynthesis' in window)) return 0;
+  const text = quoteSpeechText(quote);
+  if (!text) return 0;
+  const profile = HERO_VOICE_PROFILES[hero?.key] || {gender:'male', age:50, profession:'narrator', rate:.95, pitch:.9};
+  const estimatedMs = estimateQuoteSpeechMs(hero, quote);
+  setTimeout(() => {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'zh-TW';
+      utterance.rate = profile.rate;
+      utterance.pitch = profile.pitch;
+      utterance.volume = 1;
+      const voice = selectHeroSpeechVoice(profile);
+      if (voice) utterance.voice = voice;
+      duckBgmForVoice(estimatedMs + 500);
+      window.speechSynthesis.speak(utterance);
+    } catch(e) {}
+  }, delay);
+  return estimatedMs;
+}
+
+function playQuoteReveal(quote, onDone, hero=null) {
   const overlay = document.createElement('div');
   overlay.id = 'hero-quote-overlay';
   const textEl = document.createElement('div');
@@ -2985,7 +3069,8 @@ function playQuoteReveal(quote, onDone) {
   const typingMs  = Math.min(820, chars.length * 100);
   const perChar   = typingMs / chars.length;
   const startDelay = 280;
-  const fadeStart  = 2100; // typing always ends by 1100ms → ≥1000ms static
+  const voiceMs = speakHeroQuote(hero, quote, startDelay + 40);
+  const fadeStart = Math.max(2100, Math.min(3800, voiceMs + 520)); // hold long enough for spoken quotes
 
   chars.forEach((ch, i) => {
     setTimeout(() => { textEl.textContent += ch; }, startDelay + i * perChar);
@@ -3022,7 +3107,7 @@ function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
   // Play quote reveal first, then skill animation
   const quote = heroQuoteText(hero);
   if (quote) {
-    playQuoteReveal(quote, doAnim);
+    playQuoteReveal(quote, doAnim, hero);
   } else {
     doAnim();
   }
@@ -4336,7 +4421,7 @@ function execBuy(card, fromRes) {
           else { afterAct(); render(); }
         });
         const quote = heroQuoteText(_passiveHero);
-        if (quote) playQuoteReveal(quote, doAnim);
+        if (quote) playQuoteReveal(quote, doAnim, _passiveHero);
         else doAnim();
       } else {
         if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
@@ -4723,7 +4808,7 @@ function playFollowHeroAnim(followHero, fallbackPlayerIdx, done) {
   const finish = () => done();
   const doAnim = () => playHeroAnimation(hero, playerIdx, finish, normaliseFollowHeroOptions(followHero.options));
   const quote = heroQuoteText(hero);
-  if (quote) playQuoteReveal(quote, doAnim);
+  if (quote) playQuoteReveal(quote, doAnim, hero);
   else doAnim();
 }
 
@@ -5717,7 +5802,7 @@ function updateBgmButton() {
   const audio = bgmEl();
   const btn = document.getElementById('btn-bgm');
   if (audio) {
-    audio.volume = 0.12;
+    audio.volume = BGM_BASE_VOLUME;
     audio.muted = muted;
     if (muted) audio.pause();
   }
@@ -5734,7 +5819,7 @@ function startBgm() {
     updateBgmButton();
     return;
   }
-  audio.volume = 0.12;
+  audio.volume = BGM_BASE_VOLUME;
   audio.muted = false;
   const playPromise = audio.play();
   if (playPromise && playPromise.catch) playPromise.catch(()=>{});
