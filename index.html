@@ -2642,7 +2642,7 @@ const HEROES = [
   {id:11, key:'hudong',    name:'胡漢龑',        skill:'開心、開心、開心', desc:'購買紅色紅寶石卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'r', quote:'「你看，紅色的，好吉利！」'},
   {id:12, key:'willsmith', name:'威爾◆史密斯',  skill:'帽子歪了，請戴正', desc:'購買綠色祖母綠卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'g', quote:'「我不會讓任何人說你做不到，包括我自己。」'},
   {id:13, key:'trump',     name:'唐納◆特朗普',  skill:'TACO交易',         desc:'重新洗牌：將場上所有等級的牌全部收回牌堆重洗，重新發牌，並獲得2枚金幣', uses:1,        passive:false, quote:'「讓美國再次偉大！」'},
-  {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'先預設想聽到的答案，再問一位玩家「你還愛我嗎？」答中則對方偷你1顆寶石，答錯則你偷對方最多3顆寶石（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
+  {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'自身至少1顆且對方至少3顆寶石/金幣才可發動；先預設答案問一位玩家，答中對方偷你1顆，答錯你偷對方最多3顆（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
 ];
 const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅',DV:'💔'};
 // Maps hero key → showcase image filename (names may differ from current skill names)
@@ -2947,8 +2947,8 @@ function activateHeroSkill(playerIdx) {
   if (hero.id === 8 && !G.players.some((p,i) => i!==playerIdx && coloredGemSum(p.gems)>0)) {
     toast('🎯 沒有持有五色寶石的對手可做空'); return;
   }
-  if (hero.id === 14 && G.players.length < 2) {
-    toast('💔 沒有可詢問的玩家'); return;
+  if (hero.id === 14 && !canUseDVSkill(playerIdx)) {
+    toast(dvSkillBlockMessage(playerIdx)); return;
   }
 
   // Satoshi: show target picker first, skip standard confirm
@@ -3295,6 +3295,19 @@ function answerLabel(ans) {
   return ans === 'yes' ? '是' : '否';
 }
 
+function canUseDVSkill(playerIdx) {
+  const actor = G.players[playerIdx];
+  if (!actor || gsum(actor.gems) < 1) return false;
+  return G.players.some((p,i) => i !== playerIdx && gsum(p.gems) >= 3);
+}
+
+function dvSkillBlockMessage(playerIdx) {
+  const actor = G.players[playerIdx];
+  if (!actor || gsum(actor.gems) < 1) return '💔 自身至少需要1顆寶石/金幣才能發動';
+  if (!G.players.some((p,i) => i !== playerIdx && gsum(p.gems) >= 3)) return '💔 沒有寶石/金幣至少3顆的對象可詢問';
+  return '💔 目前條件不足，無法發動';
+}
+
 function showDVExpectedAnswerPicker(playerIdx) {
   const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
   box.id = 'hero-skill-confirm';
@@ -3311,8 +3324,9 @@ function showDVExpectedAnswerPicker(playerIdx) {
 }
 
 window.showDVTargetPicker = function(playerIdx, expected) {
-  const others = G.players.map((p,i)=>({p,i})).filter(({i})=>i!==playerIdx);
-  if (!others.length) { toast('沒有可詢問的玩家'); return; }
+  if (!canUseDVSkill(playerIdx)) { toast(dvSkillBlockMessage(playerIdx)); return; }
+  const others = G.players.map((p,i)=>({p,i})).filter(({p,i})=>i!==playerIdx && gsum(p.gems) >= 3);
+  if (!others.length) { toast('💔 沒有寶石/金幣至少3顆的對象可詢問'); return; }
   const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
   box.id = 'hero-skill-confirm';
   box.innerHTML = `<div class="hero-skill-confirm-box">
@@ -3329,6 +3343,9 @@ window.showDVTargetPicker = function(playerIdx, expected) {
 };
 
 window.confirmDVQuestionTarget = function(playerIdx, targetIdx, expected) {
+  if (!canUseDVSkill(playerIdx)) { toast(dvSkillBlockMessage(playerIdx)); return; }
+  const target = G.players[targetIdx];
+  if (!target || gsum(target.gems) < 3) { toast('💔 對方寶石/金幣不足3顆，無法發問'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   runConfirmedHeroSkill(playerIdx, () => startDVQuestion(playerIdx, targetIdx, expected), {
     showcaseFile:'dv_你還愛我嗎.png',
@@ -5426,7 +5443,8 @@ function rPlayers() {
       (hero.id === 3 && gsum(p.gems) < 2) ||
       (hero.id === 5 && !G.players.some((op,oi) => oi!==i && op.points>3 && gsum(op.gems)>0)) ||
       (hero.id === 7 && !G.players.some((op,oi) => oi!==i && gsum(op.gems)<=4)) ||
-      (hero.id === 8 && !G.players.some((op,oi) => oi!==i && coloredGemSum(op.gems)>0))
+      (hero.id === 8 && !G.players.some((op,oi) => oi!==i && coloredGemSum(op.gems)>0)) ||
+      (hero.id === 14 && !canUseDVSkill(i))
     );
     const canUseSkill = hero && !hero.passive && cur && usesLeft > 0 && !alreadyActedHero && !skillBlocked;
     const skillUsed = hero && !hero.passive && cur && (usesLeft <= 0 || alreadyActedHero);
@@ -5709,6 +5727,7 @@ window.showSkillBlockReason = function(heroId, playerIdx) {
     5: `🌳 沒有聲望超過3分且持有寶石的玩家可奪取`,
     7: `₿ 沒有寶石/金幣總數4顆以下的交換對象`,
     8: `🎯 沒有持有五色寶石的對手可做空`,
+    14: dvSkillBlockMessage(playerIdx),
   };
   toast(msgs[heroId] || '⚠ 目前條件不足，技能無法發動');
 };
