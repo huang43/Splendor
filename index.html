@@ -454,10 +454,14 @@ body {
 }
 .refill-card-back {
   position:fixed; width:var(--card-w); height:var(--card-h); border-radius:10px; z-index:520;
-  pointer-events:none; border:0; overflow:hidden;
+  pointer-events:none; border:0; overflow:visible; perspective:900px;
+  background:transparent !important;
   box-shadow:0 0 28px rgba(255,230,120,.28), 0 12px 30px rgba(0,0,0,.5);
   transition:left .48s cubic-bezier(.25,.8,.25,1),top .48s cubic-bezier(.25,.8,.25,1),
              transform .48s cubic-bezier(.25,.8,.25,1),opacity .25s;
+}
+.refill-card-back.face-up .intro-flip-inner {
+  transform:rotateY(180deg);
 }
 
 .dev-card {
@@ -502,6 +506,14 @@ body {
   }
 }
 .dev-card.afford { animation:afford-glow 1.3s ease-in-out infinite; }
+.dev-card.refill-just-rendered:not(.intro-flip-front) {
+  animation:none !important;
+  transform:none !important;
+}
+.intro-flip-front.dev-card.afford,
+.intro-flip-front.dev-card.refill-just-rendered {
+  animation:none !important;
+}
 .dev-card.t1 { background:linear-gradient(160deg,#6e5230,#42300e); }
 .dev-card.t2 { background:linear-gradient(160deg,#2a4e78,#162848); }
 .dev-card.t3 { background:linear-gradient(160deg,#481a68,#260e3c); }
@@ -703,11 +715,18 @@ body {
 #turn-notif .tn-hint { font-size:.72em; opacity:.4; margin-top:18px; }
 
 /* Opening ceremony */
-body.intro-running #g-cards .deck-box,
 body.intro-running #g-cards .dev-card,
 body.intro-running #g-cards .card-empty-slot {
   opacity:0;
   pointer-events:none;
+}
+body.intro-running #g-cards .deck-box {
+  opacity:0;
+  pointer-events:none;
+}
+.intro-deck-fly.intro-dealing-source,
+body.intro-running #g-cards .deck-box.intro-dealing-source {
+  filter:drop-shadow(0 0 18px rgba(255,224,138,.6));
 }
 #game-start-intro {
   position:fixed; inset:0; z-index:700;
@@ -757,12 +776,32 @@ body.intro-running #g-cards .card-empty-slot {
 }
 .intro-deck-fly.settled { animation:intro-deck-settle .7s ease-in-out infinite alternate; }
 .intro-deal-card {
-  z-index:724; opacity:0; overflow:hidden;
-  box-shadow:0 0 24px rgba(255,232,164,.18), 0 14px 28px rgba(0,0,0,.54);
-  transition:left .36s cubic-bezier(.24,.86,.28,1), top .36s cubic-bezier(.24,.86,.28,1),
-             transform .36s cubic-bezier(.24,.86,.28,1), opacity .12s ease;
+  z-index:724; opacity:0; overflow:visible; perspective:900px;
+  background:transparent !important;
+  box-shadow:none;
+  will-change:transform, opacity;
+  transition:transform .4s cubic-bezier(.16,.86,.22,1), opacity .1s ease;
 }
 .intro-deal-card.on { opacity:1; }
+.intro-flip-inner {
+  position:relative; width:100%; height:100%;
+  transform-style:preserve-3d;
+  transition:transform .64s cubic-bezier(.2,.74,.28,1);
+}
+.intro-flip-face {
+  position:absolute; inset:0; border-radius:10px; overflow:hidden;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+}
+.intro-flip-back {
+  box-shadow:0 0 24px rgba(255,232,164,.18), 0 14px 28px rgba(0,0,0,.54);
+}
+.intro-flip-front.dev-card {
+  position:absolute; width:100%; height:100%; min-height:0; margin:0;
+  transform:rotateY(180deg);
+}
+.intro-deal-card.face-up .intro-flip-inner {
+  transform:rotateY(180deg);
+}
 .intro-deal-card.face-up {
   box-shadow:0 0 28px rgba(255,232,164,.22), 0 10px 26px rgba(0,0,0,.52);
 }
@@ -1921,9 +1960,7 @@ function listenWait(code) {
       listenCursor(code);
       listenPresence(code);
       function _beginOnlineGame() {
-        document.body.classList.add('intro-running');
-        render();
-        runStartCeremony(()=>showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{}));
+        beginOpeningCeremony(()=>showTurnNotification(G.cur, G.cur===myIdx ? startTimer : ()=>{}));
         listenGame(code);
       }
       if (G.heroPool && !G.heroes) {
@@ -2023,6 +2060,7 @@ function pushG() {
   const serial = {
     numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
     lastStarter:G.lastStarter, over:G.over,
+    openingDealt:!!G.openingDealt,
     players: JSON.parse(JSON.stringify(G.players)),
     bank: {...G.bank},
     decksJson: JSON.stringify(G.decks),
@@ -2128,6 +2166,7 @@ function applyRemoteState(data) {
     missions,
     log: toArr(data.log),
     lastAnim: data.lastAnim || null,
+    openingDealt: !!data.openingDealt,
   };
   if (data.winnerIndices)   G.winners          = toArr(data.winnerIndices).map(i=>G.players[i]);
   if (data.heroPool)        G.heroPool         = toArr(data.heroPool).map(p=>toArr(p));
@@ -2771,7 +2810,8 @@ function activateHeroSkill(playerIdx) {
   box.innerHTML = `<div class="hero-skill-confirm-box">
     <h3>⚡ ${hero.skill}</h3>
     <p>${hero.desc}</p>
-    ${hero.id===2 && G.ui.acted ? '<p style="color:#ff7755;font-size:.78em">⚠ 本回合已行動，工作狂需在行動前使用</p>' : ''}
+    ${hero.id===2 && !hasMuskableCard(playerIdx) ? '<p style="color:#ff7755;font-size:.78em">⚠ 場上沒有可購買的牌，無法發動工作狂</p>' : ''}
+    ${hero.id===2 && G.ui.muskActive ? '<p style="color:#55ccff;font-size:.78em">🚀 工作狂進行中</p>' : ''}
     <div class="btn-row">
       <button class="btn-action" onclick="confirmHeroSkill(${playerIdx})">發動技能</button>
       <button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button>
@@ -2933,9 +2973,11 @@ function executeHeroSkill(hero, playerIdx) {
       showGemDepositPicker(playerIdx);
       break;
     case 2: // 伊龍馬斯 工作狂
-      G.ui.acted = false; // Reset action so they can do both
-      addLog('skill', '發動「工作狂」，本回合可再行動一次', playerIdx);
-      toast('🚀 工作狂發動！本回合可再行動一次！');
+      if (!hasMuskableCard(playerIdx)) { toast('⚠ 場上沒有可購買的牌，無法發動工作狂'); return; }
+      G.ui.muskActive = true;
+      G.ui.muskCardDone = false;
+      addLog('skill', '發動「工作狂」，本回合可同時買/留牌＋拿寶石', playerIdx);
+      toast('🚀 工作狂發動！請先買牌或留牌，再拿寶石結束回合！');
       render();
       break;
     case 3: // 雷曼兄弟 槓桿套利
@@ -3381,7 +3423,7 @@ function _buildG(names) {
   ALL_CARDS.forEach(c=>decks[c.tier].push({...c,cost:{...c.cost}}));
   [1,2,3].forEach(t=>shuffle(decks[t]));
   const board={};
-  [1,2,3].forEach(t=>{board[t]=[decks[t].pop(),decks[t].pop(),decks[t].pop(),decks[t].pop()];});
+  [1,2,3].forEach(t=>{board[t]=[null, null, null, null];});
   const missions=shuffle([...MISSION_DB]).slice(0,3).map(m=>({...m,claimedBy:null}));
   const gc=GEMCNT[numP];
   const bank={w:gc,u:gc,g:gc,r:gc,k:gc,gold:5};
@@ -3397,7 +3439,42 @@ function _buildG(names) {
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
     log:[],
     heroes:null, heroUsed:null, heroBuffett:null, heroActedThisTurn:null,
+    openingDealt:false,
   };
+}
+
+function ensureOpeningBoardDealt() {
+  if (!G || !G.decks) return false;
+  if (!G.board) G.board = {};
+  let changed = false;
+  [1,2,3].forEach(t => {
+    const deck = G.decks[t] || [];
+    if (!Array.isArray(G.board[t])) {
+      G.board[t] = [null, null, null, null];
+      changed = true;
+    }
+    while (G.board[t].length < 4) {
+      G.board[t].push(null);
+      changed = true;
+    }
+    for (let slot = 0; slot < 4; slot++) {
+      if (!G.board[t][slot] && deck.length) {
+        G.board[t][slot] = deck.pop() || null;
+        changed = true;
+      }
+    }
+  });
+  if (!G.openingDealt) {
+    G.openingDealt = true;
+    changed = true;
+  }
+  return changed;
+}
+
+function beginOpeningCeremony(callback) {
+  document.body.classList.add('intro-running');
+  render();
+  runStartCeremony(callback);
 }
 
 function startGame() {
@@ -3408,9 +3485,7 @@ function startGame() {
   render();
   _mySelectIdx = 0;
   showHeroSelect(G.heroPool, () => {
-    document.body.classList.add('intro-running');
-    render();
-    runStartCeremony(()=>showTurnNotification(0, startTimer));
+    beginOpeningCeremony(()=>showTurnNotification(0, startTimer));
   });
 }
 
@@ -3511,6 +3586,11 @@ function canBuy(pl,card) {
   CI.forEach(c=>need+=Math.max(0,(e[c]||0)-(pl.gems[c]||0)));
   return need<=(pl.gems.gold||0);
 }
+function hasMuskableCard(playerIdx) {
+  const pl=G.players[playerIdx];
+  for(const t of [1,2,3]){ for(const c of (G.board[t]||[])){ if(c&&canBuy(pl,c)) return true; } }
+  return false;
+}
 
 // ── Card animation ───────────────────────────────────────────────────────
 function cardCostHtml(card) {
@@ -3528,6 +3608,27 @@ function flyingCardHtml(card) {
     <div class="card-body" style="padding:7px">
       <div class="cost-stack">${cardCostHtml(card)}</div>
     </div>`;
+}
+
+function boardCardFace(card, pl) {
+  const viewer = pl || ((onlineMode && myIdx >= 0) ? G.players[myIdx] : G.players[G.cur]);
+  const afford = viewer ? canBuy(viewer, card) : false;
+  const e = viewer ? effCost(viewer, card) : (card.cost || {});
+  const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
+    const covered = (e[c]||0) === 0;
+    return `<div class="cost-ln ${covered?'covered':''}">
+      ${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`;
+  }).join('');
+  return {
+    stateClass: afford ? 'afford' : 'dim',
+    html: `<div class="card-top ${CHC[card.bonus]}">
+      <span class="card-pts">${card.pts||''}</span>
+      ${gemSVG(card.bonus,20)}
+    </div>
+    <div class="card-body">
+      <div class="cost-stack">${costH}</div>
+    </div>`
+  };
 }
 
 function deckBackStyle(tier) {
@@ -3563,10 +3664,17 @@ function preloadCardArt(card) {
 
 function completeRefillThen(refill, nextStep) {
   const artReady = refill && refill.newCard ? preloadCardArt(refill.newCard) : Promise.resolve();
-  animateRefillFromDeck(refill, ()=>{
+  animateRefillFromDeck(refill, artReady, ()=>{
     artReady.then(()=>{
-      if (refill && refill.newCard) render();
-      setTimeout(nextStep, refill && refill.newCard ? 500 : 0);
+      if (refill && refill.newCard) {
+        render();
+        const settled = document.querySelector(`.dev-card[data-card-id="${refill.newCard.id}"]`);
+        if (settled) {
+          settled.classList.add('refill-just-rendered');
+          setTimeout(()=>settled.classList.remove('refill-just-rendered'), 1500);
+        }
+      }
+      setTimeout(nextStep, refill && refill.newCard ? 260 : 0);
     });
   });
 }
@@ -3618,24 +3726,45 @@ function animateCardAcquired(card, playerIdx, label, callback) {
   }, 180);
 }
 
-function animateRefillFromDeck(refill, callback) {
+function animateRefillFromDeck(refill, artReady, callback) {
+  if (typeof artReady === 'function') {
+    callback = artReady;
+    artReady = Promise.resolve();
+  }
   if (!refill || !refill.newCard) { callback(); return; }
   playClick('card');
   const deck = document.querySelector(`.deck-box[data-deck-tier="${refill.tier}"]`);
   const target = document.querySelector(`.dev-card[data-tier="${refill.tier}"][data-slot="${refill.slot}"]`);
   if (!deck || !target) { callback(); return; }
   const dr=deck.getBoundingClientRect(), tr=target.getBoundingClientRect();
+  const face = boardCardFace(refill.newCard);
   const fly=document.createElement('div');
   fly.className='refill-card-back';
   fly.style.cssText=`left:${dr.left+dr.width/2-tr.width/2}px;top:${dr.top+dr.height/2-tr.height/2}px;
-    width:${tr.width}px;height:${tr.height}px;transform:scale(.58) rotate(-7deg);${refillDeckCardStyle(refill.tier)}`;
+    width:${tr.width}px;height:${tr.height}px;transform:scale(.58) rotate(-7deg);`;
+  fly.innerHTML = `<div class="intro-flip-inner">
+    <div class="intro-flip-face intro-flip-back" style="${refillDeckCardStyle(refill.tier)}"></div>
+    <div class="intro-flip-face intro-flip-front dev-card t${refill.tier} ${face.stateClass} refill-just-rendered ${cardArtClass(refill.newCard)}" style="${cardBgStyle(refill.newCard)}">${face.html}</div>
+  </div>`;
   document.body.appendChild(fly);
   setTimeout(()=>{
     fly.style.left=tr.left+'px';
     fly.style.top=tr.top+'px';
     fly.style.transform='scale(1) rotate(0deg)';
   }, 40);
-  setTimeout(()=>{ fly.style.opacity='0'; setTimeout(()=>{ fly.remove(); callback(); }, 160); }, 560);
+  setTimeout(()=>{
+    Promise.resolve(artReady).then(()=>{
+      playClick('card');
+      fly.classList.add('face-up');
+      setTimeout(()=>{
+        callback();
+        setTimeout(()=>{
+          fly.style.opacity='0';
+          setTimeout(()=>fly.remove(), 180);
+        }, 80);
+      }, 680);
+    });
+  }, 560);
 }
 
 // ── Opening ceremony ─────────────────────────────────────────────────────
@@ -3695,6 +3824,7 @@ function createIntroDeckFlyer(tier, idx) {
   const s = starts[idx] || starts[0];
   const el = document.createElement('div');
   el.className = `intro-deck-fly intro-deck-${tier}`;
+  el.dataset.deckTier = tier;
   el.style.cssText = `left:${s.x}px;top:${s.y}px;width:${tr.width}px;height:${tr.height}px;transform:rotate(${s.r}deg) scale(.86);${deckBackStyle(tier)}`;
   document.body.appendChild(el);
   return {tier, el, rect:tr};
@@ -3717,47 +3847,68 @@ async function flyIntroDecks() {
 }
 
 function findIntroDeckRect(decks, tier) {
-  const deck = decks.find(d=>d.tier===tier);
+  const deck = (decks || []).find(d=>d.tier===tier);
   if (deck) return deck.el.getBoundingClientRect();
   const target = document.querySelector(`.deck-box[data-deck-tier="${tier}"]`);
-  return target ? target.getBoundingClientRect() : null;
+  if (target) return target.getBoundingClientRect();
+  return null;
 }
 
 async function dealOpeningBoardCards(decks) {
   const flyers = [];
   const order = [];
+  const dealStartDelay = 140;
+  const dealGap = 125;
+  const flyMs = 500;
   [3,2,1].forEach(t=>[0,1,2,3].forEach(slot=>order.push({tier:t, slot})));
   order.forEach(({tier, slot}, i)=>{
     setTimeout(()=>{
       const card = G.board[tier] && G.board[tier][slot];
-      const target = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"]`);
+      const target = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"], .card-empty-slot[data-tier="${tier}"][data-slot="${slot}"]`);
       const tr = target ? target.getBoundingClientRect() : null;
       const dr = findIntroDeckRect(decks, tier);
       if (!card || !tr || !dr) return;
+      const sourceDeck = ((decks || []).find(d=>d.tier===tier)?.el) || document.querySelector(`.deck-box[data-deck-tier="${tier}"]`);
+      if (sourceDeck) {
+        sourceDeck.classList.add('intro-dealing-source');
+        clearTimeout(sourceDeck._introDealPulse);
+        sourceDeck._introDealPulse = setTimeout(()=>sourceDeck.classList.remove('intro-dealing-source'), flyMs + 80);
+      }
       const el = document.createElement('div');
-      el.className = `intro-deal-card dev-card t${tier} ${cardArtClass(card)}`;
+      el.className = `intro-deal-card t${tier}`;
       const startX = dr.left + dr.width * .5 - tr.width * .5;
       const startY = dr.top + dr.height * .5 - tr.height * .5;
+      const fromX = startX - tr.left;
+      const fromY = startY - tr.top;
       const rot = ((slot % 2 ? 1 : -1) * (4 + tier));
-      el.style.cssText = `left:${startX}px;top:${startY}px;width:${tr.width}px;height:${tr.height}px;min-height:${tr.height}px;transform:scale(.62) rotate(${rot}deg);${deckBackStyle(tier)}`;
+      const face = boardCardFace(card);
+      el.style.cssText = `left:${tr.left}px;top:${tr.top}px;width:${tr.width}px;height:${tr.height}px;min-height:${tr.height}px;transform:translate(${fromX}px,${fromY}px) scale(.66) rotate(${rot}deg);
+        opacity:0;transition:none;`;
+      el.innerHTML = `<div class="intro-flip-inner">
+        <div class="intro-flip-face intro-flip-back" style="${refillDeckCardStyle(tier)}"></div>
+        <div class="intro-flip-face intro-flip-front dev-card t${tier} ${face.stateClass} refill-just-rendered ${cardArtClass(card)}" style="${cardBgStyle(card)}">${face.html}</div>
+      </div>`;
       document.body.appendChild(el);
       flyers.push(el);
-      requestAnimationFrame(()=>{
+      void el.offsetWidth;
+      setTimeout(()=>{
         el.classList.add('on');
-        el.style.left = tr.left + 'px';
-        el.style.top = tr.top + 'px';
-        el.style.transform = `scale(1) rotate(${(slot-1.5)*1.2}deg)`;
-      });
+        el.style.opacity = '1';
+        void el.offsetWidth;
+        el.style.transition = `transform ${flyMs}ms cubic-bezier(.16,.86,.22,1)`;
+        el.style.transform = 'translate(0px,0px) scale(1) rotate(0deg)';
+      }, 32);
       setTimeout(()=>{
         playClick('deal');
-        el.classList.add('face-up');
-        el.style.cssText += `--card-bar-h:44px;${cardBgStyle(card)}`;
-        el.style.backgroundSize = 'cover';
-        el.innerHTML = flyingCardHtml(card);
-      }, 240);
-    }, i * 86);
+      }, 90);
+    }, dealStartDelay + i * dealGap);
   });
-  await introWait(order.length * 86 + 720);
+  await introWait(dealStartDelay + order.length * dealGap + flyMs + 220);
+  if (flyers.length) {
+    playClick('card');
+    flyers.forEach(el=>el.classList.add('face-up'));
+    await introWait(760);
+  }
   return flyers;
 }
 
@@ -3769,10 +3920,10 @@ function runStartCeremony(callback) {
   let overlay = null;
   let deckFlyers = [];
   let cardFlyers = [];
+  let artReady = Promise.resolve();
 
   (async()=>{
     overlay = makeStartIntroOverlay();
-    const artReady = Promise.all(getOpeningBoardCards().map(preloadCardArt));
     await introWait(30);
     overlay.classList.add('on');
     for (const n of [3,2,1]) {
@@ -3781,14 +3932,24 @@ function runStartCeremony(callback) {
       await introWait(720 * pace);
     }
     setIntroText(overlay, '', '遊戲開始', '');
-    await introWait(1500);
+    await introWait(360 * pace);
+    ensureOpeningBoardDealt();
+    if (onlineMode && typeof isLeader === 'function' && isLeader()) pushG();
+    render();
+    artReady = Promise.all(getOpeningBoardCards().map(preloadCardArt));
+    await introWait(1140 * pace);
     overlay.classList.remove('on');
-    deckFlyers = await flyIntroDecks();
     await artReady;
+    await introWait(340 * pace);
+    deckFlyers = await flyIntroDecks();
     await introWait(180 * pace);
     cardFlyers = await dealOpeningBoardCards(deckFlyers);
     playClick('confirm');
     await introWait(520 * pace);
+    document.querySelectorAll('#g-cards .dev-card').forEach(el=>{
+      el.classList.add('refill-just-rendered');
+      setTimeout(()=>el.classList.remove('refill-just-rendered'), 1500);
+    });
     document.body.classList.remove('intro-running');
     [...deckFlyers.map(d=>d.el), ...cardFlyers].forEach(el=>{ el.style.opacity = '0'; });
     overlay.classList.remove('on');
@@ -3838,17 +3999,24 @@ function execBuy(card, fromRes) {
   const passiveText = _passiveHero ? `；${_passiveHero.skill}公開觸發，額外+1分` : '';
   addLog('buy', `${fromRes?'從預留牌購買':'購買'} ${cardLogName(card)}，支付 ${gemListLog(paid)||'免費'}，獲得${gained}分${passiveText}`, G.cur);
   if (fromRes){ pl.reserved=pl.reserved.filter(c=>c.id!==card.id); }
-  G.ui.acted=true; G.ui.pendCard=null;
+  const muskBuy = G.ui.muskActive && !G.ui.muskCardDone;
+  if (muskBuy) { G.ui.muskCardDone = true; }
+  else { G.ui.acted = true; }
+  G.ui.pendCard=null;
   closeM('m-card');
   animateCardAcquired(card, G.cur, `${pl.name} 購得寶石卡！`, ()=>{
     const refill = fromRes ? null : fillBoard(card);
     completeRefillThen(refill, ()=>{
       if (_passiveHero) {
-        const doAnim = () => playHeroAnimation(_passiveHero, _passiveCurIdx, () => { afterAct(); render(); });
+        const doAnim = () => playHeroAnimation(_passiveHero, _passiveCurIdx, () => {
+          if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); }
+          else { afterAct(); render(); }
+        });
         if (_passiveHero.quote) playQuoteReveal(_passiveHero.quote, doAnim);
         else doAnim();
       } else {
-        afterAct(); render();
+        if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); }
+        else { afterAct(); render(); }
       }
     });
   });
@@ -3862,7 +4030,10 @@ function execReserve(card, tier, bi) {
   pl.reserved.push(card);
   const gotGold = G.bank.gold>0;
   if (gotGold){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; }
-  G.ui.acted=true; G.ui.pendCard=null;
+  const muskRes = G.ui.muskActive && !G.ui.muskCardDone;
+  if (muskRes) { G.ui.muskCardDone = true; }
+  else { G.ui.acted = true; }
+  G.ui.pendCard=null;
   const reserveText = tier!==null && bi!==null
     ? `預留 ${cardLogName(card)}`
     : `從${tierLabel(card.tier)}牌堆預留1張牌`;
@@ -3871,7 +4042,8 @@ function execReserve(card, tier, bi) {
   animateCardAcquired(card, G.cur, `${pl.name} 預留寶石卡！`, ()=>{
     const refill = tier!==null && bi!==null ? fillBoard(card) : null;
     completeRefillThen(refill, ()=>{
-      if (gsum(pl.gems)>10){ render(); showRetMod(); }
+      if (gsum(pl.gems)>10){ render(); showRetMod(muskRes ? {mode:'musk'} : {}); }
+      else if (muskRes) { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); }
       else { afterAct(); render(); }
     });
   });
@@ -4018,11 +4190,11 @@ function advanceTurn() {
   if (!G.lastRound && pl.points>=15){ G.lastRound=true; G.lastStarter=G.cur; }
   let next=(G.cur+1)%G.numP;
   while(G.players[next]&&G.players[next].disconnected) next=(next+1)%G.numP;
-  if (G.lastRound && next===G.lastStarter){ endGame(); return; }
+  if (G.lastRound && next===0){ endGame(); return; }
   G.turnCount=(G.turnCount||0)+1;
   checkBuffettReturn();
   G.heroActedThisTurn = Array(G.numP).fill(false);
-  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false;
+  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false; G.ui.muskActive=false; G.ui.muskCardDone=false;
   stopTimer(); render();
   if (onlineMode) {
     pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
@@ -4099,6 +4271,7 @@ function takeGold() {
 
 function tryEnd() {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
+  if (G.ui.muskActive && !G.ui.acted){ toast('🚀 工作狂：請先拿取寶石才能結束回合'); return; }
   if (!G.ui.acted){ toast('請先執行行動（取寶石、購買或預留）'); return; }
   checkMissions();
   advanceTurn();
@@ -4246,22 +4419,9 @@ function rCards() {
         <div class="deck-n">${dc}<span class="deck-lbl">張</span></div>
       </div>`;
     G.board[t].forEach((card,bi)=>{
-      if (!card){ h+=`<div class="card-empty-slot"></div>`; return; }
-      const afford=canBuy(pl,card), e=effCost(pl,card);
-      const costH=CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
-        const covered=(e[c]||0)===0;
-        return `<div class="cost-ln ${covered?'covered':''}">
-          ${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`;
-      }).join('');
-      h+=`<div class="dev-card t${t} ${afford?'afford':'dim'} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">
-        <div class="card-top ${CHC[card.bonus]}">
-          <span class="card-pts">${card.pts||''}</span>
-          ${gemSVG(card.bonus,20)}
-        </div>
-        <div class="card-body">
-          <div class="cost-stack">${costH}</div>
-        </div>
-      </div>`;
+      if (!card){ h+=`<div class="card-empty-slot" data-tier="${t}" data-slot="${bi}"></div>`; return; }
+      const face = boardCardFace(card, pl);
+      h+=`<div class="dev-card t${t} ${face.stateClass} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">${face.html}</div>`;
     });
     h+='</div>';
   });
@@ -4281,6 +4441,7 @@ function rBottom() {
           <button class="btn btn-go" data-sound="treasure" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認領取寶石</button>
           <button class="btn btn-grey" onclick="clearPend()">清除</button>
         </div>`:''}
+      ${G.ui.muskActive?`<div style="font-size:.78em;color:#55ccff;margin:4px 0;text-align:center;padding:4px 8px;background:rgba(85,180,255,.12);border-radius:6px">🚀 工作狂：${G.ui.muskCardDone?'已買/留牌，請選取寶石結束回合':'可先買牌或留牌，再拿寶石結束回合'}</div>`:''}
       <div class="btn-row" style="margin-top:6px">
         <button class="btn btn-end" onclick="tryEnd()" ${G.ui.acted?'':'disabled'}>結束回合 →</button>
       </div>
@@ -4360,6 +4521,7 @@ function rPlayers() {
 function openBoardCard(cardId, t, bi) {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
   if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  if (G.ui.muskCardDone){ toast('🚀 工作狂：已動作過，請選取寶石以結束回合'); return; }
   const card=G.board[t].find(c=>c&&c.id===cardId);
   if (!card) return;
   G.ui.pendCard={card,t,bi,fromRes:false};
@@ -4369,6 +4531,7 @@ function openBoardCard(cardId, t, bi) {
 function openResCard(ri) {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
   if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  if (G.ui.muskCardDone){ toast('🚀 工作狂：已動作過，請選取寶石以結束回合'); return; }
   const card=G.players[G.cur].reserved[ri];
   if (!card) return;
   G.ui.pendCard={card,ri,fromRes:true};
@@ -4520,6 +4683,7 @@ function confRet() {
   window._retMode=null;
   document.getElementById('m-ret').style.display='none';
   if (mode==='skill') { render(); return; }
+  if (mode==='musk') { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); return; }
   afterAct(); render();
 }
 
@@ -4533,6 +4697,7 @@ function cancelRet() {
   if (snap.log) G.log=snap.log;
   G.ui.pending=snap.pending; G.ui.acted=false;
   G.ui.pendCard=null; G.ui.pendGold=false;
+  if (G.ui.muskActive) G.ui.muskCardDone=false;
   window._retSnapshot=null;
   window._retMode=null;
   window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
@@ -4552,11 +4717,18 @@ function showOverMod() {
   const medals=['🥇','🥈','🥉',''];
   const rows=sorted.map((p,i)=>{
     const isW=G.winners.includes(p);
+    const pi=G.players.indexOf(p);
+    const heroId=G.heroes&&G.heroes[pi];
+    const hero=heroId?HEROES.find(h=>h.id===heroId):null;
+    const avatarHtml=hero
+      ? `<img src="heros/${hero.key}.jpg" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${p.color}" onerror="this.outerHTML='<div style=\\'width:52px;height:52px;border-radius:50%;background:'+${JSON.stringify(p.color)}+';display:flex;align-items:center;justify-content:center;font-size:1.6em;flex-shrink:0\\'>'+(HERO_EMOJI[${JSON.stringify(hero.key)}]||'👤')+'</div>'">`
+      : `<div style="width:52px;height:52px;border-radius:50%;background:${p.color};display:flex;align-items:center;justify-content:center;font-size:1.6em;flex-shrink:0">👤</div>`;
     return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1)">
       <span style="font-size:1.4em">${medals[i]||''}</span>
+      ${avatarHtml}
       <div style="flex:1">
         <div style="font-weight:bold;color:${p.color}">${isW?'🏆 ':''}${p.name}</div>
-        <div style="font-size:.75em;opacity:.6">牌${p.cards.length}張 | 任務${G.missions.filter(m=>m.claimedBy!==null&&G.players[m.claimedBy]===p).length}個</div>
+        <div style="font-size:.75em;opacity:.6">牌${p.cards.length}張 | 任務${G.missions.filter(m=>m.claimedBy!==null&&G.players[m.claimedBy]===p).length}個${hero?` | ${hero.name}`:''}</div>
       </div>
       <div style="font-size:1.9em;font-weight:900;color:${p.color}">${p.points}</div>
     </div>`;
