@@ -1452,7 +1452,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 .pi-skill-btn.used { background:linear-gradient(135deg,#444,#666); border-color:rgba(200,200,200,.25); }
 .pi-skill-btn:hover:not(.used) { transform:translateY(-50%) scale(1.12); }
 /* Confirm skill modal */
-#hero-skill-confirm, #buffett-return-modal, #soros-return-modal {
+#hero-skill-confirm, #buffett-return-modal, #soros-return-modal, #dv-answer-modal {
   position:fixed; inset:0; z-index:820;
   background:rgba(0,0,0,.75);
   display:flex; align-items:center; justify-content:center;
@@ -1772,7 +1772,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <button id="btn-bgm" onclick="toggleBgmMute(event)" title="靜音背景音樂" aria-label="靜音背景音樂">🔊</button>
 <button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="說明書">?</button>
-<audio id="bgm-audio" src="audio/bgm-warm-guitar-somewhere-sunny.mp3" loop preload="auto"></audio>
+<audio id="bgm-audio" src="DF.mp3" loop preload="auto"></audio>
 
 <div id="m-help" onclick="if(event.target===this)this.style.display='none'">
   <div class="hbox">
@@ -2207,6 +2207,7 @@ function pushG() {
   if (G.heroes)           serial.heroes           = G.heroes;
   if (G.heroUsed)         serial.heroUsed         = G.heroUsed.map(v => v===Infinity ? 'Inf' : v);
   if (G.heroBuffett)      serial.heroBuffett      = G.heroBuffett;
+  if (G.heroDVPrompt)     serial.heroDVPrompt     = G.heroDVPrompt;
   if (G.heroActedThisTurn) serial.heroActedThisTurn = G.heroActedThisTurn;
   db.ref(`rooms/${roomCode}/state`).set(serial);
 }
@@ -2308,6 +2309,7 @@ function applyRemoteState(data) {
   if (data.heroes)          G.heroes           = toArr(data.heroes);
   if (data.heroUsed)        G.heroUsed         = toArr(data.heroUsed).map(v=>v==='Inf'?Infinity:+v);
   if (data.heroBuffett)     G.heroBuffett      = data.heroBuffett;
+  if (data.heroDVPrompt)    G.heroDVPrompt     = data.heroDVPrompt;
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
   G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
 }
@@ -2318,6 +2320,7 @@ function listenGame(code) {
     const prevCur = typeof G.cur==='number' ? G.cur : -1;
     applyRemoteState(data);
     render();
+    syncHeroDVPromptModal();
     const runId = ++_remoteAnimRunId;
     await playSyncedRemoteAnim(G.lastAnim);
     if (runId !== _remoteAnimRunId) return;
@@ -2639,8 +2642,9 @@ const HEROES = [
   {id:11, key:'hudong',    name:'胡漢龑',        skill:'開心、開心、開心', desc:'購買紅色紅寶石卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'r', quote:'「你看，紅色的，好吉利！」'},
   {id:12, key:'willsmith', name:'威爾◆史密斯',  skill:'帽子歪了，請戴正', desc:'購買綠色祖母綠卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'g', quote:'「我不會讓任何人說你做不到，包括我自己。」'},
   {id:13, key:'trump',     name:'唐納◆特朗普',  skill:'TACO交易',         desc:'重新洗牌：將場上所有等級的牌全部收回牌堆重洗，重新發牌，並獲得2枚金幣', uses:1,        passive:false, quote:'「讓美國再次偉大！」'},
+  {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'先預設想聽到的答案，再問一位玩家「你還愛我嗎？」答中則對方偷你1顆寶石，答錯則你偷對方最多3顆寶石（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
 ];
-const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅'};
+const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅',DV:'💔'};
 // Maps hero key → showcase image filename (names may differ from current skill names)
 const HERO_SHOWCASE = {
   buffett:'buffett_長期投資.png', musk:'musk_工作狂.png',
@@ -2649,10 +2653,14 @@ const HERO_SHOWCASE = {
   satoshi:'satoshi_財富重分配.png', soros:'soros_做空狙擊.png',
   trump:  'trump_TACO交易.png',  tzuyu: 'tzuyu_紫瑜我愛你.png',
   jaychou:'jaychou_你算什麼藍人.png', hudong:'hudong_開心、開心、開心.png',
-  willsmith:'willsmith_帽子歪了，請戴正.png',
+  willsmith:'willsmith_帽子歪了，請戴正.png', DV:'dv_你還愛我嗎.png',
 };
+const HERO_CUTOUT = {DV:'dv_phase2_cutout.png'};
 
-function heroImgSrc(key) { return `heros/${key}.jpg`; }
+function heroImgSrc(key) {
+  if (key === 'DV') return 'heros/DVPF_avatar.jpg';
+  return `heros/${key}.jpg`;
+}
 
 function heroAvatarHTML(hero, cls='hero-avatar-img', style='') {
   if (!hero) return '';
@@ -2715,7 +2723,7 @@ function showHeroSelect(playerPools, onDone) {
             const usesLabel = h.passive ? (h.uses === Infinity ? '被動技' : `被動限${h.uses}次`) : h.uses === Infinity ? '無限次' : `限${h.uses}次`;
             return `<div class="hero-option${sel?' selected':''}${isConfirmed?' locked':''}"
                         onclick="${isConfirmed?'':'selectHero('+pi+','+h.id+')'}">
-              <img class="hero-avatar-img" src="heros/${h.key}.jpg"
+              <img class="hero-avatar-img" src="${heroImgSrc(h.key)}"
                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${h.name}">
               <span class="hero-avatar-fallback" style="display:none">${HERO_EMOJI[h.key]||'👤'}</span>
               <div class="hero-option-name">${h.name}</div>
@@ -2817,7 +2825,7 @@ function showOnlineHeroSelect(code, onDone) {
       const sel = selectedId === h.id;
       const usesLabel = h.passive ? (h.uses===Infinity ? '被動技' : `被動限${h.uses}次`) : h.uses===Infinity ? '無限次' : `限${h.uses}次`;
       return `<div class="hero-option${sel?' selected':''}" onclick="window._heroOnlineSel(${h.id})">
-        <img class="hero-avatar-img" src="heros/${h.key}.jpg"
+        <img class="hero-avatar-img" src="${heroImgSrc(h.key)}"
           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${h.name}">
         <span class="hero-avatar-fallback" style="display:none">${HERO_EMOJI[h.key]||'👤'}</span>
         <div class="hero-option-name">${h.name}</div>
@@ -2939,6 +2947,9 @@ function activateHeroSkill(playerIdx) {
   if (hero.id === 8 && !G.players.some((p,i) => i!==playerIdx && coloredGemSum(p.gems)>0)) {
     toast('🎯 沒有持有五色寶石的對手可做空'); return;
   }
+  if (hero.id === 14 && G.players.length < 2) {
+    toast('💔 沒有可詢問的玩家'); return;
+  }
 
   // Satoshi: show target picker first, skip standard confirm
   if (hero.id === 7) { showGemSwapTargetPicker(playerIdx); return; }
@@ -2947,6 +2958,7 @@ function activateHeroSkill(playerIdx) {
   if (hero.id === 5) { showStealGemPicker(playerIdx); return; }
   if (hero.id === 8) { showSorosShortPicker(playerIdx); return; }
   if (hero.id === 13) { showTierShufflePicker(playerIdx); return; }
+  if (hero.id === 14) { showDVExpectedAnswerPicker(playerIdx); return; }
 
   // Show confirm
   const box = document.createElement('div');
@@ -3046,7 +3058,7 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
   const avatarSrc   = heroImgSrc(hero.key);
   const showcaseFile = options.showcaseFile || HERO_SHOWCASE[hero.key];
   const showcaseSrc  = showcaseFile ? `heros/skill_showcases/${showcaseFile}` : '';
-  const cutoutFile   = options.cutoutFile || `${hero.key}_cutout.png`;
+  const cutoutFile   = options.cutoutFile || HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
   const cutoutSrc    = `heros/skill_showcases/_cutouts/${cutoutFile}`;
 
   overlay.innerHTML = `
@@ -3153,6 +3165,9 @@ function executeHeroSkill(hero, playerIdx) {
       break;
     case 13: // 川普 TACO交易
       showTierShufflePicker(playerIdx);
+      break;
+    case 14: // 離婚辦事處書記官 你還愛我嗎 — handled by picker
+      showDVExpectedAnswerPicker(playerIdx);
       break;
     default:
       addLog('skill', `發動「${hero.skill}」`, playerIdx);
@@ -3275,6 +3290,221 @@ window.doStealGem = function(playerIdx, targetIdx) {
     renderAndSyncSkill();
   });
 };
+
+function answerLabel(ans) {
+  return ans === 'yes' ? '是' : '否';
+}
+
+function showDVExpectedAnswerPicker(playerIdx) {
+  const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
+  box.id = 'hero-skill-confirm';
+  box.innerHTML = `<div class="hero-skill-confirm-box">
+    <h3>💔 你還愛我嗎?</h3>
+    <p>先選擇你想聽到的答案，這個答案不會顯示給對方。</p>
+    <div class="btn-row" style="flex-wrap:wrap">
+      <button class="btn-action" onclick="showDVTargetPicker(${playerIdx},'yes')">想聽「是」</button>
+      <button class="btn-action" onclick="showDVTargetPicker(${playerIdx},'no')">想聽「否」</button>
+      <button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button>
+    </div>
+  </div>`;
+  if (!box.parentNode) document.body.appendChild(box);
+}
+
+window.showDVTargetPicker = function(playerIdx, expected) {
+  const others = G.players.map((p,i)=>({p,i})).filter(({i})=>i!==playerIdx);
+  if (!others.length) { toast('沒有可詢問的玩家'); return; }
+  const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
+  box.id = 'hero-skill-confirm';
+  box.innerHTML = `<div class="hero-skill-confirm-box">
+    <h3>💔 你還愛我嗎?</h3>
+    <p>你預設想聽到：「${answerLabel(expected)}」。<br>選擇一位玩家發問。</p>
+    <div class="btn-row" style="flex-wrap:wrap">
+      ${others.map(({p,i})=>`<button class="btn-action" onclick="confirmDVQuestionTarget(${playerIdx},${i},'${expected}')">
+        ${htmlEsc(p.name)}<br><small style="opacity:.55;font-size:.75em">${gsum(p.gems)} 顆寶石/金幣</small>
+      </button>`).join('')}
+      <button class="btn-end" onclick="showDVExpectedAnswerPicker(${playerIdx})">返回</button>
+    </div>
+  </div>`;
+  if (!box.parentNode) document.body.appendChild(box);
+};
+
+window.confirmDVQuestionTarget = function(playerIdx, targetIdx, expected) {
+  document.getElementById('hero-skill-confirm')?.remove();
+  runConfirmedHeroSkill(playerIdx, () => startDVQuestion(playerIdx, targetIdx, expected), {
+    showcaseFile:'dv_你還愛我嗎.png',
+    cutoutFile:'dv_phase2_cutout.png'
+  });
+};
+
+function startDVQuestion(playerIdx, targetIdx, expected) {
+  const actor = G.players[playerIdx];
+  const target = G.players[targetIdx];
+  if (!actor || !target || playerIdx === targetIdx) { toast('找不到詢問對象'); return; }
+  const prompt = {
+    id: makeRemoteAnimId('dvq'),
+    actorIdx: playerIdx,
+    targetIdx,
+    expected: expected === 'yes' ? 'yes' : 'no',
+    deadline: Date.now() + 10000,
+  };
+  G.heroDVPrompt = prompt;
+  addLog('skill', `發動「你還愛我嗎?」，詢問 ${target.name}`, playerIdx);
+  toast(`💔 已詢問 ${target.name}：你還愛我嗎？`);
+  render();
+  if (onlineMode && !_pendingSkillChainAnim) pushG();
+  syncHeroDVPromptModal();
+}
+
+let _dvPromptId = null;
+let _dvPromptTimer = null;
+let _dvPromptTicker = null;
+
+function clearDVPromptModal() {
+  clearTimeout(_dvPromptTimer);
+  clearInterval(_dvPromptTicker);
+  _dvPromptTimer = null;
+  _dvPromptTicker = null;
+  _dvPromptId = null;
+  document.getElementById('dv-answer-modal')?.remove();
+}
+
+function syncHeroDVPromptModal() {
+  const prompt = G && G.heroDVPrompt;
+  if (!prompt) { clearDVPromptModal(); return; }
+  const shouldAnswer = onlineMode ? Number(prompt.targetIdx) === myIdx : true;
+  if (!shouldAnswer) return;
+  if (_dvPromptId === prompt.id && document.getElementById('dv-answer-modal')) return;
+  showDVAnswerModal(prompt);
+}
+
+function showDVAnswerModal(prompt) {
+  clearDVPromptModal();
+  _dvPromptId = prompt.id;
+  const actor = G.players[Number(prompt.actorIdx)];
+  const actorName = actor ? actor.name : '對方';
+  const box = document.createElement('div');
+  box.id = 'dv-answer-modal';
+  box.innerHTML = `<div class="hero-skill-confirm-box" style="max-width:390px">
+    <h3>💔 你還愛我嗎?</h3>
+    <p>請問你還愛 <span style="color:#ffe08a;font-weight:800">${htmlEsc(actorName)}</span> 玩家嗎？</p>
+    <div id="dv-answer-timer" style="color:#ffcc66;font-weight:900;font-size:1.65em;margin:0 0 16px">10</div>
+    <div class="btn-row" style="flex-wrap:wrap">
+      <button class="btn-action" onclick="answerDVQuestion('${prompt.id}','yes')">是</button>
+      <button class="btn-action" onclick="answerDVQuestion('${prompt.id}','no')">否</button>
+    </div>
+  </div>`;
+  document.body.appendChild(box);
+
+  const tick = () => {
+    const remain = Math.max(0, Math.ceil((Number(prompt.deadline) - Date.now()) / 1000));
+    const el = document.getElementById('dv-answer-timer');
+    if (el) {
+      el.textContent = String(remain);
+      el.style.color = remain <= 3 ? '#ff5555' : '#ffcc66';
+    }
+    if (remain <= 0) {
+      clearInterval(_dvPromptTicker);
+      _dvPromptTicker = null;
+      if (G.heroDVPrompt && G.heroDVPrompt.id === prompt.id) {
+        answerDVQuestion(prompt.id, Math.random() < 0.5 ? 'yes' : 'no', true);
+      }
+    }
+  };
+  tick();
+  _dvPromptTicker = setInterval(tick, 250);
+  _dvPromptTimer = setTimeout(() => {
+    if (G.heroDVPrompt && G.heroDVPrompt.id === prompt.id) {
+      answerDVQuestion(prompt.id, Math.random() < 0.5 ? 'yes' : 'no', true);
+    }
+  }, Math.max(0, Number(prompt.deadline) - Date.now()) + 80);
+}
+
+window.answerDVQuestion = function(promptId, answer, auto=false) {
+  const prompt = G.heroDVPrompt;
+  if (!prompt || prompt.id !== promptId) return;
+  if (onlineMode && Number(prompt.targetIdx) !== myIdx) return;
+  clearDVPromptModal();
+  resolveDVQuestion(prompt, answer === 'yes' ? 'yes' : 'no', !!auto);
+};
+
+function randomGemSelectionFromPlayer(playerIdx, count) {
+  const pl = G.players[playerIdx];
+  const gems = pl && pl.gems ? {...pl.gems} : {};
+  const selection = cleanGemSelection({});
+  for (let n = 0; n < count; n++) {
+    const pool = [];
+    [...CI,'gold'].forEach(col => {
+      for (let i = 0; i < (gems[col]||0); i++) pool.push(col);
+    });
+    if (!pool.length) break;
+    const col = pool[Math.floor(Math.random() * pool.length)];
+    gems[col]--;
+    selection[col]++;
+  }
+  return selection;
+}
+
+function selectionTotal(selection) {
+  return [...CI,'gold'].reduce((sum,col)=>sum+(selection[col]||0),0);
+}
+
+function transferGemSelection(fromIdx, toIdx, selection) {
+  const from = G.players[fromIdx];
+  const to = G.players[toIdx];
+  [...CI,'gold'].forEach(col => {
+    const n = Math.min(selection[col]||0, from.gems[col]||0);
+    if (n <= 0) { selection[col] = 0; return; }
+    from.gems[col] -= n;
+    to.gems[col] = (to.gems[col]||0) + n;
+    selection[col] = n;
+  });
+  return cleanGemSelection(selection);
+}
+
+function resolveDVQuestion(prompt, answer, auto=false) {
+  const actorIdx = Number(prompt.actorIdx);
+  const targetIdx = Number(prompt.targetIdx);
+  const actor = G.players[actorIdx];
+  const target = G.players[targetIdx];
+  if (!actor || !target) { G.heroDVPrompt = null; render(); if (onlineMode) pushG(); return; }
+  G.heroDVPrompt = null;
+
+  const matched = answer === prompt.expected;
+  const fromIdx = matched ? actorIdx : targetIdx;
+  const toIdx = matched ? targetIdx : actorIdx;
+  const takeCount = matched ? 1 : 3;
+  let selection = randomGemSelectionFromPlayer(fromIdx, takeCount);
+  selection = transferGemSelection(fromIdx, toIdx, selection);
+  const got = selectionTotal(selection);
+  const answerText = answerLabel(answer);
+  const autoText = auto ? '（逾時隨機）' : '';
+
+  if (got > 0) {
+    addLog('skill', `「你還愛我嗎?」${target.name} 回答「${answerText}」${autoText}；${G.players[toIdx].name} 偷走 ${gemListLog(selection)}`, actorIdx);
+  } else {
+    addLog('skill', `「你還愛我嗎?」${target.name} 回答「${answerText}」${autoText}；但沒有可偷的寶石/金幣`, actorIdx);
+  }
+
+  const msg = matched
+    ? `💔 ${target.name} 答「${answerText}」${autoText}，命中預設答案，偷走 ${actor.name} ${got} 顆寶石/金幣！`
+    : `💔 ${target.name} 答「${answerText}」${autoText}，沒有命中預設答案，${actor.name} 偷走 ${target.name} ${got} 顆寶石/金幣！`;
+  toast(msg);
+
+  if (got > 0) {
+    animateGemsBetweenPlayers(selection, fromIdx, toIdx, () => {
+      markSkillGemAnim('gem-player-transfer', {
+        actorIdx,
+        fromIdx,
+        toIdx,
+        selection,
+      });
+      renderAndSyncSkill();
+    });
+  } else {
+    render();
+    if (onlineMode) pushG();
+  }
+}
 
 function showSorosShortPicker(playerIdx) {
   const others = G.players.map((p,i)=>({p,i})).filter(({i,p})=> i!==playerIdx && coloredGemSum(p.gems)>0);
@@ -3675,7 +3905,7 @@ function _buildG(names) {
     cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false,
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
     log:[],
-    heroes:null, heroUsed:null, heroBuffett:null, heroActedThisTurn:null,
+    heroes:null, heroUsed:null, heroBuffett:null, heroDVPrompt:null, heroActedThisTurn:null,
     openingDealt:false,
   };
 }
@@ -5436,7 +5666,7 @@ function showOverMod() {
     const heroEmoji = hero ? (HERO_EMOJI[hero.key] || '👤') : '👤';
     const avatarHtml = hero
       ? `<div class="over-avatar-wrap" style="color:${htmlEsc(p.color)}">
-          <img class="over-avatar" src="heros/${hero.key}.jpg" alt="${htmlEsc(hero.name)}"
+          <img class="over-avatar" src="${heroImgSrc(hero.key)}" alt="${htmlEsc(hero.name)}"
             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
           <span class="over-avatar-fallback">${heroEmoji}</span>
         </div>`
