@@ -2969,19 +2969,19 @@ const BGM_VOICE_DUCK_VOLUME = 0.035;
 let _bgmDuckTimer = null;
 
 const HERO_VOICE_PROFILES = {
-  buffett:   {gender:'male',   age:95, profession:'value investor',    rate:.78, pitch:.72},
-  musk:      {gender:'male',   age:54, profession:'tech founder',      rate:1.08, pitch:.92},
-  lehman:    {gender:'male',   age:70, profession:'banker',            rate:.84, pitch:.70},
-  jensen:    {gender:'male',   age:63, profession:'chip CEO',          rate:.96, pitch:.84},
-  altman:    {gender:'male',   age:41, profession:'AI CEO',            rate:1.02, pitch:.98},
-  munger:    {gender:'male',   age:70, profession:'investor thinker',  rate:.72, pitch:.68},
-  satoshi:   {gender:'male',   age:50, profession:'crypto creator',    rate:.86, pitch:.78},
-  soros:     {gender:'male',   age:95, profession:'macro trader',      rate:.78, pitch:.72},
-  tzuyu:     {gender:'female', age:26, profession:'singer dancer',      rate:.96, pitch:1.18},
-  jaychou:   {gender:'male',   age:47, profession:'singer songwriter', rate:.88, pitch:.86},
-  hudong:    {gender:'male',   age:45, profession:'performer',         rate:1.03, pitch:.94},
-  willsmith: {gender:'male',   age:57, profession:'actor rapper',      rate:1.00, pitch:.90},
-  trump:     {gender:'male',   age:79, profession:'politician',        rate:.92, pitch:.76},
+  buffett:   {gender:'male',   age:95, profession:'value investor',    rate:.68, pitch:.40, authority:1.00, voiceHints:['zhiwei','kangkang','yunjian','yunyang','david']},
+  musk:      {gender:'male',   age:54, profession:'tech founder',      rate:.98, pitch:.56, authority:.82, voiceHints:['yunxi','yunyang','yunjian','zhiwei','david']},
+  lehman:    {gender:'male',   age:70, profession:'banker',            rate:.72, pitch:.38, authority:1.00, voiceHints:['zhiwei','kangkang','yunjian','david']},
+  jensen:    {gender:'male',   age:63, profession:'chip CEO',          rate:.86, pitch:.48, authority:.88, voiceHints:['yunjian','yunyang','zhiwei','david']},
+  altman:    {gender:'male',   age:41, profession:'AI CEO',            rate:.94, pitch:.60, authority:.72, voiceHints:['yunxi','yunyang','yunjian','david']},
+  munger:    {gender:'male',   age:70, profession:'investor thinker',  rate:.62, pitch:.36, authority:1.00, voiceHints:['zhiwei','kangkang','yunjian','david']},
+  satoshi:   {gender:'male',   age:50, profession:'crypto creator',    rate:.74, pitch:.42, authority:.92, voiceHints:['yunjian','zhiwei','kangkang','yunyang']},
+  soros:     {gender:'male',   age:95, profession:'macro trader',      rate:.66, pitch:.40, authority:1.00, voiceHints:['zhiwei','kangkang','yunjian','david']},
+  tzuyu:     {gender:'female', age:26, profession:'singer dancer',      rate:.94, pitch:1.06, authority:.46, voiceHints:['yating','hanhan','hsiaochen','xiaoxiao','zhiyu']},
+  jaychou:   {gender:'male',   age:47, profession:'singer songwriter', rate:.76, pitch:.48, authority:.70, voiceHints:['yunxi','zhiwei','david','yunjian']},
+  hudong:    {gender:'male',   age:45, profession:'performer',         rate:.96, pitch:.58, authority:.72, voiceHints:['yunyang','yunxi','yunjian','david']},
+  willsmith: {gender:'male',   age:57, profession:'actor rapper',      rate:.88, pitch:.50, authority:.88, voiceHints:['david','yunyang','yunjian','zhiwei']},
+  trump:     {gender:'male',   age:79, profession:'politician',        rate:.82, pitch:.42, authority:1.00, voiceHints:['david','yunyang','zhiwei','kangkang','yunjian']},
 };
 let _speechVoices = [];
 function refreshSpeechVoices() {
@@ -3004,17 +3004,35 @@ function selectHeroSpeechVoice(profile) {
     return key.includes('zh') || key.includes('chinese') || key.includes('mandarin') || key.includes('國語') || key.includes('中文');
   });
   const pool = zh.length ? zh : voices;
-  const femaleHints = ['female','yating','hanhan','xiaoxiao','xiaoyi','huihui','meijia','ting-ting','zhiyu','hsiao'];
-  const maleHints = ['male','yunxi','kangkang','zhiwei','yunjian','yunyang','yaoyao','liang','david'];
-  const hints = profile.gender === 'female' ? femaleHints : maleHints;
-  const hinted = pool.find(v => hints.some(h => (v.name || '').toLowerCase().includes(h)));
-  if (hinted) return hinted;
-  return pool.find(v => /zh[-_]?tw|taiwan|臺灣|台灣/i.test(`${v.lang} ${v.name}`)) || pool[0];
+  const femaleHints = ['female','yating','hanhan','hsiaochen','xiaoxiao','xiaoyi','huihui','meijia','ting-ting','zhiyu','tracy','女'];
+  const maleHints = ['male','zhiwei','kangkang','yunxi','yunjian','yunyang','wanlung','david','mark','george','男'];
+  const naturalHints = ['natural','online','neural','premium'];
+  const regionHints = ['zh-tw','zh_tw','taiwan','臺灣','台灣','traditional','mandarin'];
+  const profileHints = (profile.voiceHints || []).map(h => String(h).toLowerCase());
+  const scoreVoice = voice => {
+    const id = `${voice.name || ''} ${voice.voiceURI || ''} ${voice.lang || ''}`.toLowerCase();
+    let score = 0;
+    if (id.includes('zh') || id.includes('chinese') || id.includes('mandarin')) score += 45;
+    if (regionHints.some(h => id.includes(h))) score += 12;
+    naturalHints.forEach((h, i) => { if (id.includes(h)) score += 18 - i * 3; });
+    profileHints.forEach((h, i) => { if (id.includes(h)) score += 44 - i * 4; });
+    if (profile.gender === 'male') {
+      if (maleHints.some(h => id.includes(h))) score += 28;
+      if (femaleHints.some(h => id.includes(h))) score -= 38;
+    } else {
+      if (femaleHints.some(h => id.includes(h))) score += 30;
+      if (maleHints.some(h => id.includes(h))) score -= 28;
+    }
+    if (voice.localService === false) score += 6;
+    return score;
+  };
+  return pool.slice().sort((a,b)=>scoreVoice(b)-scoreVoice(a))[0] || pool[0];
 }
 function estimateQuoteSpeechMs(hero, quote) {
   const profile = HERO_VOICE_PROFILES[hero?.key] || {rate:.95};
   const text = quoteSpeechText(quote);
-  return Math.min(3600, Math.max(1800, 520 + text.length * 170 / (profile.rate || .95)));
+  const authorityHold = (profile.authority || .7) * 260;
+  return Math.min(4300, Math.max(2100, 760 + authorityHold + text.length * 190 / (profile.rate || .9)));
 }
 function duckBgmForVoice(ms) {
   const audio = document.getElementById('bgm-audio');
@@ -3025,11 +3043,40 @@ function duckBgmForVoice(ms) {
     if (!bgmMuted()) audio.volume = BGM_BASE_VOLUME;
   }, ms);
 }
+function playVoicePresenceCue(profile) {
+  try {
+    const ctx = _ac(), t = ctx.currentTime;
+    const authority = profile.authority || .7;
+    const lowFreq = profile.gender === 'female' ? 118 : (profile.age >= 70 ? 48 : profile.age >= 55 ? 56 : 64);
+    const dur = .46 + authority * .18;
+    const makeTone = (freq, vol, type='sine', endFreq=freq*.82) => {
+      const osc = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(24, endFreq), t + dur);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(profile.gender === 'female' ? 420 : 260, t);
+      filter.Q.value = .9;
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.exponentialRampToValueAtTime(vol, t + .035);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + dur + .03);
+    };
+    makeTone(lowFreq, profile.gender === 'female' ? .045 : .075 + authority * .045);
+    if (profile.gender === 'male') makeTone(lowFreq * 1.52, .018 + authority * .02, 'triangle', lowFreq * 1.22);
+    if (/singer|performer|actor/.test(profile.profession || '')) {
+      makeTone(profile.gender === 'female' ? 330 : 196, .018, 'triangle', profile.gender === 'female' ? 392 : 220);
+    }
+  } catch(e) {}
+}
 function speakHeroQuote(hero, quote, delay=0) {
   if (!('speechSynthesis' in window)) return 0;
   const text = quoteSpeechText(quote);
   if (!text) return 0;
-  const profile = HERO_VOICE_PROFILES[hero?.key] || {gender:'male', age:50, profession:'narrator', rate:.95, pitch:.9};
+  const profile = HERO_VOICE_PROFILES[hero?.key] || {gender:'male', age:50, profession:'narrator', rate:.86, pitch:.52, authority:.75};
   const estimatedMs = estimateQuoteSpeechMs(hero, quote);
   setTimeout(() => {
     try {
@@ -3041,6 +3088,7 @@ function speakHeroQuote(hero, quote, delay=0) {
       utterance.volume = 1;
       const voice = selectHeroSpeechVoice(profile);
       if (voice) utterance.voice = voice;
+      playVoicePresenceCue(profile);
       duckBgmForVoice(estimatedMs + 500);
       window.speechSynthesis.speak(utterance);
     } catch(e) {}
