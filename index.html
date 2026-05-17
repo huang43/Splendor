@@ -5703,6 +5703,8 @@ function playClick(type = 'tap') {
 
 // ── Background Music ──────────────────────────────────────────────────────
 const BGM_STORAGE_KEY = 'splendor-bgm-muted';
+const BGM_AUTOPLAY_VERSION_KEY = 'splendor-bgm-autoplay-v2';
+let _bgmUnlockBound = false;
 function bgmMuted() {
   try { return localStorage.getItem(BGM_STORAGE_KEY) === '1'; }
   catch(e) { return false; }
@@ -5710,6 +5712,14 @@ function bgmMuted() {
 function setBgmMuted(muted) {
   try { localStorage.setItem(BGM_STORAGE_KEY, muted ? '1' : '0'); }
   catch(e) {}
+}
+function ensureBgmAutoplayDefault() {
+  try {
+    if (localStorage.getItem(BGM_AUTOPLAY_VERSION_KEY) !== '1') {
+      localStorage.setItem(BGM_STORAGE_KEY, '0');
+      localStorage.setItem(BGM_AUTOPLAY_VERSION_KEY, '1');
+    }
+  } catch(e) {}
 }
 function bgmEl() {
   return document.getElementById('bgm-audio');
@@ -5730,7 +5740,25 @@ function updateBgmButton() {
     btn.classList.toggle('muted', muted);
   }
 }
-function startBgm() {
+function removeBgmUnlockListeners() {
+  document.removeEventListener('pointerdown', unlockBgmOnGesture, true);
+  document.removeEventListener('click', unlockBgmOnGesture, true);
+  document.removeEventListener('touchstart', unlockBgmOnGesture, true);
+  document.removeEventListener('keydown', unlockBgmOnGesture, true);
+  _bgmUnlockBound = false;
+}
+function bindBgmUnlockListeners() {
+  if (_bgmUnlockBound) return;
+  _bgmUnlockBound = true;
+  document.addEventListener('pointerdown', unlockBgmOnGesture, true);
+  document.addEventListener('click', unlockBgmOnGesture, true);
+  document.addEventListener('touchstart', unlockBgmOnGesture, true);
+  document.addEventListener('keydown', unlockBgmOnGesture, true);
+}
+function unlockBgmOnGesture() {
+  startBgm({fromGesture:true});
+}
+function startBgm(options={}) {
   const audio = bgmEl();
   if (!audio || bgmMuted()) {
     updateBgmButton();
@@ -5739,7 +5767,17 @@ function startBgm() {
   audio.volume = BGM_BASE_VOLUME;
   audio.muted = false;
   const playPromise = audio.play();
-  if (playPromise && playPromise.catch) playPromise.catch(()=>{});
+  if (playPromise && playPromise.then) {
+    playPromise.then(() => {
+      removeBgmUnlockListeners();
+      updateBgmButton();
+    }).catch(() => {
+      bindBgmUnlockListeners();
+      updateBgmButton();
+    });
+  } else if (options.fromGesture) {
+    removeBgmUnlockListeners();
+  }
   updateBgmButton();
 }
 function toggleBgmMute(ev) {
@@ -5756,15 +5794,19 @@ function toggleBgmMute(ev) {
   playClick('tap');
 }
 function initBgm() {
+  ensureBgmAutoplayDefault();
   updateBgmButton();
-  const unlock = ev => {
-    if (ev && ev.target && ev.target.closest && ev.target.closest('#btn-bgm')) return;
-    startBgm();
-    document.removeEventListener('pointerdown', unlock, true);
-    document.removeEventListener('keydown', unlock, true);
-  };
-  document.addEventListener('pointerdown', unlock, true);
-  document.addEventListener('keydown', unlock, true);
+  const audio = bgmEl();
+  if (audio) {
+    audio.addEventListener('canplaythrough', () => startBgm(), {once:true});
+    audio.load();
+  }
+  startBgm();
+  bindBgmUnlockListeners();
+  window.addEventListener('focus', () => startBgm());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) startBgm();
+  });
 }
 initBgm();
 
