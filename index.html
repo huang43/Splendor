@@ -213,7 +213,8 @@ body {
 #g-bank .panel-label::before,
 #g-bank .panel-label::after { content:"◆"; font-size:.72em; color:#d69a35; margin:0 7px; }
 .bank-row {
-  position:relative; z-index:1; display:flex; align-items:center; gap:7px; padding:5px 7px;
+  position:relative; z-index:1; display:flex; align-items:center; gap:8px; padding:6px 7px;
+  min-height:42px;
   margin-top:5px; border-radius:8px; cursor:pointer;
   border:1.5px solid rgba(220,166,68,.26);
   background:
@@ -269,7 +270,7 @@ body {
 }
 .gem-fly {
   position:fixed; z-index:540; pointer-events:none;
-  width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  width:24px; height:24px; display:flex; align-items:center; justify-content:center;
   filter:drop-shadow(0 0 10px rgba(255,230,140,.75)) drop-shadow(0 8px 10px rgba(0,0,0,.5));
   transition:left .58s cubic-bezier(.22,.8,.24,1),top .58s cubic-bezier(.22,.8,.24,1),
              transform .58s cubic-bezier(.22,.8,.24,1),opacity .2s ease .48s;
@@ -287,7 +288,7 @@ body {
     var(--table-surface-image) center / 100% 100% no-repeat,
     #1b0f07;
   border-radius:18px;
-  padding:14px 16px 24px;
+  padding:20px 22px 30px;
   border:1.5px solid rgba(201,139,61,.38);
   box-shadow:
     0 14px 55px rgba(0,0,0,.75),
@@ -352,7 +353,239 @@ body {
   display:inline-flex; align-items:center; gap:2px; vertical-align:middle;
   margin:0 1px; white-space:nowrap; font-weight:900; color:#ffe8b4;
 }
-.log-gem svg { width:14px; height:14px; }
+.log-gem svg { width:11.2px; height:11.2px; }
+.gem-img {
+  display:inline-block;
+  vertical-align:middle;
+  flex-shrink:0;
+  object-fit:contain;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  filter:brightness(1.12) saturate(1.16) drop-shadow(0 1px 2px rgba(0,0,0,.6));
+}
+.log-gem .gem-img { width:11.2px; height:11.2px; }
+.log-gem .gem-img.gem-img-u { width:10.42px; height:10.42px; }
+.log-gem .gem-img.gem-img-w,
+.log-gem .gem-img.gem-img-r { width:9.07px; height:9.07px; }
+.log-gem .gem-img.gem-img-gold { width:9.07px; height:9.07px; }
+#g-bank .bank-row .gem-img {
+  width:25.6px;
+  height:25.6px;
+  margin:-4px 0 -4px -2px;
+  filter:brightness(1.16) saturate(1.18) drop-shadow(0 2px 3px rgba(0,0,0,.68));
+}
+#g-bank .bank-row .gem-img.gem-img-w,
+#g-bank .bank-row .gem-img.gem-img-r {
+  width:20.74px;
+  height:20.74px;
+}
+#g-bank .bank-row .gem-img.gem-img-u {
+  width:23.81px;
+  height:23.81px;
+}
+#g-bank .bank-row .gem-img.gem-img-gold {
+  width:20.74px;
+  height:20.74px;
+}
+#g-cards .card-top .gem-img,
+.refill-card-back .card-top .gem-img,
+.intro-deal-card .card-top .gem-img,
+body > .dev-card .card-top .gem-img {
+  position:absolute;
+  top:4px;
+  right:12px;
+  z-index:6;
+  width:36px;
+  height:36px;
+  margin:0;
+  filter:brightness(1.16) saturate(1.2) drop-shadow(0 2px 4px rgba(0,0,0,.72));
+}
+#g-cards .card-top .gem-img.gem-img-w,
+#g-cards .card-top .gem-img.gem-img-r,
+.refill-card-back .card-top .gem-img.gem-img-w,
+.refill-card-back .card-top .gem-img.gem-img-r,
+.intro-deal-card .card-top .gem-img.gem-img-w,
+.intro-deal-card .card-top .gem-img.gem-img-r,
+body > .dev-card .card-top .gem-img.gem-img-w,
+body > .dev-card .card-top .gem-img.gem-img-r {
+  width:29.16px;
+  height:29.16px;
+}
+#g-cards .card-top .gem-img.gem-img-gold,
+.refill-card-back .card-top .gem-img.gem-img-gold,
+.intro-deal-card .card-top .gem-img.gem-img-gold,
+body > .dev-card .card-top .gem-img.gem-img-gold {
+  width:29.16px;
+  height:29.16px;
+}
+#g-cards .card-top .gem-img.gem-img-u,
+.refill-card-back .card-top .gem-img.gem-img-u,
+.intro-deal-card .card-top .gem-img.gem-img-u,
+body > .dev-card .card-top .gem-img.gem-img-u {
+  width:33.48px;
+  height:33.48px;
+}
+#g-cards .card-top .gem-img.gem-img-u,
+#g-cards .card-top .gem-img.gem-img-g,
+.refill-card-back .card-top .gem-img.gem-img-u,
+.refill-card-back .card-top .gem-img.gem-img-g,
+.intro-deal-card .card-top .gem-img.gem-img-u,
+.intro-deal-card .card-top .gem-img.gem-img-g,
+body > .dev-card .card-top .gem-img.gem-img-u,
+body > .dev-card .card-top .gem-img.gem-img-g {
+  top:1px;
+  right:8px;
+}
+#g-cards .card-top .gem-img.gem-img-u,
+#g-cards .card-top .gem-img.gem-img-r,
+.refill-card-back .card-top .gem-img.gem-img-u,
+.refill-card-back .card-top .gem-img.gem-img-r,
+.intro-deal-card .card-top .gem-img.gem-img-u,
+.intro-deal-card .card-top .gem-img.gem-img-r,
+body > .dev-card .card-top .gem-img.gem-img-u,
+body > .dev-card .card-top .gem-img.gem-img-r {
+  top:50%;
+  transform:translateY(-50%);
+}
+#g-cards .card-top .gem-img.gem-img-r,
+.refill-card-back .card-top .gem-img.gem-img-r,
+.intro-deal-card .card-top .gem-img.gem-img-r,
+body > .dev-card .card-top .gem-img.gem-img-r {
+  top:calc(50% + 1px);
+  right:10px;
+}
+#g-cards .card-top .gem-img.gem-img-k,
+.refill-card-back .card-top .gem-img.gem-img-k,
+.intro-deal-card .card-top .gem-img.gem-img-k,
+body > .dev-card .card-top .gem-img.gem-img-k {
+  right:10px;
+}
+.cost-badge {
+  width:29px;
+  height:29px;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  flex-shrink:0;
+  border:1px solid rgba(255,255,255,.36);
+  background:linear-gradient(180deg,#2c251f 0%,#151110 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),
+    inset 0 -1px 2px rgba(0,0,0,.5),
+    0 2px 4px rgba(0,0,0,.58);
+  overflow:hidden;
+}
+.cost-badge::before {
+  content:"";
+  position:absolute;
+  inset:3px 5px auto 5px;
+  height:1px;
+  border-radius:50%;
+  background:rgba(255,255,255,.26);
+  pointer-events:none;
+}
+.cost-badge::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.42);
+  pointer-events:none;
+}
+.cost-badge .cost-n {
+  position:relative;
+  z-index:1;
+  color:#fff;
+  font-size:1.04em;
+  line-height:1;
+  margin-top:-1px;
+  -webkit-text-stroke:.58px rgba(0,0,0,.96);
+  text-shadow:
+    -1px -1px 0 rgba(0,0,0,.82),
+     1px -1px 0 rgba(0,0,0,.82),
+    -1px  1px 0 rgba(0,0,0,.82),
+     1px  1px 0 rgba(0,0,0,.82),
+     0 1px 2px rgba(0,0,0,.78);
+}
+.cost-badge.gc-w {
+  background:linear-gradient(180deg,#fffaf0 0%,#d8cfbc 100%);
+  border-color:rgba(255,255,255,.82);
+  color:#fff;
+}
+.cost-badge.gc-u {
+  background:linear-gradient(180deg,#1379d6 0%,#073f8f 100%);
+  border-color:rgba(74,192,255,.72);
+  color:#d8efff;
+}
+.cost-badge.gc-g {
+  background:linear-gradient(180deg,#19aa45 0%,#0a5c24 100%);
+  border-color:rgba(74,255,118,.72);
+  color:#d7ffd9;
+}
+.cost-badge.gc-r {
+  background:linear-gradient(180deg,#d41f27 0%,#770911 100%);
+  border-color:rgba(255,83,76,.74);
+  color:#ffe0dc;
+}
+.cost-badge.gc-k {
+  background:linear-gradient(180deg,#8d31d8 0%,#4a1478 100%);
+  border-color:rgba(218,111,255,.74);
+  color:#f2dcff;
+}
+.cost-badge.gc-w .cost-n {
+  color:#fff;
+  -webkit-text-stroke:.58px rgba(0,0,0,.96);
+}
+#g-players .bonus-chip .gem-img,
+#g-players .pi-gem-item .gem-img {
+  width:22.4px;
+  height:22.4px;
+  margin:-5px 1px -5px -2px;
+  filter:brightness(1.14) saturate(1.18) drop-shadow(0 2px 3px rgba(0,0,0,.68));
+}
+#g-players .bonus-chip .gem-img.gem-img-w,
+#g-players .bonus-chip .gem-img.gem-img-r,
+#g-players .pi-gem-item .gem-img.gem-img-w,
+#g-players .pi-gem-item .gem-img.gem-img-r {
+  width:18.14px;
+  height:18.14px;
+}
+#g-players .bonus-chip .gem-img.gem-img-u,
+#g-players .pi-gem-item .gem-img.gem-img-u {
+  width:20.83px;
+  height:20.83px;
+}
+#g-players .bonus-chip .gem-img.gem-img-gold,
+#g-players .pi-gem-item .gem-img.gem-img-gold {
+  width:18.14px;
+  height:18.14px;
+}
+.cost-detail-row .gem-img,
+.pending-chip .gem-img {
+  width:24px;
+  height:24px;
+  margin:-5px 1px -5px -2px;
+}
+.cost-detail-row .gem-img.gem-img-w,
+.cost-detail-row .gem-img.gem-img-r,
+.pending-chip .gem-img.gem-img-w,
+.pending-chip .gem-img.gem-img-r {
+  width:19.44px;
+  height:19.44px;
+}
+.cost-detail-row .gem-img.gem-img-u,
+.pending-chip .gem-img.gem-img-u {
+  width:22.32px;
+  height:22.32px;
+}
+.cost-detail-row .gem-img.gem-img-gold,
+.pending-chip .gem-img.gem-img-gold {
+  width:19.44px;
+  height:19.44px;
+}
 .log-empty {
   padding:18px 8px; text-align:center; font-size:.72em;
   color:rgba(255,238,205,.42); line-height:1.55;
@@ -545,13 +778,13 @@ body {
   background:linear-gradient(to bottom,rgba(0,0,0,.02) 0%,rgba(0,0,0,0) 40%,rgba(0,0,0,.3) 78%,rgba(0,0,0,.64) 100%);
 }
 .cost-stack {
-  display:flex; flex-direction:column; justify-content:flex-end; gap:1px;
-  min-height:0; align-self:flex-start; max-width:100%;
-  padding:4px 6px; border-radius:7px;
-  background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
-  backdrop-filter:blur(2px);
+  position:absolute; left:8px; bottom:10px; z-index:5;
+  display:flex; flex-direction:column; justify-content:flex-end; align-items:flex-start;
+  gap:0; min-height:0; max-width:100%;
+  padding:0; border:0; background:transparent; backdrop-filter:none;
 }
-.cost-ln { display:flex; align-items:center; gap:5px; min-height:16px; }
+.cost-ln { display:flex; align-items:center; min-height:29px; }
+.cost-ln + .cost-ln { margin-top:-1px; }
 .cost-dot { width:13px; height:13px; border-radius:50%; border:1px solid rgba(255,255,255,.45); flex-shrink:0; }
 .cost-n { font-size:1.05em; font-weight:bold; color:white; text-shadow:0 1px 3px rgba(0,0,0,.9); }
 .cost-ln.covered { opacity:.35; }
@@ -581,6 +814,74 @@ body {
   border:1px solid rgba(255,215,50,.42); border-radius:16px; padding:3px 9px;
   font-size:.82em; font-weight:bold;
 }
+.card-pts,
+.cost-n,
+.g-cnt,
+.pick-badge,
+.mission-pts,
+.mission-token span:not(.mission-mark),
+.noble-pts,
+.deck-n,
+.log-count,
+.log-meta span:last-child,
+.log-gem span,
+.gem-pile span,
+.bonus-chip span,
+.pending-chip span,
+.pi-pts,
+.pi-gem-item span,
+.pi-mini,
+.timer-badge,
+.time-up-alert,
+.intro-count,
+#hero-select-timer,
+.over-rank,
+.over-score,
+.btn-num,
+.room-code,
+.room-count,
+.lb-badge {
+  font-family:"Palatino Linotype","Book Antiqua",Georgia,"Times New Roman",serif !important;
+  font-style:italic !important;
+  font-weight:900 !important;
+  letter-spacing:0 !important;
+  font-variant-numeric:lining-nums tabular-nums;
+  font-feature-settings:"lnum" 1,"tnum" 1;
+  -webkit-text-stroke:.45px rgba(20,15,12,.88);
+  paint-order:stroke fill;
+  text-shadow:
+    -1px -1px 0 rgba(20,15,12,.72),
+     1px -1px 0 rgba(20,15,12,.72),
+    -1px  1px 0 rgba(20,15,12,.72),
+     1px  1px 0 rgba(20,15,12,.72),
+     0 2px 2px rgba(0,0,0,.78),
+     0 0 1px rgba(255,255,255,.34);
+}
+.mission-token span:not(.mission-mark),
+.pi-mini,
+.room-count {
+  -webkit-text-stroke:.25px rgba(20,15,12,.72);
+  text-shadow:0 1px 1px rgba(0,0,0,.55);
+}
+#g-players .pi-pts,
+#g-players .score-unit,
+#g-players .bonus-chip span,
+#g-players .pi-gem-item span,
+#g-players .pi-mini {
+  font-weight:900 !important;
+  -webkit-text-stroke:.55px rgba(20,15,12,.9);
+}
+.card-top .card-pts {
+  font-weight:900 !important;
+  -webkit-text-stroke:.72px rgba(20,15,12,.92);
+  text-shadow:
+    -1px -1px 0 rgba(20,15,12,.78),
+     1px -1px 0 rgba(20,15,12,.78),
+    -1px  1px 0 rgba(20,15,12,.78),
+     1px  1px 0 rgba(20,15,12,.78),
+     0 2px 2px rgba(0,0,0,.86),
+     0 0 2px rgba(255,255,255,.42);
+}
 .btn-row { display:flex; gap:7px; flex-wrap:wrap; }
 .btn {
   padding:7px 15px; border-radius:8px; border:none; font-size:.87em;
@@ -606,7 +907,7 @@ body {
 .pi-card {
   background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
   border-left:4px solid; border-radius:10px; padding:8px 70px 8px 11px; width:100%;
-  position:relative;
+  position:relative; font-weight:800;
 }
 .pi-card.cur { background:rgba(255,215,50,.07); }
 .pi-card.inactive {
@@ -618,12 +919,24 @@ body {
 .pi-card.inactive .bonus-chip { color:rgba(255,255,255,.28) !important; }
 .pi-card.inactive .pi-gem-item span { opacity:.3; }
 .pi-card.inactive .pi-mini { opacity:.25; }
-.pi-name { font-size:.82em; font-weight:bold; margin-bottom:4px; opacity:.85; }
+.pi-name { font-size:.82em; font-weight:900; margin-bottom:4px; opacity:.85; }
 .pi-pts  { font-size:1.55em; font-weight:900; }
+.pi-pts {
+  font-style:normal !important;
+  letter-spacing:0 !important;
+}
+.pi-pts .score-unit {
+  font-size:1em;
+  font-style:normal;
+  font-weight:900;
+  margin-left:1px;
+  vertical-align:baseline;
+  -webkit-text-stroke:.2px rgba(20,15,12,.72);
+}
 .pi-bonuses { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
-.pi-gems { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
-.pi-gem-item { display:flex; align-items:center; gap:2px; font-size:.7em; font-weight:bold; opacity:.85; }
-.pi-mini { font-size:.68em; opacity:.55; margin-top:4px; }
+.pi-gems { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.pi-gem-item { display:flex; align-items:center; gap:4px; min-height:26px; font-size:.74em; font-weight:900; opacity:.9; }
+.pi-mini { font-size:.68em; font-weight:900; opacity:.55; margin-top:4px; }
 .time-up-alert {
   position:absolute; top:6px; right:8px;
   display:inline-flex; align-items:center; justify-content:center;
@@ -1261,9 +1574,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   .card-top { padding:4px 5px; min-height:var(--card-bar-h); }
   .card-pts { font-size:1.15em; }
   .card-body { padding:32px 4px 5px; }
-  .cost-stack { padding:2px 4px; border-radius:5px; gap:0; }
-  .cost-ln { min-height:12px; gap:2px; }
-  .cost-n { font-size:.82em; }
+  .cost-stack { left:4px; bottom:6px; }
+  .cost-ln { min-height:20px; }
+  .cost-ln + .cost-ln { margin-top:-1px; }
+  .cost-badge { width:20px; height:20px; border-width:1px; }
+  .cost-badge::before { inset:1px 2px auto 2px; }
+  .cost-badge .cost-n { font-size:.82em; }
 
   .pi-card { border-radius:8px; padding:7px 8px; }
   .pi-pts { font-size:1.22em; }
@@ -2451,61 +2767,33 @@ const CN  = {w:'白',u:'藍',g:'綠',r:'紅',k:'紫',gold:'金'};
 const GCC = {w:'gc-w',u:'gc-u',g:'gc-g',r:'gc-r',k:'gc-k',gold:'gc-gold'};
 const GEM_FILL = {w:'#c8ecff',u:'#3a7fff',g:'#22cc66',r:'#ff2244',k:'#8d4dff'};
 const GEM_NAME = {w:'鑽石',u:'藍寶石',g:'綠寶石',r:'紅寶石',k:'紫水晶'};
+const GEM_ICON_SRC = {
+  w:'splendor-card-art/gem-icons/gem-w.png?v=clean6',
+  u:'splendor-card-art/gem-icons/gem-u.png?v=clean5',
+  g:'splendor-card-art/gem-icons/gem-g.png?v=clean5',
+  r:'splendor-card-art/gem-icons/gem-r.png?v=clean5',
+  k:'splendor-card-art/gem-icons/gem-k.png?v=clean5',
+  gold:'splendor-card-art/gem-icons/gem-gold.png?v=clean5'
+};
+const GEM_SIZE_SCALE = 0.8;
+const GEM_COLOR_SIZE_SCALE = {w:0.81,u:0.93,r:0.81,gold:0.81};
 function gemSVG(col, size=18) {
-  const s=size, a=`display:inline-block;vertical-align:middle;flex-shrink:0`;
-  if(col==='w') // 鑽石 — 菱形稜角，半透明
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
-      <polygon points="12,1 21,9 12,23 3,9" fill="#d8f4ff" fill-opacity="0.82"/>
-      <polygon points="12,1 21,9 12,9" fill="rgba(255,255,255,0.62)"/>
-      <polygon points="3,9 12,9 12,23" fill="rgba(180,230,255,0.22)"/>
-      <polygon points="21,9 12,9 12,23" fill="rgba(140,210,255,0.14)"/>
-      <line x1="3" y1="9" x2="21" y2="9" stroke="rgba(255,255,255,0.78)" stroke-width="1"/>
-      <line x1="12" y1="1" x2="3" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
-      <line x1="12" y1="1" x2="21" y2="9" stroke="rgba(255,255,255,0.38)" stroke-width="0.7"/>
-    </svg>`;
-  if(col==='k') // 紫水晶 — 三角形切面
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
-      <polygon points="12,2 22,21 2,21" fill="#8d4dff"/>
-      <polygon points="12,2 12,21 2,21" fill="rgba(255,255,255,0.18)"/>
-      <polygon points="12,2 22,21 12,21" fill="rgba(36,6,84,0.26)"/>
-      <polygon points="7,21 12,2 17,21" fill="rgba(230,205,255,0.22)"/>
-      <polygon points="12,2 22,21 2,21" fill="none" stroke="rgba(238,220,255,0.46)" stroke-width="0.8"/>
-      <line x1="12" y1="2" x2="12" y2="21" stroke="rgba(255,255,255,0.35)" stroke-width="0.7"/>
-    </svg>`;
-  if(col==='g') // 綠寶石 — 橢圓形
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
-      <ellipse cx="12" cy="12" rx="8.5" ry="10.5" fill="#22cc66"/>
-      <ellipse cx="11" cy="8" rx="4" ry="2.5" fill="rgba(255,255,255,0.32)" transform="rotate(-12,11,8)"/>
-      <ellipse cx="12" cy="12" rx="8.5" ry="10.5" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.8"/>
-    </svg>`;
-  if(col==='r') // 紅寶石 — 六角形
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
-      <polygon points="12,2 20,7 20,17 12,22 4,17 4,7" fill="#ff2244"/>
-      <polygon points="12,2 20,7 12,10 4,7" fill="rgba(255,255,255,0.26)"/>
-      <polygon points="12,2 20,7 20,17 12,22 4,17 4,7" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
-    </svg>`;
-  if(col==='u') // 藍寶石 — 正方形
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
-      <rect x="3" y="3" width="18" height="18" rx="2.5" fill="#3a7fff"/>
-      <polygon points="3,3 21,3 17,8 7,8" fill="rgba(255,255,255,0.28)"/>
-      <rect x="3" y="3" width="18" height="18" rx="2.5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8"/>
-    </svg>`;
-  if(col==='gold') // 金幣 — 圓形硬幣
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
-      <circle cx="12" cy="12" r="10.5" fill="#a86800"/>
-      <circle cx="12" cy="12" r="9.5" fill="#ffcc22"/>
-      <ellipse cx="11" cy="8.5" rx="4" ry="2.2" fill="rgba(255,255,255,0.42)"/>
-      <circle cx="12" cy="12" r="5.5" fill="none" stroke="rgba(160,100,0,0.4)" stroke-width="0.9"/>
-      <circle cx="12" cy="12" r="10.5" fill="none" stroke="rgba(160,100,0,0.35)" stroke-width="0.6"/>
-    </svg>`;
+  const s = Math.max(1, Math.round((Number(size) || 18) * GEM_SIZE_SCALE * (GEM_COLOR_SIZE_SCALE[col] || 1)));
+  const src = GEM_ICON_SRC[col];
+  if (src) {
+    return `<img class="gem-img gem-img-${col}" src="${src}" alt="${col}" width="${s}" height="${s}" style="display:inline-block;vertical-align:middle;flex-shrink:0;object-fit:contain">`;
+  }
   const fill=GEM_FILL[col]||'#aaa';
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="${a}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${s}" height="${s}" style="display:inline-block;vertical-align:middle;flex-shrink:0">
     <polygon points="12,2 22,9 12,22 2,9" fill="${fill}"/>
   </svg>`;
 }
 const CHC = {w:'ch-w',u:'ch-u',g:'ch-g',r:'ch-r',k:'ch-k'};
 const PC  = ['#ff9955','#55aaff','#55cc88','#cc88ff'];
 const GEMCNT = {2:4, 3:5, 4:7};
+function costBadgeHtml(col, amount) {
+  return `<span class="cost-badge ${GCC[col] || ''}" data-gem="${col}"><span class="cost-n">${amount}</span></span>`;
+}
 
 // ── Card data [tier, pts, bonusIdx, W,U,G,R,K] ───────────────────────────
 const RAW = [
@@ -3778,14 +4066,14 @@ function peekCardHtml(card) {
   const artName = cardArtName(card);
   const artStyle = artName ? `background-image:url('splendor-card-art/${artName}');background-size:cover;background-position:center;` : '';
   const costHtml = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
-    `<div style="display:flex;align-items:center;gap:2px;font-size:.7em">${gemSVG(c,11)}<span style="color:#fff;font-weight:700">${card.cost[c]}</span></div>`
+    `<div class="cost-ln">${costBadgeHtml(c, card.cost[c])}</div>`
   ).join('');
   return `<div style="width:80px;height:110px;border-radius:8px;flex-shrink:0;overflow:hidden;position:relative;background:${tierBg};${artStyle}box-shadow:0 4px 14px rgba(0,0,0,.6);">
     <div class="card-top ${CHC[card.bonus]}" style="position:absolute;top:0;left:0;right:0;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:4px 5px;min-height:28px;box-shadow:0 2px 8px rgba(0,0,0,.5);backdrop-filter:blur(2px);">
       <span style="font-size:1.1em;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);line-height:1">${card.pts||''}</span>
       ${gemSVG(card.bonus,16)}
     </div>
-    <div style="position:absolute;bottom:0;left:0;right:0;z-index:3;padding:4px 4px 5px;display:flex;flex-direction:column;gap:2px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,.75) 60%);">
+    <div class="cost-stack" style="left:5px;bottom:6px;z-index:5;transform:scale(.72);transform-origin:left bottom;">
       ${costHtml||'<span style="font-size:.65em;color:rgba(255,255,255,.5)">免費</span>'}
     </div>
   </div>`;
@@ -4326,7 +4614,7 @@ function updateTenpaiNotifications() {
 // ── Card animation ───────────────────────────────────────────────────────
 function cardCostHtml(card) {
   return CI.filter(c=>(card.cost[c]||0)>0).map(c=>
-    `<div class="cost-ln">${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`
+    `<div class="cost-ln">${costBadgeHtml(c, card.cost[c])}</div>`
   ).join('');
 }
 
@@ -4347,8 +4635,7 @@ function boardCardFace(card, pl) {
   const e = viewer ? effCost(viewer, card) : (card.cost || {});
   const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
     const covered = (e[c]||0) === 0;
-    return `<div class="cost-ln ${covered?'covered':''}">
-      ${gemSVG(c,14)}<span class="cost-n">${card.cost[c]}</span></div>`;
+    return `<div class="cost-ln ${covered?'covered':''}">${costBadgeHtml(c, card.cost[c])}</div>`;
   }).join('');
   return {
     stateClass: afford ? 'afford' : 'dim',
@@ -5650,7 +5937,7 @@ function rPlayers() {
     const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426;':''}${p.disconnected?'opacity:.45;':''}position:relative;">
       ${timerBadge}
       <div style="display:flex;align-items:center;gap:6px">
-        <div class="pi-pts" style="color:${p.color};flex-shrink:0">${p.points}分</div>
+        <div class="pi-pts" style="color:${p.color};flex-shrink:0">${p.points}<span class="score-unit">分</span></div>
         <div class="pi-name" style="color:${p.color};flex-shrink:0">${p.name}</div>
         ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:''}
       </div>
@@ -6275,7 +6562,7 @@ function showResTooltip(el, playerIdx) {
   const tip = document.getElementById('res-tip');
   tip.innerHTML = p.reserved.map(card => {
     const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
-      `<div class="cost-ln">${gemSVG(c,11)}<span class="cost-n">${card.cost[c]}</span></div>`
+      `<div class="cost-ln">${costBadgeHtml(c, card.cost[c])}</div>`
     ).join('');
     return `<div class="dev-card t${card.tier} ${cardArtClass(card)}" style="${cardBgStyle(card)}--card-bar-h:38px;width:90px;height:128px;min-height:128px;cursor:default;transform:none">
       <div class="card-top ${CHC[card.bonus]}" style="padding:6px;min-height:38px">
@@ -6283,7 +6570,7 @@ function showResTooltip(el, playerIdx) {
         ${gemSVG(card.bonus,16)}
       </div>
       <div class="card-body" style="padding:5px">
-        <div class="cost-stack" style="min-height:40px">${costH}</div>
+        <div class="cost-stack" style="left:5px;bottom:6px;transform:scale(.78);transform-origin:left bottom">${costH}</div>
       </div>
     </div>`;
   }).join('');
