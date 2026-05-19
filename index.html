@@ -21,13 +21,13 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background:
     linear-gradient(180deg,rgba(16,20,26,.42),rgba(27,18,12,.72)),
-    url('splendor-card-art/game-bg-castle.jpg') center/cover fixed,
+    url('splendor-card-art/game-bg-cellar-02.png') center/cover fixed,
     #3b2b1d;
   color: #e8e8f0; min-height: 100vh; user-select: none;
 }
 
 /* ── Setup ──────────────────────────────────── */
-#screen-setup {
+#screen-setup, #screen-login, #screen-ladder {
   display:none; flex-direction:column; align-items:center;
   justify-content:center; min-height:100vh; gap:20px; padding:40px;
 }
@@ -55,7 +55,7 @@ body {
   padding:14px 48px; font-size:1.1em; font-weight:bold; color:white;
   cursor:pointer; letter-spacing:2px; transition:all .15s;
 }
-.btn-start:hover { filter:brightness(1.2); transform:translateY(-2px); }
+.btn-start:hover { filter:brightness(1.18) saturate(1.08); transform:translateY(-2px) scale(1.02); }
 
 /* ── Game layout ─────────────────────────────── */
 #screen-game { display:none; flex-direction:column; min-height:100vh; }
@@ -76,8 +76,21 @@ body {
 }
 
 /* Left panel */
-#g-left { display:flex; flex-direction:column; gap:10px; width:166px; margin-left:-8px; flex-shrink:0; }
+#g-left { display:flex; flex-direction:column; gap:10px; width:178px; margin-left:-8px; flex-shrink:0; }
 .panel-label { font-size:.68em; text-transform:uppercase; letter-spacing:2px; opacity:.45; margin-bottom:4px; }
+
+/* Right utility column */
+#g-side {
+  width:236px; min-width:220px; max-width:260px; flex:0 0 236px;
+  display:grid; grid-template-rows:auto minmax(0,1fr); align-items:stretch; gap:8px;
+  height:calc(100vh - 78px);
+  height:calc(100dvh - 78px);
+  max-height:calc(100vh - 78px);
+  max-height:calc(100dvh - 78px);
+  overflow:visible; isolation:isolate;
+}
+#g-side > #g-bank { grid-row:1; align-self:start; }
+#g-side > #g-log { grid-row:2; align-self:stretch; min-height:0; }
 
 /* Nobles */
 .noble-card {
@@ -104,6 +117,7 @@ body {
 /* Mission cards */
 .mission-card {
   position:relative; border-radius:7px; padding:8px 11px 9px 13px; flex:1; min-width:0;
+  display:flex; flex-direction:column; min-height:126px;
   border:1.5px solid rgba(97,54,17,.78);
   background:
     linear-gradient(180deg,rgba(255,244,190,.18),rgba(91,43,8,.08)),
@@ -158,7 +172,11 @@ body {
     0 2px 5px rgba(46,16,4,.32);
   text-shadow:0 1px 2px rgba(0,0,0,.5);
 }
-.mission-desc { font-size:.62em; color:#35200b; margin-top:3px; line-height:1.32; position:relative; z-index:1; text-shadow:0 1px 0 rgba(255,229,161,.28); }
+.mission-desc {
+  font-size:.62em; color:#35200b; margin-top:3px; line-height:1.32;
+  min-height:2.64em; position:relative; z-index:1;
+  text-shadow:0 1px 0 rgba(255,229,161,.28);
+}
 .mission-icons { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; position:relative; z-index:1; }
 .mission-token {
   display:inline-flex; align-items:center; gap:2px; padding:1px 5px;
@@ -170,10 +188,30 @@ body {
 }
 .mission-mark { font-size:.9em; opacity:.78; margin-right:1px; }
 .mission-winner { font-size:.62em; margin-top:3px; position:relative; z-index:1; font-weight:900; }
+.mission-progress {
+  display:flex; flex-direction:column; gap:3px; margin-top:auto; padding-top:7px;
+  position:relative; z-index:1;
+}
+.mp-row {
+  display:grid; grid-template-columns:34px minmax(48px,1fr) 34px;
+  align-items:center; gap:5px;
+  font-size:.54em; color:#2c1a09; font-weight:900;
+}
+.mp-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.82; }
+.mp-bar {
+  height:5px; border-radius:999px; overflow:hidden;
+  background:rgba(62,34,8,.18); border:1px solid rgba(72,38,10,.2);
+}
+.mp-fill {
+  display:block; height:100%; border-radius:999px;
+  background:#4a2a12;
+}
+.mp-name { color:#4a2a12; }
+.mp-num { text-align:right; opacity:.72; white-space:nowrap; }
 
 /* Gem bank */
 #g-bank {
-  position:relative; width:100%; padding:17px 10px 12px;
+  position:relative; z-index:3; pointer-events:auto; width:100%; padding:17px 10px 12px;
   border-radius:14px;
   border:3px solid #8a6324;
   background:
@@ -309,8 +347,9 @@ body {
 
 /* Action log */
 #g-log {
-  width:236px; min-width:220px; max-width:260px; flex:0 0 236px;
-  max-height:calc(100vh - 78px); overflow-y:auto;
+  position:relative; z-index:1; pointer-events:auto;
+  width:100%; min-width:0; max-width:none; height:100%;
+  min-height:0; overflow-y:auto; overscroll-behavior:contain;
   padding:12px 10px;
   border-radius:14px;
   border:1px solid rgba(255,220,140,.22);
@@ -343,6 +382,7 @@ body {
 .log-entry.take { border-color:rgba(110,255,170,.14); }
 .log-entry.return { border-color:rgba(255,140,120,.17); }
 .log-entry.mission { border-color:rgba(255,220,90,.22); }
+.log-entry.skip { border-color:rgba(255,170,80,.2); }
 .log-meta {
   display:flex; align-items:center; justify-content:space-between; gap:6px;
   margin-bottom:3px; font-size:.64em; color:rgba(255,255,255,.42);
@@ -516,23 +556,23 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   color:#fff;
 }
 .cost-badge.gc-u {
-  background:linear-gradient(180deg,#1379d6 0%,#073f8f 100%);
-  border-color:rgba(74,192,255,.72);
+  background:linear-gradient(180deg,#1b86e2 0%,#0a4ea6 100%);
+  border-color:rgba(96,205,255,.76);
   color:#d8efff;
 }
 .cost-badge.gc-g {
-  background:linear-gradient(180deg,#19aa45 0%,#0a5c24 100%);
-  border-color:rgba(74,255,118,.72);
+  background:linear-gradient(180deg,#24bd52 0%,#0d7030 100%);
+  border-color:rgba(94,255,140,.76);
   color:#d7ffd9;
 }
 .cost-badge.gc-r {
-  background:linear-gradient(180deg,#d41f27 0%,#770911 100%);
-  border-color:rgba(255,83,76,.74);
+  background:linear-gradient(180deg,#e6333a 0%,#94121b 100%);
+  border-color:rgba(255,104,96,.78);
   color:#ffe0dc;
 }
 .cost-badge.gc-k {
-  background:linear-gradient(180deg,#8d31d8 0%,#4a1478 100%);
-  border-color:rgba(218,111,255,.74);
+  background:linear-gradient(180deg,#9d45ea 0%,#5d1b91 100%);
+  border-color:rgba(230,132,255,.78);
   color:#f2dcff;
 }
 .cost-badge.gc-w .cost-n {
@@ -899,11 +939,72 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   line-height:1;
   background:rgba(255,255,255,.08);
 }
+.session-pill {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:7px 12px; border-radius:999px;
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,224,138,.24);
+  color:#fff0b8; font-size:.82em; font-weight:900; letter-spacing:.8px;
+}
+.login-card, .ladder-panel {
+  width:min(420px,calc(100vw - 32px));
+  padding:20px; border-radius:14px;
+  background:linear-gradient(180deg,rgba(12,18,30,.8),rgba(8,11,18,.7));
+  border:1px solid rgba(255,224,138,.18);
+  box-shadow:0 18px 46px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.06);
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+}
+.login-note {
+  max-width:330px; text-align:center; color:rgba(235,240,255,.64);
+  font-size:.78em; line-height:1.55;
+}
+#screen-login .lb-input {
+  margin-top:24px;
+  width:min(300px,calc(100vw - 96px));
+  padding:12px 18px;
+  font-size:1.08em;
+  min-height:42px;
+}
+#screen-login .login-card .btn-online.primary {
+  margin-top:8px;
+  width:190px;
+  min-width:190px;
+  padding:17px 24px 13px;
+  font-size:1.02em;
+  background:url('splendor-card-art/button-treasure-03-clean.png') center / 100% 100% no-repeat;
+  color:#160b02;
+}
+.auth-error {
+  min-height:18px; color:#ff9f88; font-size:.78em; font-weight:800;
+}
+.ladder-panel {
+  width:min(560px,calc(100vw - 32px)); align-items:stretch; gap:8px;
+}
+.ladder-row {
+  display:grid; grid-template-columns:44px minmax(0,1fr) 74px;
+  align-items:center; gap:10px;
+  padding:9px 12px; border-radius:9px;
+  background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.08);
+}
+.ladder-row.me {
+  border-color:rgba(255,204,68,.5);
+  background:rgba(255,204,68,.1);
+}
+.ladder-rank { color:#ffdc72; font-weight:950; text-align:center; }
+.ladder-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:900; }
+.ladder-score { text-align:right; color:#dfffe9; font-weight:950; }
+.ladder-empty {
+  padding:18px; text-align:center; color:rgba(255,255,255,.58); font-size:.86em;
+}
 
 /* All-players strip — left panel vertical stack */
 #g-players {
   display:flex; flex-direction:column; gap:6px; width:100%;
 }
+#g-players.players-4 { gap:5px; }
+#g-players.players-4 .pi-card { padding:7px 56px 7px 9px; }
+#g-players.players-4 .pi-gems { gap:5px; margin-top:4px; }
+#g-players.players-4 .pi-bonuses { gap:3px; margin-top:3px; }
+#g-players.players-4 .pi-mini { margin-top:3px; }
 .pi-card {
   background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
   border-left:4px solid; border-radius:10px; padding:8px 70px 8px 11px; width:100%;
@@ -1297,6 +1398,17 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 }
 #btn-bgm:hover { background:rgba(255,200,50,.2); border-color:#ffcc44; color:#ffcc44; }
 #btn-bgm.muted { color:rgba(255,255,255,.55); border-color:rgba(255,255,255,.18); }
+#btn-logout {
+  position:fixed; top:10px; right:94px; z-index:450;
+  height:32px; min-width:54px; border-radius:999px;
+  border:1.5px solid rgba(255,224,138,.28);
+  background:rgba(255,255,255,.08); color:#fff1b8;
+  font-size:.78em; font-weight:900; cursor:pointer;
+  display:none; align-items:center; justify-content:center;
+  padding:0 11px; transition:all .15s; backdrop-filter:blur(4px);
+  box-shadow:0 0 14px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.08);
+}
+#btn-logout:hover { background:rgba(255,80,80,.16); border-color:#ff9977; color:white; }
 #btn-help {
   position:fixed; top:10px; right:14px; z-index:450;
   width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(255,255,255,.25);
@@ -1349,30 +1461,84 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   display:none; flex-direction:column; align-items:center;
   justify-content:center; min-height:100vh; gap:18px; padding:40px;
 }
-.online-btns { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
-.btn-online {
-  padding:14px 32px; border-radius:12px; border:2px solid rgba(255,255,255,.2);
-  background:linear-gradient(180deg,rgba(32,42,58,.96),rgba(12,17,28,.94));
-  color:#f7fbff; cursor:pointer; font-size:1em;
-  font-weight:bold; letter-spacing:1px; transition:all .15s;
-  box-shadow:0 10px 24px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.12);
-  text-shadow:0 1px 2px rgba(0,0,0,.75);
+.online-btns {
+  display:flex; flex-direction:column; gap:10px;
+  align-items:stretch; justify-content:center;
+  width:min(340px,calc(100vw - 40px));
 }
-.btn-online:hover {
-  background:linear-gradient(180deg,rgba(46,70,105,.98),rgba(18,28,48,.96));
-  border-color:#88aaff; color:#eaf3ff;
+.online-btns .btn-online { width:100%; }
+.btn-online, .btn-start {
+  position:relative;
+  min-height:68px;
+  padding:17px 38px 19px;
+  border:0;
+  border-radius:24px;
+  background:url('splendor-card-art/button-gem-clean.png') center / 100% 100% no-repeat;
+  color:#160b02;
+  cursor:pointer;
+  font-family:'Belwe Bd BT','Belwe','Bookman Old Style','Georgia','Noto Serif TC','PMingLiU','MingLiU',serif;
+  font-size:1.08em;
+  font-weight:900;
+  letter-spacing:1.6px;
+  line-height:1.1;
+  text-align:center;
+  text-shadow:0 1px 0 rgba(255,236,170,.7), 0 0 5px rgba(255,204,70,.62);
+  transition:transform .16s ease, filter .16s ease, box-shadow .16s ease;
+  box-shadow:0 12px 24px rgba(0,0,0,.42), 0 0 16px rgba(255,178,56,.16);
+  overflow:hidden;
+  isolation:isolate;
+  animation:treasure-btn-idle 2.8s ease-in-out infinite;
 }
-.btn-online.primary { background:linear-gradient(135deg,#cc6600,#ffaa22); border-color:transparent; }
-.btn-online.primary:hover { filter:brightness(1.15); color:white; }
+.btn-online::after, .btn-start::after {
+  content:'';
+  position:absolute;
+  top:10%;
+  bottom:14%;
+  left:-40%;
+  width:34%;
+  pointer-events:none;
+  background:linear-gradient(105deg,transparent,rgba(255,255,210,.36),transparent);
+  transform:skewX(-18deg);
+  opacity:0;
+}
+.btn-online:hover, .btn-start:hover {
+  color:#090400;
+  filter:brightness(1.16) saturate(1.12);
+  transform:translateY(-2px) scale(1.025);
+  box-shadow:0 16px 30px rgba(0,0,0,.52), 0 0 24px rgba(255,190,70,.42);
+}
+.btn-online:hover::after, .btn-start:hover::after {
+  animation:treasure-btn-sheen .78s ease-out;
+}
+.btn-online:active, .btn-start:active {
+  transform:translateY(2px) scale(.985);
+  filter:brightness(.9) saturate(1.05);
+  box-shadow:0 6px 14px rgba(0,0,0,.48), 0 0 12px rgba(255,150,30,.24);
+}
+.btn-online:disabled, .btn-start:disabled {
+  opacity:.48;
+  cursor:default;
+  filter:grayscale(.35) brightness(.74);
+  transform:none;
+  animation:none;
+}
+.btn-online:disabled::after, .btn-start:disabled::after { display:none; }
+.btn-online.primary { filter:saturate(1.08) brightness(1.04); }
+.btn-online.primary:hover { filter:brightness(1.2) saturate(1.16); color:#090400; }
+@keyframes treasure-btn-idle {
+  0%,100% { box-shadow:0 12px 24px rgba(0,0,0,.42), 0 0 14px rgba(255,178,56,.14); }
+  50% { box-shadow:0 12px 24px rgba(0,0,0,.42), 0 0 24px rgba(255,198,86,.28); }
+}
+@keyframes treasure-btn-sheen {
+  0% { left:-40%; opacity:0; }
+  20% { opacity:.85; }
+  100% { left:106%; opacity:0; }
+}
 #wait-ready {
-  background:linear-gradient(135deg,#1f6f52,#35b675);
-  border-color:rgba(136,255,190,.44);
-  color:#f3fff8;
+  color:#160b02;
 }
 #wait-ready:hover {
-  background:linear-gradient(135deg,#288760,#42cc86);
-  border-color:rgba(180,255,215,.72);
-  color:white;
+  color:#090400;
 }
 .lb-input {
   background:rgba(8,13,24,.88); border:1.5px solid rgba(255,224,138,.34);
@@ -1498,11 +1664,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --board-gap:5px;
   }
   body { min-height:100dvh; overflow-x:hidden; }
-  #screen-setup, #screen-lobby, #screen-wait {
+  #screen-setup, #screen-login, #screen-lobby, #screen-wait, #screen-ladder {
     min-height:100dvh; padding:22px 16px; gap:14px;
   }
   .setup-title { font-size:2em; letter-spacing:3px; text-align:center; }
   .setup-sub { font-size:.82em; text-align:center; line-height:1.5; }
+  #screen-login .lb-input { width:100%; max-width:300px; }
   .num-row, .online-btns { width:100%; max-width:340px; gap:8px; }
   .btn-num { flex:1; min-width:0; padding:10px 0; }
   .player-inputs { width:min(100%,340px); }
@@ -1521,6 +1688,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     position:sticky; top:0; z-index:320; padding:8px 12px; text-align:center;
   }
   #btn-bgm { top:7px; right:44px; width:30px; height:30px; z-index:520; font-size:.95em; }
+  #btn-logout { top:7px; right:82px; height:30px; min-width:50px; z-index:520; font-size:.72em; padding:0 9px; }
   #btn-help { top:7px; right:8px; width:30px; height:30px; z-index:520; }
   #g-main {
     flex-direction:column; align-items:stretch; justify-content:flex-start;
@@ -1528,22 +1696,27 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     padding:8px 8px 12px; gap:8px;
   }
   #g-right { order:1; width:100%; min-width:0; gap:8px; }
-  #g-log {
+  #g-side {
     order:3; width:100%; max-width:none; min-width:0; flex:0 0 auto;
-    max-height:190px; padding:10px 9px;
+    grid-template-rows:auto auto; height:auto; max-height:none; gap:8px;
+    overflow:visible;
+  }
+  #g-log {
+    width:100%; max-width:none; min-width:0; height:auto;
+    max-height:190px; min-height:0; padding:10px 9px;
   }
   .log-list { gap:6px; }
   .log-entry { padding:7px 8px; }
   .log-text { font-size:.72em; }
   #g-left {
     order:2; width:100%;
-    display:grid; grid-template-columns:minmax(118px,.72fr) minmax(0,1fr);
+    display:block;
     gap:8px; align-items:start;
   }
-  #g-bank { grid-column:1; padding:14px 8px 10px; border-width:2px; border-radius:12px; }
+  #g-bank { padding:14px 8px 10px; border-width:2px; border-radius:12px; }
   #g-players {
-    grid-column:2; max-height:calc(100dvh - 430px); min-height:210px;
-    overflow-y:auto; padding-right:2px;
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+    max-height:none; min-height:0; overflow:visible; gap:6px; padding-right:0;
   }
   .bank-row { min-height:32px; padding:5px 6px; gap:5px; margin-top:4px; }
   .g-name { font-size:.72em; }
@@ -1556,11 +1729,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   .mission-card {
     min-width:204px; max-width:224px; flex:0 0 204px;
-    padding:7px 9px 8px; scroll-snap-align:start;
+    min-height:118px; padding:7px 9px 8px; scroll-snap-align:start;
   }
   .mission-name { font-size:.66em; }
-  .mission-desc { font-size:.58em; }
+  .mission-desc { font-size:.58em; min-height:2.55em; }
   .mission-pts { width:30px; height:30px; }
+  .mp-row { grid-template-columns:30px minmax(46px,1fr) 30px; font-size:.5em; }
 
   #g-cards {
     width:100%; overflow-x:auto; overflow-y:hidden; padding:1px 2px 8px;
@@ -1582,6 +1756,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   .cost-badge .cost-n { font-size:.82em; }
 
   .pi-card { border-radius:8px; padding:7px 8px; }
+  #g-players.players-4 .pi-card { padding:7px 8px; }
   .pi-pts { font-size:1.22em; }
   .pi-name { font-size:.76em; }
   .bonus-chip { padding:2px 5px; font-size:.68em; }
@@ -1608,12 +1783,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --deck-icon-h:78px;
     --board-gap:4px;
   }
-  #g-left { grid-template-columns:1fr; }
-  #g-bank, #g-players { grid-column:1; }
+  #g-left { display:block; }
   #g-players {
     display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
     max-height:none; min-height:0; overflow:visible; gap:6px;
   }
+  #g-players.players-4 { gap:6px; }
   #g-players .pi-timer-outer, #g-players .pi-card { min-width:0; }
   .mission-card { min-width:190px; flex-basis:190px; }
   .bank-row { min-height:30px; }
@@ -1630,11 +1805,17 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   #g-main { flex-direction:row; }
   #g-left { order:1; width:170px; display:flex; flex-direction:column; flex-shrink:0; }
   #g-right { order:2; min-width:0; }
+  #g-side {
+    order:3; width:190px; min-width:180px; flex:0 0 190px;
+    grid-template-rows:auto minmax(0,1fr);
+    height:calc(100dvh - 76px); max-height:calc(100dvh - 76px); gap:6px;
+  }
   #g-log {
-    order:3; width:190px; min-width:180px; flex-basis:190px;
-    max-height:calc(100dvh - 76px);
+    width:100%; min-width:0; height:100%; min-height:0; max-height:none;
   }
   #g-players { max-height:calc(100dvh - 175px); min-height:0; }
+  #g-bank { padding:12px 7px 9px; }
+  .bank-row { min-height:30px; padding:4px 5px; }
   #g-missions { max-width:calc(100vw - 194px); }
 }
 
@@ -1993,21 +2174,45 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 </head>
 <body>
 
+<!-- Login -->
+<div id="screen-login" style="display:flex">
+  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-sub">輸入指定帳號後進入遊戲</div>
+  <div class="login-card">
+    <input id="login-code" class="lb-input" placeholder="玩家帳號" maxlength="16" style="text-transform:lowercase;letter-spacing:2px" onkeydown="if(event.key==='Enter'){event.preventDefault();loginWithSerial();}">
+    <button class="btn-online primary" onclick="loginWithSerial()">登　入</button>
+    <div id="login-error" class="auth-error"></div>
+    <div class="login-note"><em>歡迎來到千年神祕地窖，冒險者。</em></div>
+  </div>
+</div>
+
 <!-- Lobby -->
-<div id="screen-lobby" style="display:flex">
+<div id="screen-lobby" style="display:none">
   <div class="setup-title">璀燦寶石</div>
   <div class="setup-sub">Splendor ── 寶石商人</div>
+  <div class="session-pill" id="lobby-user">帳號：-</div>
   <div class="online-btns" style="margin-top:10px">
-    <button class="btn-online primary" onclick="startLocal()">🏠 本機遊玩</button>
-    <button class="btn-online" onclick="showOnlineCreate()">🌐 建立線上房間</button>
-    <button class="btn-online" onclick="showOnlineJoin()">🔗 加入線上房間</button>
+    <button class="btn-online primary" onclick="showOnlineJoin()">加入對戰</button>
+    <button class="btn-online" onclick="showOnlineCreate()">建立房間</button>
+    <button class="btn-online" onclick="startLocal()">練習模式(AI對戰)</button>
+    <button class="btn-online" onclick="showLadder()">寶石天梯榜</button>
   </div>
+</div>
+
+<!-- Ladder -->
+<div id="screen-ladder" style="display:none">
+  <div class="setup-title">寶石天梯榜</div>
+  <div class="setup-sub">線上多人正常結算才會累積積分</div>
+  <div id="ladder-list" class="ladder-panel">
+    <div class="ladder-empty">讀取寶石天梯榜中...</div>
+  </div>
+  <button class="btn-online" onclick="backToLobby()">← 返回</button>
 </div>
 
 <!-- Create room -->
 <div id="screen-create" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
   <div class="setup-title">建立房間</div>
-  <input id="cr-name" class="lb-input" placeholder="你的名字" maxlength="10">
+  <input id="cr-name" class="lb-input" placeholder="登入帳號" maxlength="16" readonly>
   <div class="setup-sub" style="margin-top:4px">玩家人數</div>
   <div class="num-row">
     <button class="btn-num active" onclick="crSetN(2,this)">2人</button>
@@ -2022,7 +2227,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <div id="screen-join" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
   <div class="setup-title">加入房間</div>
   <input id="jn-code" class="lb-input" placeholder="輸入房號" maxlength="6" style="letter-spacing:6px;font-size:1.5em;text-transform:uppercase">
-  <input id="jn-name" class="lb-input" placeholder="你的名字" maxlength="10">
+  <input id="jn-name" class="lb-input" placeholder="登入帳號" maxlength="16" readonly>
   <div class="room-browser" aria-live="polite">
     <div class="room-browser-head">
       <span>目前房間</span>
@@ -2050,7 +2255,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     </svg>
   </div>
   <div class="wait-list" id="wait-list"></div>
-  <button id="wait-ready" class="btn-online" onclick="toggleReady()" style="display:none;margin-top:4px">✋ 準備</button>
+  <button id="wait-ready" class="btn-online" onclick="toggleReady()" style="display:none;margin-top:4px">準備</button>
   <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="display:none;margin-top:4px">開始遊戲 ✦</button>
   <button class="btn-online" onclick="backToLobby()">← 離開房間</button>
 </div>
@@ -2058,7 +2263,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <!-- Setup -->
 <div id="screen-setup">
   <div class="setup-title">璀燦寶石</div>
-  <div class="setup-sub">Splendor ── 寶石商人</div>
+  <div class="setup-sub">練習模式 ── AI 對戰</div>
   <div class="num-row" id="num-row">
     <button class="btn-num active" onclick="setN(2)">2人</button>
     <button class="btn-num" onclick="setN(3)">3人</button>
@@ -2067,7 +2272,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   <div class="player-inputs" id="pinputs"></div>
   <button class="btn-start" onclick="startGame()">開始遊戲 ✦</button>
   <div style="font-size:.72em;opacity:.38;max-width:300px;text-align:center;line-height:1.6">
-    點擊寶石庫取寶石，點擊寶石卡購買或預留。<br>率先達到 15 聲望點獲勝。
+    你是玩家1，其餘玩家由 AI 操作。練習模式不計入寶石天梯榜。<br>率先達到 15 聲望點獲勝。
   </div>
 </div>
 
@@ -2076,7 +2281,6 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   <div id="g-hdr"><span class="hdr-logo">璀燦寶石</span></div>
   <div id="g-main">
     <div id="g-left">
-      <div id="g-bank"></div>
       <div id="g-players"></div>
     </div>
     <div id="g-right">
@@ -2085,7 +2289,10 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
       </div>
       <div id="g-cards"></div>
     </div>
-    <div id="g-log"></div>
+    <div id="g-side">
+      <div id="g-bank"></div>
+      <div id="g-log"></div>
+    </div>
   </div>
 </div>
 
@@ -2102,6 +2309,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <div id="res-tip"></div>
 
 <button id="btn-bgm" onclick="toggleBgmMute(event)" title="靜音背景音樂" aria-label="靜音背景音樂">🔊</button>
+<button id="btn-logout" onclick="logoutSerial()" title="登出目前帳號">登出</button>
 <button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="說明書">?</button>
 <audio id="bgm-audio" src="DF.mp3" loop preload="auto"></audio>
 
@@ -2148,7 +2356,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
     <div class="h-sec">
       <h3>計時器</h3>
-      <p>每位玩家有 <strong>60 秒</strong>操作時間。剩餘 15 秒時會顯示「時光不等人」，時間到後會在玩家計分牌旁持續顯示警語。</p>
+      <p>每位玩家有 <strong>45 秒</strong>操作時間。剩餘 15 秒時會顯示「時光不等人」，時間到後會自動放棄該回合並換下一位玩家。</p>
     </div>
 
     <div style="text-align:right;margin-top:18px">
@@ -2197,13 +2405,65 @@ let _lastPlayedRemoteAnimId = '';
 let _playedRemoteAnimIds = new Set();
 let _remoteAnimRunId = 0;
 let _pendingSkillChainAnim = null;
+let practiceMode = false;
+let _aiThinkTimer = null;
+let _aiStartFallbackTimer = null;
+let _aiWatchInterval = null;
+let _aiActiveTurnKey = null;
+const AUTHORIZED_SERIALS = [
+  'hd28','hd29','hd33','hd36','hd37','hd43','hd45',
+  'keving','davidg','suweig','arong','henryg','victorg'
+];
+const LOGIN_STORAGE_KEY = 'splendor-login-serial';
+const TURN_LIMIT_SECONDS = 45;
+const AI_THINK_MAX_SECONDS = 10;
+let currentSerial = '';
+let _loginReconnectCheckId = 0;
 
-function isMyTurn() { return !onlineMode || G.cur === myIdx; }
+function hasPracticeAiPlayers() {
+  return !!(!roomCode && G && G.players && G.players.some((p,i) =>
+    i > 0 && p && (p.ai || /^AI\b/i.test(String(p.name || '')))
+  ));
+}
+function isPracticeAi(idx = G?.cur) {
+  const p = G && G.players && G.players[Number(idx)];
+  return !!(!roomCode && Number(idx) > 0 && p && (practiceMode || p.ai || /^AI\b/i.test(String(p.name || ''))));
+}
+function isMyTurn() {
+  if (onlineMode && roomCode) return G.cur === myIdx;
+  if (practiceMode || hasPracticeAiPlayers()) return !isPracticeAi(G?.cur);
+  return true;
+}
 function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase(); }
+function normaliseSerial(v) { return String(v || '').trim().toLowerCase(); }
+function validSerial(v) { return AUTHORIZED_SERIALS.includes(normaliseSerial(v)); }
+function serialKey(v) { return normaliseSerial(v).replace(/[.#$\/\[\]]/g, '_'); }
+function requireLogin() {
+  if (currentSerial) return true;
+  alert('請先輸入指定帳號登入');
+  showOnly('screen-login');
+  return false;
+}
+function setCurrentSerial(serial) {
+  currentSerial = normaliseSerial(serial);
+  try { localStorage.setItem(LOGIN_STORAGE_KEY, currentSerial); } catch(e) {}
+  updateAuthUi();
+}
+function updateAuthUi() {
+  const label = currentSerial ? `帳號：${currentSerial}` : '帳號：-';
+  const lobbyUser = document.getElementById('lobby-user');
+  if (lobbyUser) lobbyUser.textContent = label;
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) logoutBtn.style.display = currentSerial ? 'flex' : 'none';
+  ['cr-name','jn-name'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = currentSerial || '';
+  });
+}
 
 // ── Lobby navigation ─────────────────────────────────────────────────────
 function showOnly(id) {
-  ['screen-lobby','screen-create','screen-join','screen-wait','screen-setup','screen-game']
+  ['screen-login','screen-lobby','screen-ladder','screen-create','screen-join','screen-wait','screen-setup','screen-game']
     .forEach(s => document.getElementById(s).style.display = s===id ? 'flex' : 'none');
   if (id !== 'screen-join') stopRoomList();
 }
@@ -2220,6 +2480,7 @@ async function backToLobby() {
       } else {
         await roomRef.update({
           [`players/${idx}`]: null,
+          [`playerIds/${idx}`]: null,
           [`ready/${idx}`]: null,
           [`presence/${idx}`]: null,
           updatedAt:firebase.database.ServerValue.TIMESTAMP
@@ -2231,16 +2492,155 @@ async function backToLobby() {
       return;
     }
   }
-  roomCode=''; myIdx=-1; isHost=false; onlineMode=false;
+  clearPracticeAiWatcher();
+  clearAiThinkTimer();
+  roomCode=''; myIdx=-1; isHost=false; onlineMode=false; practiceMode=false;
+  updateAuthUi();
   showOnly('screen-lobby');
 }
-function startLocal()       { showOnly('screen-setup'); }
-function showOnlineCreate() { showOnly('screen-create'); }
-function showOnlineJoin()   { showOnly('screen-join'); startRoomList(); }
+function startLocal()       { if (!requireLogin()) return; clearPracticeAiWatcher(); clearAiThinkTimer(); roomCode=''; isHost=false; practiceMode=true; onlineMode=false; myIdx=0; buildInputs(); showOnly('screen-setup'); }
+function showOnlineCreate() { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-create'); }
+function showOnlineJoin()   { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-join'); startRoomList(); }
 function crSetN(n, btn) {
   _crNumP = n;
   document.querySelectorAll('#screen-create .btn-num').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+function initLoginScreen() {
+  let remembered = '';
+  try { remembered = localStorage.getItem(LOGIN_STORAGE_KEY) || ''; } catch(e) {}
+  const input = document.getElementById('login-code');
+  if (input && remembered) input.value = remembered;
+  updateAuthUi();
+}
+
+function loginWithSerial() {
+  const input = document.getElementById('login-code');
+  const err = document.getElementById('login-error');
+  const serial = normaliseSerial(input && input.value);
+  if (err) err.textContent = '';
+  if (!validSerial(serial)) {
+    if (err) err.textContent = '帳號不在允許名單內';
+    return;
+  }
+  setCurrentSerial(serial);
+  const checkId = ++_loginReconnectCheckId;
+  showOnly('screen-lobby');
+  checkReconnectAfterLogin(serial, checkId);
+}
+
+async function checkReconnectAfterLogin(serial, checkId) {
+  try {
+    const active = await findReconnectRoom(serial);
+    if (checkId !== _loginReconnectCheckId || currentSerial !== serial || onlineMode || roomCode) return;
+    if (active) {
+      const ok = confirm(`偵測到帳號 ${serial} 還在房間 ${active.code} 的進行中遊戲。\n\n要重新連線回上一把嗎？\n\n按「取消」會視為中離。`);
+      if (checkId !== _loginReconnectCheckId || currentSerial !== serial) return;
+      if (ok) {
+        await reconnectToRoom(active.code, active.idx, active.room);
+        return;
+      }
+      await markPlayerLeftRoom(active.code, active.idx);
+    }
+  } catch (e) {
+    console.warn('reconnect check failed', e);
+  }
+}
+
+async function logoutSerial() {
+  _loginReconnectCheckId++;
+  if (onlineMode && roomCode) {
+    try {
+      fbInit();
+      const code = roomCode, idx = myIdx;
+      const snap = await db.ref(`rooms/${code}/state`).once('value');
+      if (snap.val()) {
+        await cancelPresenceCleanup();
+        await markPlayerLeftRoom(code, idx);
+      } else {
+        await backToLobby();
+      }
+    } catch (e) {
+      console.warn('logout cleanup failed', e);
+    }
+  }
+  currentSerial = '';
+  try { localStorage.removeItem(LOGIN_STORAGE_KEY); } catch(e) {}
+  clearPracticeAiWatcher();
+  clearAiThinkTimer();
+  roomCode=''; myIdx=-1; isHost=false; onlineMode=false; practiceMode=false;
+  const input = document.getElementById('login-code');
+  if (input) input.value = '';
+  updateAuthUi();
+  showOnly('screen-login');
+}
+
+function roomPlayerIds(room) {
+  const ids = room && room.playerIds ? room.playerIds : {};
+  return Array.isArray(ids) ? ids : Object.assign({}, ids);
+}
+
+function findSerialSlot(room, serial) {
+  const wanted = normaliseSerial(serial);
+  const ids = roomPlayerIds(room);
+  for (const [idx, id] of Object.entries(ids)) {
+    if (normaliseSerial(id) === wanted) return Number(idx);
+  }
+  const players = room && room.state && room.state.players ? toArr(room.state.players) : [];
+  const fallback = players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === wanted);
+  return fallback >= 0 ? fallback : -1;
+}
+
+async function findReconnectRoom(serial) {
+  fbInit();
+  const snap = await db.ref('rooms').once('value');
+  const rooms = snap.val() || {};
+  return Object.entries(rooms)
+    .map(([code, room]) => ({code:String(code || '').toUpperCase(), room, idx:findSerialSlot(room, serial)}))
+    .filter(item => {
+      if (!(item.idx >= 0 && item.room && item.room.state && !item.room.state.over)) return false;
+      const player = toArr(item.room.state.players)[item.idx];
+      return player && !player.disconnected;
+    })
+    .sort((a,b) => (Number(b.room.updatedAt)||0) - (Number(a.room.updatedAt)||0))[0] || null;
+}
+
+async function showLadder() {
+  if (!requireLogin()) return;
+  showOnly('screen-ladder');
+  const list = document.getElementById('ladder-list');
+  if (list) list.innerHTML = '<div class="ladder-empty">讀取寶石天梯榜中...</div>';
+  try {
+    fbInit();
+    const snap = await db.ref('ladder').once('value');
+    renderLadder(snap.val() || {});
+  } catch (e) {
+    renderLadder({});
+  }
+}
+
+function renderLadder(data) {
+  const list = document.getElementById('ladder-list');
+  if (!list) return;
+  const seen = new Set(AUTHORIZED_SERIALS);
+  Object.keys(data || {}).forEach(k => seen.add(normaliseSerial(k)));
+  const rows = Array.from(seen).map(serial => ({
+    serial,
+    points:Number((data && data[serial] && data[serial].points) || 0),
+    games:Number((data && data[serial] && data[serial].games) || 0),
+  })).sort((a,b) => b.points - a.points || a.serial.localeCompare(b.serial)).slice(0,30);
+  if (!rows.length) {
+    list.innerHTML = '<div class="ladder-empty">目前沒有寶石天梯榜資料</div>';
+    return;
+  }
+  list.innerHTML = rows.map((row, i) => `
+    <div class="ladder-row ${row.serial===currentSerial?'me':''}">
+      <div class="ladder-rank">#${i+1}</div>
+      <div class="ladder-name">${htmlEsc(row.serial)}</div>
+      <div class="ladder-score">${row.points} 分</div>
+    </div>
+  `).join('');
 }
 
 function stopRoomList() {
@@ -2289,11 +2689,14 @@ function renderRoomList(rooms) {
   }
   list.innerHTML = entries.map(item => {
     const safeCode = item.code.replace(/[^A-Z0-9]/g,'');
+    const reconnectIdx = currentSerial ? findSerialSlot(item.room, currentSerial) : -1;
+    const reconnectPlayer = reconnectIdx >= 0 && item.room.state ? toArr(item.room.state.players)[reconnectIdx] : null;
+    const canReconnect = item.playing && reconnectIdx >= 0 && !item.room.state?.over && reconnectPlayer && !reconnectPlayer.disconnected;
     const full = item.max > 0 && item.joined >= item.max;
-    const canJoin = !item.playing && !full && safeCode;
+    const canJoin = (!item.playing && !full && safeCode) || canReconnect;
     const status = item.playing ? '進行中' : '等待中';
-    const action = item.playing ? '進行中' : full ? '已滿' : '加入';
-    const actionAttr = canJoin ? `onclick="joinListedRoom('${safeCode}')"` : 'disabled';
+    const action = canReconnect ? '重連' : item.playing ? '進行中' : full ? '已滿' : '加入';
+    const actionAttr = canReconnect ? `onclick="reconnectToRoom('${safeCode}',${reconnectIdx})"` : canJoin ? `onclick="joinListedRoom('${safeCode}')"` : 'disabled';
     return `
       <button type="button" class="room-card ${canJoin ? '' : 'disabled'}" ${actionAttr}>
         <div class="room-code">${htmlEsc(item.code)}</div>
@@ -2349,13 +2752,15 @@ function removeHostedWaitingRoom() {
 
 // ── Create / Join ─────────────────────────────────────────────────────────
 async function createRoom() {
-  const name = document.getElementById('cr-name').value.trim() || '玩家1';
+  if (!requireLogin()) return;
+  const name = currentSerial;
   fbInit();
   const code = genCode();
   roomCode = code; myIdx = 0; isHost = true; onlineMode = true; numP = _crNumP;
   await db.ref(`rooms/${code}`).set({
     numP:_crNumP,
     players:{0:name},
+    playerIds:{0:currentSerial},
     state:null,
     createdAt:firebase.database.ServerValue.TIMESTAMP,
     updatedAt:firebase.database.ServerValue.TIMESTAMP
@@ -2371,20 +2776,32 @@ async function createRoom() {
 }
 
 async function joinRoom() {
+  if (!requireLogin()) return;
   const code = (document.getElementById('jn-code').value||'').trim().toUpperCase();
-  const name = document.getElementById('jn-name').value.trim() || '玩家';
+  const name = currentSerial;
   if (code.length < 4) { alert('請輸入正確房號'); return; }
   fbInit();
   const snap = await db.ref(`rooms/${code}`).once('value');
   const room = snap.val();
   if (!room)         { alert('找不到房間，請確認房號'); return; }
-  if (room.state)    { alert('遊戲已開始，無法加入'); return; }
+  if (room.state) {
+    const rejoinIdx = findSerialSlot(room, currentSerial);
+    const rejoinPlayer = rejoinIdx >= 0 ? toArr(room.state.players)[rejoinIdx] : null;
+    if (rejoinIdx >= 0 && !room.state.over && rejoinPlayer && !rejoinPlayer.disconnected) {
+      await reconnectToRoom(code, rejoinIdx, room);
+      return;
+    }
+    alert('遊戲已開始，無法加入');
+    return;
+  }
+  if (findSerialSlot(room, currentSerial) >= 0) { alert('這個帳號已在房間內'); return; }
   const taken = Object.keys(room.players||{}).map(Number);
   let slot = 0; while (taken.includes(slot)) slot++;
   if (slot >= room.numP) { alert('房間已滿'); return; }
   roomCode = code; myIdx = slot; isHost = false; onlineMode = true; numP = room.numP;
   await db.ref(`rooms/${code}`).update({
     [`players/${slot}`]: name,
+    [`playerIds/${slot}`]: currentSerial,
     updatedAt:firebase.database.ServerValue.TIMESTAMP
   });
   await setupPresence(code, slot);
@@ -2394,6 +2811,93 @@ async function joinRoom() {
   document.getElementById('wait-ready').style.display = 'inline-block';
   document.getElementById('wait-start').style.display = 'none';
   listenWait(code);
+}
+
+async function reconnectToRoom(code, idx, cachedRoom=null) {
+  if (!requireLogin()) return;
+  fbInit();
+  const snap = cachedRoom ? {val:()=>cachedRoom} : await db.ref(`rooms/${code}`).once('value');
+  const room = snap.val();
+  if (!room || !room.state || room.state.over) {
+    alert('找不到可重連的進行中遊戲');
+    showOnly('screen-lobby');
+    return;
+  }
+  const rejoinPlayer = toArr(room.state.players)[Number(idx)];
+  if (!rejoinPlayer || rejoinPlayer.disconnected) {
+    alert('這個帳號已被標記為中離，無法重連此局');
+    showOnly('screen-lobby');
+    return;
+  }
+  roomCode = String(code || '').toUpperCase();
+  myIdx = Number(idx);
+  isHost = myIdx === 0;
+  onlineMode = true;
+  numP = Number(room.state.numP || room.numP || 2);
+  await db.ref(`rooms/${roomCode}`).update({
+    [`presence/${myIdx}`]: true,
+    [`state/players/${myIdx}/offline`]: false,
+    [`state/players/${myIdx}/disconnected`]: false,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  });
+  await setupPresence(roomCode, myIdx);
+  applyRemoteState(room.state);
+  if (G.players && G.players[myIdx]) {
+    G.players[myIdx].offline = false;
+    G.players[myIdx].disconnected = false;
+  }
+  showOnly('screen-game');
+  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  render();
+  _knownDisc = new Set();
+  _knownOffline = new Set();
+  listenCursor(roomCode);
+  listenPresence(roomCode);
+  const begin = () => {
+    listenGame(roomCode);
+    listenLiveAnim(roomCode);
+    showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
+  };
+  if (G.heroPool && !G.heroes) showOnlineHeroSelect(roomCode, begin);
+  else begin();
+}
+
+async function markPlayerLeftRoom(code, idx) {
+  fbInit();
+  const roomRef = db.ref(`rooms/${code}`);
+  const snap = await roomRef.once('value');
+  const room = snap.val();
+  if (!room || !room.state) return;
+  const state = room.state;
+  const players = toArr(state.players);
+  if (players[idx]) {
+    players[idx].disconnected = true;
+    players[idx].offline = false;
+  }
+  const activeIdxs = players
+    .map((p,i)=>({p,i}))
+    .filter(({p})=>p && !p.disconnected)
+    .map(({i})=>i);
+  const updates = {
+    [`presence/${idx}`]: false,
+    [`state/players/${idx}/disconnected`]: true,
+    [`state/players/${idx}/offline`]: false,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  };
+  if (activeIdxs.length <= 1) {
+    updates['state/over'] = true;
+    updates['state/normalEnd'] = false;
+    updates['state/winnerIndices'] = activeIdxs;
+  } else if (Number(state.cur) === Number(idx)) {
+    let next = (Number(idx) + 1) % Number(state.numP || players.length || 1);
+    let guard = 0;
+    while (players[next] && (players[next].disconnected || players[next].offline) && guard++ < players.length + 1) {
+      next = (next + 1) % Number(state.numP || players.length || 1);
+    }
+    updates['state/cur'] = next;
+    updates['state/turnCount'] = (Number(state.turnCount) || 0) + 1;
+  }
+  await roomRef.update(updates);
 }
 
 // ── Wait room listener ────────────────────────────────────────────────────
@@ -2417,6 +2921,7 @@ function listenWait(code) {
       G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
       render();
       _knownDisc = new Set();
+      _knownOffline = new Set();
       listenCursor(code);
       listenPresence(code);
       function _beginOnlineGame() {
@@ -2452,10 +2957,10 @@ function listenWait(code) {
     if (!isHost) {
       const btn = document.getElementById('wait-ready');
       if (ready[myIdx]) {
-        btn.textContent = '❌ 取消準備';
+        btn.textContent = '取消準備';
         btn.style.opacity = '0.95';
       } else {
-        btn.textContent = '✋ 準備';
+        btn.textContent = '準備';
         btn.style.opacity = '1';
       }
     }
@@ -2505,13 +3010,16 @@ async function hostStart() {
   if (!isHost) return;
   await cancelHostRoomCleanup();
   await setupPresence(roomCode, myIdx);
-  db.ref(`rooms/${roomCode}/players`).once('value', snap => {
-    const players = snap.val()||{};
+  db.ref(`rooms/${roomCode}`).once('value', snap => {
+    const room = snap.val() || {};
+    const players = room.players || {};
+    const playerIds = room.playerIds || {};
     // Only use actually joined players, in slot order
     const joined = Object.keys(players).map(Number).sort((a,b)=>a-b);
     const nameList = joined.map(i=>players[i]||`玩家${i+1}`);
+    const serialList = joined.map(i=>normaliseSerial(playerIds[i] || players[i] || `玩家${i+1}`));
     numP = nameList.length;
-    startGameOnline(nameList);
+    startGameOnline(nameList, serialList);
   });
 }
 
@@ -2520,7 +3028,7 @@ function pushG() {
   if (!onlineMode || !db || !roomCode) return;
   const serial = {
     numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
-    lastStarter:G.lastStarter, over:G.over,
+    lastStarter:G.lastStarter, over:G.over, normalEnd:!!G.normalEnd,
     openingDealt:!!G.openingDealt,
     players: JSON.parse(JSON.stringify(G.players)),
     bank: {...G.bank},
@@ -2611,6 +3119,7 @@ function applyRemoteState(data) {
   const prevCur = typeof G.cur==='number' ? G.cur : -1;
   // Firebase can return objects instead of arrays, and empty arrays as null — normalise everything
   const players = toArr(data.players).map((p,idx)=>{
+    p = p || {};
     if (p.disconnected) _knownDisc.add(idx);
     return {
       ...p,
@@ -2619,6 +3128,9 @@ function applyRemoteState(data) {
       gems:     p.gems    || {w:0,u:0,g:0,r:0,k:0,gold:0},
       bonuses:  p.bonuses || {w:0,u:0,g:0,r:0,k:0},
       shiyuanChicken: Number(p.shiyuanChicken || 0),
+      serial: normaliseSerial(p.serial || p.name || `player${idx+1}`),
+      offline: !!p.offline,
+      disconnected: !!p.disconnected,
     };
   });
   const missions = toArr(data.missions).map(m=>({
@@ -2627,7 +3139,7 @@ function applyRemoteState(data) {
   }));
   G = {
     numP:data.numP, cur:data.cur, turnCount:data.turnCount||0, lastRound:data.lastRound,
-    lastStarter:data.lastStarter, over:data.over,
+    lastStarter:data.lastStarter, over:data.over, normalEnd:!!data.normalEnd,
     players, bank:data.bank,
     decks: JSON.parse(data.decksJson||'{"1":[],"2":[],"3":[]}'),
     board:  JSON.parse(data.boardJson||'{"1":[null,null,null,null],"2":[null,null,null,null],"3":[null,null,null,null]}'),
@@ -2674,6 +3186,7 @@ function listenLiveAnim(code) {
 
 // ── Presence / Disconnect ────────────────────────────────────────────────
 let _knownDisc = new Set();
+let _knownOffline = new Set();
 
 function cancelPresenceCleanup() {
   if (_presenceUnloadHandler) {
@@ -2703,29 +3216,61 @@ function listenPresence(code) {
     const presence = snap.val() || {};
     G.players.forEach((pl, idx) => {
       if (idx === myIdx) return;
-      if (presence[idx] === false && !_knownDisc.has(idx)) {
-        _knownDisc.add(idx);
-        G.players[idx].disconnected = true;
-        showDisconnectNotif(pl.name);
-        handleDisconnect(idx);
+      if (pl.disconnected) return;
+      if (presence[idx] === false && !_knownOffline.has(idx)) {
+        _knownOffline.add(idx);
+        G.players[idx].offline = true;
+        showDisconnectNotif(pl.name, 'offline');
+        handleOffline(idx);
+      } else if (presence[idx] === true && _knownOffline.has(idx)) {
+        _knownOffline.delete(idx);
+        G.players[idx].offline = false;
+        showDisconnectNotif(pl.name, 'reconnect');
+        if (isLeader()) { pushG(); render(); }
       }
     });
   });
 }
 
+function isTurnUnavailable(p) {
+  return !p || p.disconnected || p.offline;
+}
+
 function isLeader() {
-  const idx = G.players.findIndex(p => !p.disconnected);
+  const idx = G.players.findIndex(p => !isTurnUnavailable(p));
   return myIdx === idx;
+}
+
+function nextAvailablePlayer(fromIdx) {
+  if (!G || !G.players || !G.players.length) return -1;
+  for (let step=1; step<=G.numP; step++) {
+    const idx = (fromIdx + step) % G.numP;
+    if (!isTurnUnavailable(G.players[idx])) return idx;
+  }
+  return -1;
+}
+
+function handleOffline(idx) {
+  if (!G || G.over) return;
+  G.players[idx].offline = true;
+  if (G.cur === idx && isLeader()) {
+    skipCurrentTurn('offline');
+  } else if (isLeader()) {
+    pushG();
+    render();
+  }
 }
 
 function handleDisconnect(discIdx) {
   if (!G || G.over) return;
   G.players[discIdx].disconnected = true;
+  G.players[discIdx].offline = false;
   const active = G.players.filter(p => !p.disconnected);
 
   if (active.length <= 1) {
-    // Only one player left — instant win
+    // Only one player left — end without ladder scoring unless a normal final round already happened.
     G.over = true;
+    G.normalEnd = false;
     G.winners = active.length === 1 ? [active[0]] : [];
     if (isLeader()) { stopTimer(); pushG(); showOverMod(); }
     return;
@@ -2733,8 +3278,8 @@ function handleDisconnect(discIdx) {
 
   // Multiple players remain — if it was disconnected player's turn, skip
   if (G.cur === discIdx) {
-    let next = (discIdx + 1) % G.numP;
-    while (G.players[next] && G.players[next].disconnected) next = (next + 1) % G.numP;
+    const next = nextAvailablePlayer(discIdx);
+    if (next < 0) return;
     G.cur = next;
     G.turnCount = (G.turnCount || 0) + 1;
     G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
@@ -2749,14 +3294,19 @@ function handleDisconnect(discIdx) {
   }
 }
 
-function showDisconnectNotif(name) {
+function showDisconnectNotif(name, kind='left') {
   const el = document.createElement('div');
+  const msg = kind === 'reconnect'
+    ? `↻ ${name} 已重新連線`
+    : kind === 'offline'
+      ? `⚠ ${name} 暫時離線，等待重新連線`
+      : `⚠ ${name} 已中離`;
   el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    background:rgba(20,10,10,.92);border:2px solid #ff5533;border-radius:14px;
-    padding:20px 32px;font-size:1.1em;font-weight:bold;color:#ff8866;
+    background:rgba(20,10,10,.92);border:2px solid ${kind==='reconnect'?'#55cc88':'#ff5533'};border-radius:14px;
+    padding:20px 32px;font-size:1.1em;font-weight:bold;color:${kind==='reconnect'?'#9dffbf':'#ff8866'};
     z-index:9999;text-align:center;pointer-events:none;
     animation:fadeIn .3s ease`;
-  el.innerHTML = `⚠ ${name} 已中離`;
+  el.innerHTML = htmlEsc(msg);
   document.body.appendChild(el);
   setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .5s'; setTimeout(()=>el.remove(),500); }, 3000);
 }
@@ -2999,6 +3549,13 @@ function showHeroSelect(playerPools, onDone) {
 
   _mySelectIdx = 0;
   if (typeof myIdx === 'number' && myIdx >= 0) _mySelectIdx = myIdx;
+  if (practiceMode) {
+    for (let pi = 1; pi < G.numP; pi++) {
+      const pool = playerPools[pi] || [];
+      if (pool.length) assigned[pi] = pool[(Math.random() * pool.length) | 0];
+      confirmed.add(pi);
+    }
+  }
 
   function allConfirmed() { return confirmed.size >= G.numP; }
 
@@ -3097,6 +3654,7 @@ function finishHeroSelect(assigned, playerPools, onDone) {
     return h ? (h.uses === Infinity ? Infinity : h.uses) : 0;
   });
   G.heroBuffett = null;
+  G.heroActedThisTurn = Array(G.numP).fill(false);
   const modal = document.getElementById('hero-select-modal');
   if (modal) modal.remove();
   onDone();
@@ -3107,6 +3665,7 @@ function showOnlineHeroSelect(code, onDone) {
   let selectedId = myPool.length ? myPool[0].id : null;
   let pushed = false;
   let _finalized = false;
+  let latestSelections = {};
 
   const modal = document.createElement('div');
   modal.id = 'hero-select-modal';
@@ -3166,9 +3725,9 @@ function showOnlineHeroSelect(code, onDone) {
   function pushSelection() {
     if (pushed) return;
     pushed = true;
-    clearInterval(_heroSelectTimer);
     const chosenId = selectedId ?? (myPool.length ? myPool[0].id : null);
     if (chosenId !== null) {
+      latestSelections[myIdx] = chosenId;
       db.ref(`rooms/${code}/heroSelections/${myIdx}`).set(chosenId);
     }
     renderModal(true);
@@ -3197,20 +3756,42 @@ function showOnlineHeroSelect(code, onDone) {
     onDone();
   }
 
+  function fillMissingSelections() {
+    if (_finalized || !isLeader()) return;
+    const updates = {};
+    for (let pi = 0; pi < G.numP; pi++) {
+      if (latestSelections[pi] !== undefined) continue;
+      const fallbackId = G.heroPool[pi]?.[0] ?? null;
+      if (fallbackId === null) continue;
+      latestSelections[pi] = fallbackId;
+      updates[pi] = fallbackId;
+    }
+    if (Object.keys(updates).length) {
+      db.ref(`rooms/${code}/heroSelections`).update(updates);
+    } else if (Object.keys(latestSelections).length >= G.numP) {
+      finalize(latestSelections);
+    }
+  }
+
   // All clients watch for everyone's selections
   db.ref(`rooms/${code}/heroSelections`).on('value', snap => {
-    const sels = snap.val() || {};
-    if (Object.keys(sels).length >= G.numP) finalize(sels);
+    latestSelections = snap.val() || {};
+    if (Object.keys(latestSelections).length >= G.numP) finalize(latestSelections);
   });
 
   _heroSelectSec = 20;
   renderModal(false);
 
   _heroSelectTimer = setInterval(() => {
-    _heroSelectSec--;
+    _heroSelectSec = Math.max(0, _heroSelectSec - 1);
     const el = document.getElementById('hero-select-timer');
     if (el) { el.textContent = _heroSelectSec; el.className = _heroSelectSec<=3?'urgent':''; }
-    if (_heroSelectSec <= 0) pushSelection();
+    if (_heroSelectSec <= 0) {
+      clearInterval(_heroSelectTimer);
+      _heroSelectTimer = null;
+      pushSelection();
+      setTimeout(fillMissingSelections, 1000);
+    }
   }, 1000);
 }
 
@@ -4359,27 +4940,32 @@ window.addEventListener('orientationchange', updateDeviceLayout);
 let numP = 2;
 function setN(n) {
   numP = n;
-  document.querySelectorAll('.btn-num').forEach((b,i)=>b.classList.toggle('active',i===n-2));
+  document.querySelectorAll('#screen-setup .btn-num').forEach((b,i)=>b.classList.toggle('active',i===n-2));
   buildInputs();
 }
 function buildInputs() {
   const el = document.getElementById('pinputs');
   el.innerHTML = '';
   ['玩家1','玩家2','玩家3','玩家4'].slice(0,numP).forEach((def,i) => {
+    const name = practiceMode
+      ? (i === 0 ? (currentSerial || '玩家1') : `AI ${i}`)
+      : def;
+    const readonly = practiceMode && i > 0 ? 'readonly' : '';
     el.innerHTML += `<div class="p-row">
       <div class="swatch" style="background:${PC[i]}"></div>
-      <input id="pn${i}" value="${def}" maxlength="10" type="text">
+      <input id="pn${i}" value="${htmlEsc(name)}" maxlength="10" type="text" ${readonly}>
     </div>`;
   });
 }
 buildInputs();
+initLoginScreen();
 
 function shuffle(a) {
   for (let i=a.length-1;i>0;i--) { const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; }
   return a;
 }
 
-function _buildG(names) {
+function _buildG(names, serials=[]) {
   const decks={1:[],2:[],3:[]};
   ALL_CARDS.forEach(c=>decks[c.tier].push({...c,cost:{...c.cost}}));
   [1,2,3].forEach(t=>shuffle(decks[t]));
@@ -4390,14 +4976,15 @@ function _buildG(names) {
   const bank={w:gc,u:gc,g:gc,r:gc,k:gc,gold:5};
   return {
     numP, players:names.map((name,i)=>({
-      name, color:PC[i],
+      name, serial:normaliseSerial(serials[i] || name), color:PC[i],
+      ai:false,
       gems:{w:0,u:0,g:0,r:0,k:0,gold:0},
       bonuses:{w:0,u:0,g:0,r:0,k:0},
       shiyuanChicken:0,
       cards:[], reserved:[], points:0,
     })),
     bank, decks, board, missions,
-    cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false,
+    cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false, normalEnd:false,
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
     log:[],
     heroes:null, heroUsed:null, heroBuffett:null, heroDVPrompt:null, heroActedThisTurn:null,
@@ -4440,20 +5027,35 @@ function beginOpeningCeremony(callback) {
 }
 
 function startGame() {
+  clearPracticeAiWatcher();
+  clearAiThinkTimer();
+  if (practiceMode) { roomCode=''; onlineMode=false; isHost=false; myIdx=0; }
   const names = Array.from({length:numP},(_,i)=>document.getElementById(`pn${i}`)?.value.trim()||`玩家${i+1}`);
-  G = _buildG(names);
+  if (practiceMode) {
+    names[0] = names[0] || currentSerial || '玩家1';
+    for (let i = 1; i < numP; i++) names[i] = `AI ${i}`;
+  }
+  const serials = practiceMode
+    ? names.map((name,i)=>i===0 ? (currentSerial || name) : `ai-${i}`)
+    : [];
+  G = _buildG(names, serials);
+  if (practiceMode) {
+    myIdx = 0;
+    G.players.forEach((p,i) => { p.ai = i > 0; });
+    ensurePracticeAiWatcher();
+  }
   G.heroPool = drawHeroPool(numP);
   showOnly('screen-game');
   render();
   _mySelectIdx = 0;
   showHeroSelect(G.heroPool, () => {
-    beginOpeningCeremony(()=>showTurnNotification(0, startTimer));
+    beginOpeningCeremony(()=>showTurnNotification(0, isPracticeAi(0) ? startAiTurn : startTimer));
   });
 }
 
-function startGameOnline(names) {
+function startGameOnline(names, serials=[]) {
   // Host only — build G and push to Firebase
-  G = _buildG(names);
+  G = _buildG(names, serials);
   G.heroPool = drawHeroPool(names.length);
   _knownDisc = new Set();
   pushG(); // Triggers listenWait → game starts for all clients
@@ -5616,20 +6218,32 @@ function checkMissions() {
 function advanceTurn() {
   const pl=G.players[G.cur];
   if (!G.lastRound && pl.points>=15){ G.lastRound=true; G.lastStarter=G.cur; }
-  let next=(G.cur+1)%G.numP;
-  while(G.players[next]&&G.players[next].disconnected) next=(next+1)%G.numP;
+  const next = nextAvailablePlayer(G.cur);
+  if (next < 0) {
+    G.over = true;
+    G.normalEnd = false;
+    G.winners = [];
+    if (onlineMode && roomCode) pushG();
+    showOverMod();
+    return;
+  }
   if (G.lastRound && next===0){ endGame(); return; }
   G.turnCount=(G.turnCount||0)+1;
   checkBuffettReturn();
   G.heroActedThisTurn = Array(G.numP).fill(false);
   G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false; G.ui.muskActive=false; G.ui.muskCardDone=false;
   stopTimer(); render();
-  if (onlineMode) {
+  if (onlineMode && roomCode) {
     pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
     pushG();
     // listenGame won't fire turn notification for us (G.cur already changed locally), so do it here
     showTurnNotification(G.cur, G.cur===myIdx ? startTimer : startTimerDisplay);
-  } else { showTurnNotification(G.cur, startTimer); }
+  } else {
+    const aiTurn = isPracticeAi(G.cur);
+    const turnKey = G.turnCount || 0;
+    showTurnNotification(G.cur, aiTurn ? startAiTurn : startTimer);
+    if (aiTurn) scheduleAiTurnFallback(turnKey);
+  }
 }
 
 function computeWinners() {
@@ -5642,10 +6256,68 @@ function computeWinners() {
 }
 
 function endGame() {
+  clearPracticeAiWatcher();
   stopTimer(); G.over=true;
+  G.normalEnd = !!G.lastRound;
   G.winners=computeWinners(); render();
-  if (onlineMode) pushG();
+    if (onlineMode && roomCode) pushG();
   showOverMod();
+}
+
+function rankedRows() {
+  return (G.players || [])
+    .map((p,idx)=>({p,idx}))
+    .sort((a,b)=>b.p.points-a.p.points||a.p.cards.length-b.p.cards.length||a.idx-b.idx);
+}
+
+function rankRewardFor(position, total) {
+  return Math.max(1, total - position);
+}
+
+async function awardLadderPointsOnce() {
+  if (!onlineMode || !db || !roomCode || !G || !G.over || !G.normalEnd) return;
+  const gate = db.ref(`rooms/${roomCode}/ladderAwarded`);
+  gate.transaction(cur => cur || {by:currentSerial || 'unknown', at:Date.now()}, async (err, committed) => {
+    if (err || !committed) return;
+    const rows = rankedRows();
+    await Promise.all(rows.map(({p}, position) => {
+      const serial = serialKey(p.serial || p.name);
+      if (!serial) return Promise.resolve();
+      const reward = rankRewardFor(position, rows.length);
+      return db.ref(`ladder/${serial}`).transaction(cur => {
+        const row = cur || {};
+        row.points = (Number(row.points) || 0) + reward;
+        row.games = (Number(row.games) || 0) + 1;
+        row.updatedAt = Date.now();
+        return row;
+      });
+    }));
+  });
+}
+
+function skipCurrentTurn(reason='timeout') {
+  if (!G || G.over) return;
+  const pl = G.players[G.cur];
+  if (!pl) return;
+  const label = reason === 'offline' ? '斷線跳過回合' : '時間到，放棄回合';
+  if (window._retSnapshot) {
+    pl.gems=window._retSnapshot.gems; G.bank=window._retSnapshot.bank;
+    pl.reserved=window._retSnapshot.reserved;
+    G.board=window._retSnapshot.board; G.decks=window._retSnapshot.decks;
+    if (window._retSnapshot.log) G.log=window._retSnapshot.log;
+    window._retSnapshot=null;
+  }
+  addLog('skip', label, G.cur);
+  toast(`⌛ ${pl.name} ${label}`);
+  ['m-card','m-ret','hero-skill-confirm','buffett-return-modal','soros-return-modal','dv-answer-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (id === 'm-card' || id === 'm-ret') el.style.display = 'none';
+      else el.remove();
+    }
+  });
+  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  advanceTurn();
 }
 
 // ── Gem bank clicking ─────────────────────────────────────────────────────
@@ -5703,6 +6375,456 @@ function tryEnd() {
   if (!G.ui.acted){ toast('請先執行行動（取寶石、購買或預留）'); return; }
   checkMissions();
   advanceTurn();
+}
+
+// ── Practice AI ───────────────────────────────────────────────────────────
+function clearAiThinkTimer() {
+  if (_aiThinkTimer) clearTimeout(_aiThinkTimer);
+  if (_aiStartFallbackTimer) clearTimeout(_aiStartFallbackTimer);
+  _aiThinkTimer = null;
+  _aiStartFallbackTimer = null;
+  _aiActiveTurnKey = null;
+}
+
+function clearPracticeAiWatcher() {
+  if (_aiWatchInterval) clearInterval(_aiWatchInterval);
+  _aiWatchInterval = null;
+  _aiActiveTurnKey = null;
+}
+
+function ensurePracticeAiWatcher() {
+  clearPracticeAiWatcher();
+  _aiWatchInterval = setInterval(() => {
+    if (!G || G.over || (onlineMode && roomCode) || !hasPracticeAiPlayers()) return;
+    if (!isPracticeAi(G.cur)) {
+      _aiActiveTurnKey = null;
+      return;
+    }
+    const notif = document.getElementById('turn-notif');
+    if (notif && notif.classList.contains('on')) return;
+    const turnKey = G.turnCount || 0;
+    if (_aiActiveTurnKey === turnKey || _aiThinkTimer) return;
+    startAiTurn();
+  }, 500);
+}
+
+function freshTurnUi() {
+  return {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+}
+
+function startAiTurn() {
+  if (!G || G.over || !isPracticeAi(G.cur)) return;
+  const turnKey = G.turnCount || 0;
+  if (_aiActiveTurnKey === turnKey && _aiThinkTimer) return;
+  clearAiThinkTimer();
+  _aiActiveTurnKey = turnKey;
+  clearInterval(_timerInterval);
+  _timerSec = TURN_LIMIT_SECONDS;
+  _timerExpired = false;
+  hideUrgeBanner();
+  deactivateAllZones();
+  _updateTimerEl();
+  refreshPlayerTimers();
+  _timerInterval = setInterval(() => {
+    _timerSec = Math.max(0, _timerSec - 1);
+    _updateTimerEl();
+    refreshPlayerTimers();
+    if (_timerSec <= 0) {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      _timerExpired = true;
+      skipCurrentTurn('timeout');
+    }
+  }, 1000);
+  const thinkMs = 700 + Math.floor(Math.random() * Math.max(1, AI_THINK_MAX_SECONDS * 1000 - 2300));
+  _aiThinkTimer = setTimeout(() => runPracticeAiTurn(turnKey), thinkMs);
+}
+
+function scheduleAiTurnFallback(turnKey) {
+  if (!isPracticeAi(G.cur)) return;
+  if (_aiStartFallbackTimer) clearTimeout(_aiStartFallbackTimer);
+  _aiStartFallbackTimer = setTimeout(() => {
+    _aiStartFallbackTimer = null;
+    if ((onlineMode && roomCode) || G.over || !isPracticeAi(G.cur) || (G.turnCount || 0) !== turnKey) return;
+    if (!_aiThinkTimer) startAiTurn();
+  }, 1400);
+}
+
+function runPracticeAiTurn(turnKey = G.turnCount || 0) {
+  clearAiThinkTimer();
+  clearInterval(_timerInterval);
+  _timerInterval = null;
+  if ((onlineMode && roomCode) || G.over || !isPracticeAi(G.cur) || (G.turnCount || 0) !== turnKey) return;
+  ['m-card','m-ret','hero-skill-confirm','buffett-return-modal','soros-return-modal','dv-answer-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'm-card' || id === 'm-ret') el.style.display = 'none';
+    else el.remove();
+  });
+  G.ui = freshTurnUi();
+  const action = choosePracticeAiAction();
+  let acted = false;
+  if (action?.type === 'buy') acted = aiExecBuy(action);
+  else if (action?.type === 'reserve') acted = aiExecReserve(action);
+  else if (action?.type === 'take') acted = aiExecTake(action.selection);
+  if (!acted && !G.over) {
+    addLog('skip', 'AI 沒有可執行的行動，跳過回合', G.cur);
+    advanceTurn();
+  }
+}
+
+function choosePracticeAiAction() {
+  const pl = G.players[G.cur];
+  const buys = aiBuyActions(pl);
+  const reserves = aiReserveActions(pl);
+  const take = aiTakeAction(pl);
+  const bestBuy = aiPickValuable(buys);
+  const bestReserve = aiPickValuable(reserves);
+
+  if (bestBuy?.winNow) return bestBuy;
+  if (bestReserve?.blockWin) return bestReserve;
+  if (bestBuy && bestBuy.missionGain >= 1) return bestBuy;
+  if (bestBuy && bestBuy.value >= (take?.value || 0) + (pl.cards.length < 6 ? -8 : 18)) return bestBuy;
+  if (bestReserve && bestReserve.value >= (take?.value || 0) + 115) return bestReserve;
+  if (take && (!bestBuy || take.value > bestBuy.value + 22)) return take;
+  if (bestBuy) return bestBuy;
+  if (take) return take;
+  return bestReserve || null;
+}
+
+function aiBuyActions(pl) {
+  const actions = [];
+  const playerIdx = G.players.indexOf(pl);
+  (pl.reserved || []).forEach((card, ri) => {
+    if (card && canBuy(pl, card)) {
+      const score = aiCardScore(pl, card, {playerIdx});
+      actions.push({type:'buy', card, fromRes:true, ri, ...score, value:score.value + 28});
+    }
+  });
+  [3,2,1].forEach(t => (G.board[t] || []).forEach((card, bi) => {
+    if (card && canBuy(pl, card)) {
+      const score = aiCardScore(pl, card, {playerIdx});
+      actions.push({type:'buy', card, fromRes:false, t, bi, ...score});
+    }
+  }));
+  return actions;
+}
+
+function aiReserveActions(pl) {
+  if (!pl || (pl.reserved || []).length >= 3) return [];
+  const actions = [];
+  const playerIdx = G.players.indexOf(pl);
+  [3,2,1].forEach(t => (G.board[t] || []).forEach((card, bi) => {
+    if (!card) return;
+    const score = aiCardScore(pl, card, {playerIdx});
+    const missing = aiCardMissing(pl, card).goldAdjusted;
+    const blockValue = aiOpponentThreatValue(card, playerIdx);
+    const goldBonus = (G.bank.gold || 0) > 0 ? 42 : 0;
+    const reserveUrgency = (card.pts || 0) * 26 + blockValue - missing * 18 + goldBonus;
+    if (reserveUrgency > 55 || blockValue >= 140 || score.winSoon) {
+      actions.push({
+        type:'reserve', card, t, bi,
+        ...score,
+        blockWin:blockValue >= 9000,
+        value:score.value + reserveUrgency
+      });
+    }
+  }));
+  return actions;
+}
+
+function aiTakeAction(pl) {
+  const avail = CI.filter(c => (G.bank[c] || 0) > 0);
+  if (!avail.length) return null;
+  const target = aiBestTargetCard(pl);
+  const wanted = aiWantedColors(pl, target).filter(c => avail.includes(c));
+  const keep = aiGemKeepScores(pl, target);
+  const sameOptions = CI.filter(c => (G.bank[c] || 0) >= 4 && wanted.filter(x => x === c).length >= 2);
+  if (sameOptions.length) {
+    const c = sameOptions.sort((a,b)=>(keep[b]||0)-(keep[a]||0))[0];
+    return {type:'take', selection:{w:0,u:0,g:0,r:0,k:0,[c]:2}, value:(target?.value || 0) + 70 + (keep[c] || 0)};
+  }
+  const colors = [];
+  [...wanted, ...aiFallbackGemColors(pl, avail)].forEach(c => {
+    if (colors.length < 3 && !colors.includes(c)) colors.push(c);
+  });
+  const selection = {w:0,u:0,g:0,r:0,k:0};
+  colors.forEach(c => selection[c] = 1);
+  const takeValue = colors.reduce((sum,c)=>sum + 16 + (keep[c] || 0) * 0.35, target?.value || 0);
+  return colors.length ? {type:'take', selection, value:takeValue} : null;
+}
+
+function aiWantedColors(pl, preferred=null) {
+  const cards = preferred ? [preferred.card] : aiTargetCards(pl).map(t => t.card);
+  const wanted = [];
+  cards.slice(0, preferred ? 1 : 4).forEach(card => {
+    const e = effCost(pl, card);
+    [...CI].sort((a,b)=>(e[b]||0)-(e[a]||0)).forEach(c => {
+      const short = Math.max(0, (e[c] || 0) - (pl.gems[c] || 0));
+      for (let i = 0; i < short; i++) wanted.push(c);
+    });
+  });
+  return wanted;
+}
+
+function aiPickNeededColor(pl, colors) {
+  const wanted = aiWantedColors(pl).filter(c => colors.includes(c));
+  if (wanted.length) return wanted[(Math.random() * wanted.length) | 0];
+  return colors[(Math.random() * colors.length) | 0];
+}
+
+function aiTargetCards(pl) {
+  const playerIdx = G.players.indexOf(pl);
+  const cards = [];
+  (pl.reserved || []).forEach(card => { if (card) cards.push({card, reserved:true}); });
+  [1,2,3].forEach(t => (G.board[t] || []).forEach((card, bi) => {
+    if (card) cards.push({card, t, bi, reserved:false});
+  }));
+  return cards
+    .map(item => {
+      const score = aiCardScore(pl, item.card, {playerIdx});
+      const missing = aiCardMissing(pl, item.card);
+      return {...item, ...score, missing};
+    })
+    .sort((a,b) => (b.value - b.missing.goldAdjusted * 24) - (a.value - a.missing.goldAdjusted * 24));
+}
+
+function aiBestTargetCard(pl) {
+  const targets = aiTargetCards(pl).filter(t => !canBuy(pl, t.card));
+  return targets[0] || null;
+}
+
+function aiFallbackGemColors(pl, avail) {
+  const keep = aiGemKeepScores(pl);
+  const bonusNeed = [...CI].sort((a,b) =>
+    ((keep[b] || 0) - (keep[a] || 0)) || ((pl.bonuses[a] || 0) - (pl.bonuses[b] || 0))
+  );
+  return [...bonusNeed.filter(c => avail.includes(c)), ...shuffle([...avail])];
+}
+
+function aiColorDemand(pl) {
+  const demand = Object.fromEntries(CI.map(c => [c, 0]));
+  const addCardDemand = (card, weight) => {
+    if (!card) return;
+    CI.forEach(c => {
+      const rawNeed = Math.max(0, (card.cost && card.cost[c]) || 0);
+      const gap = Math.max(0, rawNeed - (pl.bonuses[c] || 0));
+      demand[c] += gap * weight;
+    });
+  };
+  (pl.reserved || []).forEach(card => addCardDemand(card, 5.5));
+  [3,2,1].forEach(t => (G.board[t] || []).forEach(card => addCardDemand(card, t === 3 ? 3.4 : t === 2 ? 2.5 : 1.4)));
+  (G.missions || []).forEach(m => {
+    if (!m || m.claimedBy !== null) return;
+    if (m.req) {
+      CI.forEach(c => {
+        const need = Math.max(0, (m.req[c] || 0) - (pl.bonuses[c] || 0));
+        demand[c] += need * (18 + (m.pts || 1) * 8);
+      });
+    } else if (m.name === '蝝銵?') {
+      const best = Math.max(...CI.map(c => pl.bonuses[c] || 0));
+      CI.forEach(c => {
+        if ((pl.bonuses[c] || 0) === best && best < 4) demand[c] += 18;
+      });
+    }
+  });
+  return demand;
+}
+
+function aiMissionBonusNeed(pl, col) {
+  return (G.missions || []).reduce((sum, m) => {
+    if (!m || m.claimedBy !== null) return sum;
+    if (m.req && (m.req[col] || 0) > (pl.bonuses[col] || 0)) return sum + (m.pts || 1) * 28;
+    if (m.name === '蝝銵?' && (pl.bonuses[col] || 0) < 4) {
+      const best = Math.max(...CI.map(c => pl.bonuses[c] || 0));
+      if ((pl.bonuses[col] || 0) === best) return sum + (m.pts || 1) * 15;
+    }
+    return sum;
+  }, 0);
+}
+
+function aiGemKeepScores(pl, preferred=null) {
+  const scores = Object.fromEntries(CI.map(c => [c, 0]));
+  const wanted = aiWantedColors(pl, preferred);
+  wanted.forEach((c, idx) => { scores[c] += Math.max(6, 34 - idx * 2); });
+  const target = preferred || aiBestTargetCard(pl);
+  if (target?.card) {
+    const missing = aiCardMissing(pl, target.card);
+    CI.forEach(c => {
+      scores[c] += (missing.shorts[c] || 0) * 24;
+      scores[c] += ((target.card.cost && target.card.cost[c]) || 0) * 3;
+    });
+    scores.gold = 58 + missing.goldAdjusted * 22 + (target.winNow ? 999 : 0);
+  } else {
+    scores.gold = 42;
+  }
+  return scores;
+}
+
+function aiCardMissing(pl, card) {
+  const e = effCost(pl, card);
+  const shorts = {};
+  let total = 0;
+  CI.forEach(c => {
+    shorts[c] = Math.max(0, (e[c] || 0) - (pl.gems[c] || 0));
+    total += shorts[c];
+  });
+  return {shorts, total, goldAdjusted:Math.max(0, total - (pl.gems.gold || 0))};
+}
+
+function aiCardScore(pl, card, opts={}) {
+  if (!card) return {value:0, missionGain:0, projectedPts:0, winNow:false, winSoon:false};
+  const playerIdx = Number.isFinite(opts.playerIdx) ? opts.playerIdx : G.players.indexOf(pl);
+  const projectedPts = Number.isFinite(playerIdx) && playerIdx >= 0 ? projectedCardPoints(playerIdx, card) : (card.pts || 0);
+  const totalCost = CI.reduce((sum,c) => sum + ((card.cost && card.cost[c]) || 0), 0);
+  const missing = aiCardMissing(pl, card);
+  const missionGain = aiMissionGain(pl, card);
+  const colorDemand = aiColorDemand(pl);
+  const missionNeed = aiMissionBonusNeed(pl, card.bonus);
+  const bonusScarcity = 22 - Math.min(16, (pl.bonuses[card.bonus] || 0) * 4);
+  const engineNeed = Math.min(120, (colorDemand[card.bonus] || 0) * 2.2 + missionNeed);
+  const winNow = (pl.points || 0) + projectedPts >= 15;
+  const winSoon = (pl.points || 0) + projectedPts >= 12;
+  const reservedFit = (pl.reserved || []).some(c => c && c.bonus === card.bonus) ? 12 : 0;
+  const earlyEngine = (pl.points || 0) < 7 && (pl.cards || []).length < 8 ? 28 : 0;
+  const tempo = (pl.points || 0) >= 9 ? projectedPts * 22 : 0;
+  const value =
+    projectedPts * 135 +
+    tempo +
+    missionGain * 125 +
+    engineNeed +
+    bonusScarcity +
+    reservedFit +
+    (projectedPts === 0 ? earlyEngine : 0) +
+    (card.tier || 1) * 10 +
+    (winNow ? 10000 : winSoon ? 260 : 0) -
+    totalCost * 1.4 -
+    missing.goldAdjusted * 36 -
+    missing.total * 9;
+  return {value, missionGain, projectedPts, winNow, winSoon};
+}
+
+function aiMissionGain(pl, card) {
+  if (!G.missions || !G.missions.length) return 0;
+  const before = pl;
+  const after = {
+    ...pl,
+    points:(pl.points || 0) + (card.pts || 0),
+    bonuses:{...(pl.bonuses || {})},
+    cards:[...(pl.cards || []), card],
+  };
+  after.bonuses[card.bonus] = (after.bonuses[card.bonus] || 0) + 1;
+  return G.missions.reduce((sum, m) => {
+    if (!m || m.claimedBy !== null) return sum;
+    const b = missionProgress(m, before);
+    const a = missionProgress(m, after);
+    const bPct = b.cur / Math.max(1, b.target);
+    const aPct = a.cur / Math.max(1, a.target);
+    return sum + Math.max(0, aPct - bPct) * (m.pts || 1) + (a.cur >= a.target && b.cur < b.target ? (m.pts || 1) : 0);
+  }, 0);
+}
+
+function aiOpponentThreatValue(card, selfIdx) {
+  let threat = 0;
+  (G.players || []).forEach((op, idx) => {
+    if (!op || idx === selfIdx || op.disconnected || op.offline) return;
+    if (!canBuy(op, card)) return;
+    const pts = projectedCardPoints(idx, card);
+    if ((op.points || 0) + pts >= 15) threat = Math.max(threat, 10000);
+    else threat = Math.max(threat, pts * 110 + (op.points || 0) * 8);
+  });
+  return threat;
+}
+
+function aiPickValuable(actions) {
+  const top = [...actions].sort((a,b) => (b.value || 0) - (a.value || 0)).slice(0, Math.min(2, actions.length));
+  if (!top.length) return null;
+  if (top.length === 1) return top[0];
+  return Math.random() < 0.78 ? top[0] : top[1];
+}
+
+function aiExecBuy(action) {
+  const pl = G.players[G.cur], card = action.card;
+  if (!pl || !card || !canBuy(pl, card)) return false;
+  const e = effCost(pl, card);
+  let gused = 0;
+  const paid = {w:0,u:0,g:0,r:0,k:0,gold:0};
+  CI.forEach(c => {
+    const have = pl.gems[c] || 0, need = e[c] || 0;
+    if (have >= need) {
+      pl.gems[c] = have - need; G.bank[c] += need; paid[c] += need;
+    } else {
+      G.bank[c] += have; paid[c] += have;
+      const short = need - have; pl.gems[c] = 0; pl.gems.gold = (pl.gems.gold || 0) - short; gused += short; paid.gold += short;
+    }
+  });
+  G.bank.gold += gused;
+  pl.cards.push(card);
+  pl.bonuses[card.bonus] = (pl.bonuses[card.bonus] || 0) + 1;
+  pl.points += card.pts || 0;
+  let passiveText = '';
+  const hero = getPlayerHero(G.cur);
+  const usesLeft = G.heroUsed ? G.heroUsed[G.cur] : Infinity;
+  if (hero && hero.passive && hero.passiveBonus === card.bonus && usesLeft > 0) {
+    pl.points += 1;
+    if (G.heroUsed && G.heroUsed[G.cur] !== Infinity) G.heroUsed[G.cur]--;
+    passiveText = `；${hero.skill}觸發，額外+1分`;
+  }
+  if (action.fromRes) pl.reserved = pl.reserved.filter(c => c.id !== card.id);
+  else fillBoard(card);
+  addLog('buy', `AI 購買 ${cardLogName(card)}，支付 ${gemListLog(paid) || '免費'}${passiveText}`, G.cur);
+  G.ui.acted = true;
+  afterAct();
+  return true;
+}
+
+function aiExecReserve(action) {
+  const pl = G.players[G.cur];
+  const card = G.board[action.t] && G.board[action.t][action.bi];
+  if (!pl || !card || pl.reserved.length >= 3) return false;
+  pl.reserved.push(card);
+  const gotGold = (G.bank.gold || 0) > 0;
+  if (gotGold) { pl.gems.gold = (pl.gems.gold || 0) + 1; G.bank.gold--; }
+  fillBoard(card);
+  addLog('reserve', `AI 預留 ${cardLogName(card)}，${gotGold ? `拿取${gemToken('gold',1)}` : `未拿到${gemIconToken('gold')}`}`, G.cur);
+  aiAutoReturnExcess(G.cur);
+  G.ui.acted = true;
+  afterAct();
+  return true;
+}
+
+function aiExecTake(selection) {
+  const pl = G.players[G.cur];
+  if (!pl || !selection) return false;
+  const take = {w:0,u:0,g:0,r:0,k:0};
+  CI.forEach(c => {
+    take[c] = Math.max(0, Math.min(selection[c] || 0, G.bank[c] || 0));
+  });
+  if (!CI.some(c => take[c] > 0)) return false;
+  CI.forEach(c => {
+    pl.gems[c] = (pl.gems[c] || 0) + take[c];
+    G.bank[c] -= take[c];
+  });
+  addLog('take', `AI 拿取 ${gemListLog(take)}`, G.cur);
+  aiAutoReturnExcess(G.cur);
+  G.ui.acted = true;
+  afterAct();
+  return true;
+}
+
+function aiAutoReturnExcess(playerIdx) {
+  const pl = G.players[playerIdx];
+  if (!pl) return;
+  const returned = {w:0,u:0,g:0,r:0,k:0,gold:0};
+  while (gsum(pl.gems) > 10) {
+    const keep = aiGemKeepScores(pl);
+    const c = [...CI,'gold']
+      .filter(col => (pl.gems[col] || 0) > 0)
+      .sort((a,b) => ((keep[a] || 0) - (keep[b] || 0)) || ((pl.gems[b] || 0) - (pl.gems[a] || 0)) || (a === 'gold' ? 1 : 0) || (b === 'gold' ? -1 : 0))[0];
+    if (!c) break;
+    pl.gems[c]--; G.bank[c] = (G.bank[c] || 0) + 1; returned[c]++;
+  }
+  if (gemListLog(returned)) addLog('return', `AI 自動歸還 ${gemListLog(returned)}，符合10顆上限`, playerIdx);
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -5770,6 +6892,48 @@ function missionReqHtml(m) {
   return `<span class="mission-token"><span class="mission-mark">✦</span><span>王室令</span></span>`;
 }
 
+function missionProgress(m, p) {
+  if (!p) return {cur:0, target:1, label:'0/1'};
+  if (m.req) {
+    const target = CI.reduce((s,c)=>s+(m.req[c]||0),0);
+    const cur = CI.reduce((s,c)=>s+Math.min(p.bonuses[c]||0, m.req[c]||0),0);
+    return {cur, target, label:`${cur}/${target}`};
+  }
+  if (m.name === '純色行會') {
+    const cur = Math.max(...CI.map(c=>p.bonuses[c]||0));
+    return {cur:Math.min(cur,4), target:4, label:`${Math.min(cur,4)}/4`};
+  }
+  if (m.name === '商隊總管') {
+    const cur = Math.min((p.cards||[]).length, 8);
+    return {cur, target:8, label:`${cur}/8`};
+  }
+  if (m.name === '上城資助') {
+    const cur = Math.min((p.cards||[]).filter(c=>c.tier>=2).length, 3);
+    return {cur, target:3, label:`${cur}/3`};
+  }
+  if (m.name === '貴族獻禮') {
+    const cur = Math.min(p.points||0, 6);
+    return {cur, target:6, label:`${cur}/6`};
+  }
+  return {cur:m.check(p)?1:0, target:1, label:m.check(p)?'完成':'0/1'};
+}
+
+function missionProgressHtml(m) {
+  if (!G.players || m.claimedBy!==null) return '';
+  const idx = (practiceMode || hasPracticeAiPlayers()) ? 0 : ((onlineMode && myIdx >= 0) ? myIdx : G.cur);
+  const p = G.players[idx];
+  if (!p) return '';
+  const prog = missionProgress(m, p);
+  const pct = Math.max(0, Math.min(100, (prog.cur / Math.max(1, prog.target)) * 100));
+  return `<div class="mission-progress">
+    <div class="mp-row">
+      <span class="mp-name">進度</span>
+      <span class="mp-bar"><span class="mp-fill" style="width:${pct.toFixed(1)}%"></span></span>
+      <span class="mp-num">${htmlEsc(prog.label)}</span>
+    </div>
+  </div>`;
+}
+
 // Mission card display
 function rMissions() {
   if (!G.missions||!G.missions.length) return;
@@ -5784,6 +6948,7 @@ function rMissions() {
       </div>
       <div class="mission-icons">${missionReqHtml(m)}</div>
       <div class="mission-desc">${m.desc}</div>
+      ${missionProgressHtml(m)}
       ${claimed?`<div class="mission-winner" style="color:${claimer.color}">✓ ${claimer.name}達成</div>`:''}
     </div>`;
   });
@@ -5879,7 +7044,7 @@ function rBottom() {
 }
 
 function rPlayers() {
-  const pct=(_timerSec/60*100).toFixed(2);
+  const pct=(_timerSec/TURN_LIMIT_SECONDS*100).toFixed(2);
   const timerCol=_timerSec<=20?'#ff4444':'#55cc88';
   const h=G.players.map((p,i)=>{
     const cur=i===G.cur;
@@ -5934,12 +7099,12 @@ function rPlayers() {
       <span class="pi-hero-avatar-fallback${avatarExtraClass}" style="display:none;" ${avatarOnclick}>${HERO_EMOJI[hero.key]||'👤'}</span>
       <div class="pi-hero-tooltip"><b>${hero.name}</b><br>⚡ ${hero.skill}<br><span style="opacity:.7">${hero.desc}</span><br><span style="color:#aaa;font-size:.9em">${hero.passive?(usesLeft===Infinity?'被動技':usesLeft>0?`被動剩${usesLeft}次`:'被動已用盡'):usesLeft===Infinity?'無限次':usesLeft>0?`剩${usesLeft}次`:'已用盡'}</span></div>
     ` : '';
-    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426;':''}${p.disconnected?'opacity:.45;':''}position:relative;">
+    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426;':''}${p.disconnected?'opacity:.45;':p.offline?'opacity:.72;':''}position:relative;">
       ${timerBadge}
       <div style="display:flex;align-items:center;gap:6px">
         <div class="pi-pts" style="color:${p.color};flex-shrink:0">${p.points}<span class="score-unit">分</span></div>
         <div class="pi-name" style="color:${p.color};flex-shrink:0">${p.name}</div>
-        ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:''}
+        ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:p.offline?`<span style="font-size:.6em;color:#ffaa55;margin-left:2px">● 離線</span>`:''}
       </div>
       <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
       <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
@@ -5952,7 +7117,9 @@ function rPlayers() {
     if(cur) return `<div id="pi-timer-wrap" class="pi-timer-outer" style="background:conic-gradient(from 0deg,${timerCol} ${pct}%,rgba(255,255,255,.08) ${pct}%)">${inner}</div>`;
     return inner;
   }).join('');
-  document.getElementById('g-players').innerHTML=h;
+  const playersEl = document.getElementById('g-players');
+  playersEl.className = G.players.length >= 4 ? 'players-4' : '';
+  playersEl.innerHTML=h;
 }
 
 // ── Card modals ───────────────────────────────────────────────────────────
@@ -6151,7 +7318,7 @@ function showOverMod() {
   document.getElementById('turn-notif')?.classList.remove('on');
   ['m-card','m-ret'].forEach(id=>{ const el=document.getElementById(id); if (el) el.style.display='none'; });
   if (!G.winners || !G.winners.length) G.winners=computeWinners();
-  const sorted=G.players.map((p,idx)=>({p,idx})).sort((a,b)=>b.p.points-a.p.points||a.p.cards.length-b.p.cards.length);
+  const sorted=rankedRows();
   const winnerIdxs = new Set((G.winners||[]).map(w=>G.players.indexOf(w)).filter(i=>i>=0));
   const medals=['🥇','🥈','🥉',''];
   const rows=sorted.map(({p,idx},i)=>{
@@ -6184,17 +7351,22 @@ function showOverMod() {
     </div>`;
   }).join('');
   const wn=G.winners.map(p=>htmlEsc(p.name)).join('、');
+  const ladderNote = onlineMode
+    ? (G.normalEnd ? '本局為正常結算，寶石天梯榜積分會自動登錄。' : '本局不是正常結算，寶石天梯榜不計分。')
+    : ((practiceMode || hasPracticeAiPlayers()) ? '練習模式不計入寶石天梯榜。' : '本機遊戲不計入寶石天梯榜。');
   const over = document.getElementById('m-over');
   over.className = 'm-overlay game-over-overlay';
   over.style.display = 'grid';
   over.innerHTML=`<section class="over-box" onclick="event.stopPropagation()">
     <div class="over-title">🎊 遊戲結束！</div>
     <div class="over-winner">🏆 ${wn} 獲勝！</div>
+    <div style="font-size:.78em;color:rgba(255,255,255,.62);margin:-6px 0 12px;text-align:center">${ladderNote}</div>
     <div class="over-rows">
     ${rows}
     </div>
     <button class="over-restart" onclick="location.reload()">再玩一次</button>
   </section>`;
+  awardLadderPointsOnce();
 }
 
 window.showSkillBlockReason = function(heroId, playerIdx) {
@@ -6214,6 +7386,10 @@ window.showSkillBlockReason = function(heroId, playerIdx) {
 // ── Turn Notification ─────────────────────────────────────────────────────
 let _turnNotifCallback = null;
 function showTurnNotification(playerIdx, callback) {
+  if (G.players && isTurnUnavailable(G.players[playerIdx]) && isLeader()) {
+    skipCurrentTurn(G.players[playerIdx]?.offline ? 'offline' : 'timeout');
+    return;
+  }
   playClick('turn');
   const pl = G.players[playerIdx];
   const el = document.getElementById('turn-notif');
@@ -6240,7 +7416,7 @@ function dismissTurnNotif() {
 
 // ── Turn Timer ────────────────────────────────────────────────────────────
 let _timerInterval = null;
-let _timerSec = 60;
+let _timerSec = TURN_LIMIT_SECONDS;
 let _timerExpired = false;
 
 function activateZones() {
@@ -6275,9 +7451,11 @@ function refreshPlayerTimers() {
 }
 
 function startTimer() {
+  clearAiThinkTimer();
   clearInterval(_timerInterval);
-  _timerSec = 60;
+  _timerSec = TURN_LIMIT_SECONDS;
   _timerExpired = false;
+  const turnKey = G.turnCount || 0;
   hideUrgeBanner();
   _updateTimerEl();
   refreshPlayerTimers();
@@ -6290,13 +7468,15 @@ function startTimer() {
       clearInterval(_timerInterval);
       _timerExpired = true;
       refreshPlayerTimers();
+      handleTurnTimeout(turnKey);
     }
   }, 1000);
 }
 function stopTimer() {
+  clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerInterval = null;
-  _timerSec = 60;
+  _timerSec = TURN_LIMIT_SECONDS;
   _timerExpired = false;
   hideUrgeBanner();
   _updateTimerEl();
@@ -6305,9 +7485,11 @@ function stopTimer() {
 
 // Passive countdown for non-active players (display only, no game effects)
 function startTimerDisplay() {
+  clearAiThinkTimer();
   clearInterval(_timerInterval);
-  _timerSec = 60;
+  _timerSec = TURN_LIMIT_SECONDS;
   _timerExpired = false;
+  const turnKey = G.turnCount || 0;
   _updateTimerEl();
   refreshPlayerTimers();
   _timerInterval = setInterval(() => {
@@ -6317,19 +7499,27 @@ function startTimerDisplay() {
       clearInterval(_timerInterval);
       _timerExpired = true;
       refreshPlayerTimers();
+      if (onlineMode && isLeader()) handleTurnTimeout(turnKey);
     }
   }, 1000);
+}
+function handleTurnTimeout(turnKey) {
+  if (!G || G.over || (G.turnCount || 0) !== turnKey) return;
+  if (onlineMode && !(isMyTurn() || isLeader())) return;
+  skipCurrentTurn('timeout');
 }
 function _updateTimerEl() {
   const s = Math.max(0, _timerSec);
   const color = s <= 20 ? '#ff4444' : '#55cc88';
-  const pct = (s / 60 * 100).toFixed(2);
+  const pct = (s / TURN_LIMIT_SECONDS * 100).toFixed(2);
   const wrap = document.getElementById('pi-timer-wrap');
   if (wrap) wrap.style.background = `conic-gradient(from 0deg,${color} ${pct}%,rgba(255,255,255,.08) ${pct}%)`;
 }
 
 // ── Sound Effects ─────────────────────────────────────────────────────────
 let _audioCtx = null;
+const OUT_GAME_CLICK_SRC = 'dragon-studio-button-press-382713.mp3';
+let _outGameClickPool = [];
 function _ac() {
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(()=>{});
@@ -6429,6 +7619,40 @@ function playClick(type = 'tap') {
   } catch(e) {}
 }
 
+function playOutGameClick() {
+  try {
+    let audio = _outGameClickPool.find(a => a.paused || a.ended);
+    if (!audio) {
+      audio = new Audio(OUT_GAME_CLICK_SRC);
+      audio.preload = 'auto';
+      _outGameClickPool.push(audio);
+      if (_outGameClickPool.length > 5) _outGameClickPool.shift();
+    }
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = 0.82;
+    audio.play().catch(()=>{});
+  } catch(e) {}
+}
+
+function gameScreenVisible() {
+  const game = document.getElementById('screen-game');
+  return !!(game && getComputedStyle(game).display !== 'none');
+}
+
+function outGameClickArea(el) {
+  return !!(el && (
+    el.closest('#screen-login,#screen-lobby,#screen-ladder,#screen-create,#screen-join,#screen-wait,#screen-setup') ||
+    (!gameScreenVisible() && el.closest('#btn-bgm,#btn-help,#btn-logout,#m-help'))
+  ));
+}
+
+function outGameClickable(el) {
+  if (!el || gameScreenVisible()) return null;
+  const control = el.closest('.btn-online:not(:disabled),.btn-start:not(:disabled)');
+  return control && outGameClickArea(control) ? control : null;
+}
+
 // ── Background Music ──────────────────────────────────────────────────────
 const BGM_STORAGE_KEY = 'splendor-bgm-muted';
 const BGM_AUTOPLAY_VERSION_KEY = 'splendor-bgm-autoplay-v2';
@@ -6519,7 +7743,8 @@ function toggleBgmMute(ev) {
     startBgm();
   }
   updateBgmButton();
-  playClick('tap');
+  if (gameScreenVisible()) playClick('tap');
+  else playOutGameClick();
 }
 function initBgm() {
   ensureBgmAutoplayDefault();
@@ -6540,6 +7765,10 @@ initBgm();
 
 // 統一攔截所有按鈕 / 寶石庫列點擊
 document.addEventListener('click', e => {
+  if (outGameClickable(e.target)) {
+    playOutGameClick();
+    return;
+  }
   const btn  = e.target.closest('.btn:not(:disabled)');
   const bank = e.target.closest('.bank-row:not(.no-click)');
   const card = e.target.closest('.dev-card');
