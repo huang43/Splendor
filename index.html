@@ -43,6 +43,9 @@ body {
   background:none;
   -webkit-text-fill-color:initial;
 }
+#screen-login .setup-title.logo-title {
+  width:min(516px,calc(100vw - 24px));
+}
 .title-logo-img {
   display:block;
   width:100%;
@@ -992,7 +995,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   font-size:.78em; line-height:1.55;
 }
 #screen-login .lb-input {
-  margin-top:24px;
+  margin-top:4px;
   width:min(300px,calc(100vw - 96px));
   padding:12px 18px;
   font-size:1.08em;
@@ -1703,6 +1706,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   .setup-title { font-size:2em; letter-spacing:3px; text-align:center; }
   .setup-title.logo-title { width:min(315px,calc(100vw - 28px)); margin:-12px 0 -8px; }
+  #screen-login .setup-title.logo-title { width:min(378px,calc(100vw - 20px)); }
   .hdr-logo-img { height:34px; max-width:154px; }
   .setup-sub { font-size:.82em; text-align:center; line-height:1.5; }
   #screen-login .lb-input { width:100%; max-width:300px; }
@@ -2214,7 +2218,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <div id="screen-login" style="display:flex">
   <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="login-card">
-    <input id="login-code" class="lb-input" placeholder="玩家帳號" maxlength="16" style="text-transform:lowercase;letter-spacing:2px" onkeydown="if(event.key==='Enter'){event.preventDefault();loginWithSerial();}">
+    <input id="login-code" class="lb-input" placeholder="請輸入帳號..." maxlength="16" style="text-transform:lowercase;letter-spacing:2px" onkeydown="if(event.key==='Enter'){event.preventDefault();loginWithSerial();}">
     <button class="btn-online primary" onclick="loginWithSerial()">登　入</button>
     <div id="login-error" class="auth-error"></div>
   </div>
@@ -2223,7 +2227,6 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <!-- Lobby -->
 <div id="screen-lobby" style="display:none">
   <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
-  <div class="setup-sub">Splendor ── 寶石商人</div>
   <div class="session-pill" id="lobby-user">帳號：-</div>
   <div class="online-btns" style="margin-top:10px">
     <button class="btn-online primary" onclick="showOnlineJoin()">加入對戰</button>
