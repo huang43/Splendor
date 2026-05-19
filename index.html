@@ -36,6 +36,22 @@ body {
   background:linear-gradient(135deg,#ffcc44,#ff8844,#cc55ff);
   -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
+.setup-title.logo-title {
+  width:min(430px,calc(100vw - 36px));
+  line-height:0;
+  margin:-18px 0 -10px;
+  background:none;
+  -webkit-text-fill-color:initial;
+}
+.title-logo-img {
+  display:block;
+  width:100%;
+  height:auto;
+  object-fit:contain;
+  filter:drop-shadow(0 12px 24px rgba(0,0,0,.45));
+  -webkit-mask-image:radial-gradient(ellipse at center,#000 66%,rgba(0,0,0,.95) 76%,transparent 100%);
+  mask-image:radial-gradient(ellipse at center,#000 66%,rgba(0,0,0,.95) 76%,transparent 100%);
+}
 .setup-sub { opacity:.6; letter-spacing:2px; font-size:.95em; }
 .num-row { display:flex; gap:10px; }
 .btn-num {
@@ -63,10 +79,22 @@ body {
 /* Header */
 #g-hdr {
   background:rgba(32,20,12,.58); border-bottom:1px solid rgba(255,224,166,.18);
-  padding:7px 16px; flex-shrink:0;
+  min-height:42px; padding:4px 16px; flex-shrink:0;
   backdrop-filter:blur(5px);
+  display:flex; align-items:center;
 }
 .hdr-logo { font-size:1em; font-weight:bold; color:#ffcc44; letter-spacing:2px; }
+.hdr-logo-img {
+  display:block;
+  width:auto;
+  height:42px;
+  max-width:190px;
+  object-fit:contain;
+  object-position:left center;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.55));
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);
+}
 .last-round-flag { font-size:.8em; color:#ff9955; font-weight:bold; }
 
 /* Main */
@@ -1668,6 +1696,8 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     min-height:100dvh; padding:22px 16px; gap:14px;
   }
   .setup-title { font-size:2em; letter-spacing:3px; text-align:center; }
+  .setup-title.logo-title { width:min(315px,calc(100vw - 28px)); margin:-12px 0 -8px; }
+  .hdr-logo-img { height:34px; max-width:154px; }
   .setup-sub { font-size:.82em; text-align:center; line-height:1.5; }
   #screen-login .lb-input { width:100%; max-width:300px; }
   .num-row, .online-btns { width:100%; max-width:340px; gap:8px; }
@@ -2176,7 +2206,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Login -->
 <div id="screen-login" style="display:flex">
-  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="setup-sub">輸入指定帳號後進入遊戲</div>
   <div class="login-card">
     <input id="login-code" class="lb-input" placeholder="玩家帳號" maxlength="16" style="text-transform:lowercase;letter-spacing:2px" onkeydown="if(event.key==='Enter'){event.preventDefault();loginWithSerial();}">
@@ -2188,7 +2218,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Lobby -->
 <div id="screen-lobby" style="display:none">
-  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="setup-sub">Splendor ── 寶石商人</div>
   <div class="session-pill" id="lobby-user">帳號：-</div>
   <div class="online-btns" style="margin-top:10px">
@@ -2262,7 +2292,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Setup -->
 <div id="screen-setup">
-  <div class="setup-title">璀燦寶石</div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="setup-sub">練習模式 ── AI 對戰</div>
   <div class="num-row" id="num-row">
     <button class="btn-num active" onclick="setN(2)">2人</button>
@@ -2278,7 +2308,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Game -->
 <div id="screen-game">
-  <div id="g-hdr"><span class="hdr-logo">璀燦寶石</span></div>
+  <div id="g-hdr"><img class="hdr-logo-img" src="splendor-card-art/title-treasure-brawl-v3.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div id="g-main">
     <div id="g-left">
       <div id="g-players"></div>
