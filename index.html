@@ -1699,6 +1699,10 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --deck-icon-w:70px;
     --deck-icon-h:86px;
     --board-gap:5px;
+    --card-gem-main:22px;
+    --card-gem-mid:20px;
+    --card-gem-small:18px;
+    --card-cost-badge:18px;
   }
   body { min-height:100dvh; overflow-x:hidden; }
   #screen-setup, #screen-login, #screen-lobby, #screen-wait, #screen-ladder {
@@ -1735,30 +1739,58 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     overflow-x:hidden; overflow-y:auto; min-height:0;
     padding:8px 8px 12px; gap:8px;
   }
-  #g-right { order:1; width:100%; min-width:0; gap:8px; }
+  #g-right {
+    order:1; width:100%; min-width:0; gap:8px;
+    padding:10px 8px 12px; border-radius:14px;
+  }
   #g-side {
-    order:3; width:100%; max-width:none; min-width:0; flex:0 0 auto;
-    grid-template-rows:auto auto; height:auto; max-height:none; gap:8px;
-    overflow:visible;
+    display:contents;
   }
   #g-log {
+    order:4;
     width:100%; max-width:none; min-width:0; height:auto;
-    max-height:190px; min-height:0; padding:10px 9px;
+    max-height:150px; min-height:0; padding:10px 9px;
   }
   .log-list { gap:6px; }
   .log-entry { padding:7px 8px; }
   .log-text { font-size:.72em; }
   #g-left {
-    order:2; width:100%;
+    order:3; width:100%;
     display:block;
     gap:8px; align-items:start;
   }
-  #g-bank { padding:14px 8px 10px; border-width:2px; border-radius:12px; }
+  #g-bank {
+    order:2; width:100%;
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px;
+    padding:12px 8px 10px; border-width:2px; border-radius:12px;
+  }
+  #g-bank .panel-label,
+  #g-bank .bank-actions,
+  #g-bank .bank-round-note {
+    grid-column:1/-1;
+  }
+  #g-bank .panel-label { margin:0 0 2px !important; }
+  #g-bank .bank-actions { margin-top:2px !important; }
+  #g-bank .bank-round-note { margin-top:2px !important; }
   #g-players {
     display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
     max-height:none; min-height:0; overflow:visible; gap:6px; padding-right:0;
   }
-  .bank-row { min-height:32px; padding:5px 6px; gap:5px; margin-top:4px; }
+  .bank-row {
+    min-height:38px; padding:5px 6px; gap:4px; margin-top:0;
+    grid-template-columns:auto minmax(0,1fr) auto;
+  }
+  #g-bank .bank-row .gem-img {
+    width:22px; height:22px; margin:-3px 0 -3px -2px;
+  }
+  #g-bank .bank-row .gem-img.gem-img-w,
+  #g-bank .bank-row .gem-img.gem-img-r,
+  #g-bank .bank-row .gem-img.gem-img-gold {
+    width:18px; height:18px;
+  }
+  #g-bank .bank-row .gem-img.gem-img-u {
+    width:20px; height:20px;
+  }
   .g-name { font-size:.72em; }
   .g-cnt { min-width:20px; font-size:.75em; }
 
@@ -1777,7 +1809,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   .mp-row { grid-template-columns:30px minmax(46px,1fr) 30px; font-size:.5em; }
 
   #g-cards {
-    width:100%; overflow-x:auto; overflow-y:hidden; padding:1px 2px 8px;
+    width:100%; overflow-x:auto; overflow-y:hidden; padding:1px 0 8px;
     scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
   }
   .tier-row { min-width:max-content; scroll-snap-align:start; }
@@ -1786,14 +1818,71 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   .deck-n { bottom:7px; font-size:.72em; }
   .deck-lbl { font-size:.7em; }
   .card-top { padding:4px 5px; min-height:var(--card-bar-h); }
-  .card-pts { font-size:1.15em; }
-  .card-body { padding:32px 4px 5px; }
+  .card-pts {
+    font-size:1.1em; line-height:1;
+    max-width:calc(var(--card-w) - 34px);
+    overflow:hidden;
+  }
+  #g-cards .card-top .gem-img,
+  .refill-card-back .card-top .gem-img,
+  .intro-deal-card .card-top .gem-img,
+  body > .dev-card .card-top .gem-img {
+    width:var(--card-gem-main);
+    height:var(--card-gem-main);
+    top:calc((var(--card-bar-h) - var(--card-gem-main)) / 2);
+    right:5px;
+    transform:none;
+  }
+  #g-cards .card-top .gem-img.gem-img-w,
+  #g-cards .card-top .gem-img.gem-img-r,
+  #g-cards .card-top .gem-img.gem-img-gold,
+  .refill-card-back .card-top .gem-img.gem-img-w,
+  .refill-card-back .card-top .gem-img.gem-img-r,
+  .refill-card-back .card-top .gem-img.gem-img-gold,
+  .intro-deal-card .card-top .gem-img.gem-img-w,
+  .intro-deal-card .card-top .gem-img.gem-img-r,
+  .intro-deal-card .card-top .gem-img.gem-img-gold,
+  body > .dev-card .card-top .gem-img.gem-img-w,
+  body > .dev-card .card-top .gem-img.gem-img-r,
+  body > .dev-card .card-top .gem-img.gem-img-gold {
+    width:var(--card-gem-small);
+    height:var(--card-gem-small);
+    top:calc((var(--card-bar-h) - var(--card-gem-small)) / 2);
+    right:6px;
+    transform:none;
+  }
+  #g-cards .card-top .gem-img.gem-img-u,
+  .refill-card-back .card-top .gem-img.gem-img-u,
+  .intro-deal-card .card-top .gem-img.gem-img-u,
+  body > .dev-card .card-top .gem-img.gem-img-u {
+    width:var(--card-gem-mid);
+    height:var(--card-gem-mid);
+    top:calc((var(--card-bar-h) - var(--card-gem-mid)) / 2);
+    right:5px;
+    transform:none;
+  }
+  #g-cards .card-top .gem-img.gem-img-g,
+  #g-cards .card-top .gem-img.gem-img-k,
+  .refill-card-back .card-top .gem-img.gem-img-g,
+  .refill-card-back .card-top .gem-img.gem-img-k,
+  .intro-deal-card .card-top .gem-img.gem-img-g,
+  .intro-deal-card .card-top .gem-img.gem-img-k,
+  body > .dev-card .card-top .gem-img.gem-img-g,
+  body > .dev-card .card-top .gem-img.gem-img-k {
+    width:var(--card-gem-main);
+    height:var(--card-gem-main);
+    top:calc((var(--card-bar-h) - var(--card-gem-main)) / 2);
+    right:5px;
+    transform:none;
+  }
+  .card-body { padding:calc(var(--card-bar-h) + 5px) 4px 5px; }
   .cost-stack { left:4px; bottom:6px; }
-  .cost-ln { min-height:20px; }
+  .cost-ln { min-height:calc(var(--card-cost-badge) - 1px); }
   .cost-ln + .cost-ln { margin-top:-1px; }
-  .cost-badge { width:20px; height:20px; border-width:1px; }
+  .cost-badge { width:var(--card-cost-badge); height:var(--card-cost-badge); border-width:1px; }
   .cost-badge::before { inset:1px 2px auto 2px; }
-  .cost-badge .cost-n { font-size:.82em; }
+  .cost-badge .cost-n { font-size:.76em; -webkit-text-stroke:.42px rgba(0,0,0,.96); }
+  #g-cards .dev-card:hover { transform:none; }
 
   .pi-card { border-radius:8px; padding:7px 8px; }
   #g-players.players-4 .pi-card { padding:7px 8px; }
@@ -1816,13 +1905,19 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 @media (max-width:430px) {
   :root {
-    --card-w:76px;
-    --card-h:112px;
-    --card-bar-h:27px;
-    --deck-icon-w:64px;
-    --deck-icon-h:78px;
-    --board-gap:4px;
+    --card-w:70px;
+    --card-h:103px;
+    --card-bar-h:25px;
+    --deck-icon-w:60px;
+    --deck-icon-h:74px;
+    --board-gap:3px;
+    --card-gem-main:19px;
+    --card-gem-mid:17px;
+    --card-gem-small:15px;
+    --card-cost-badge:16px;
   }
+  #g-main { padding:6px 4px 10px; gap:6px; }
+  #g-right { padding:8px 4px 10px; border-radius:12px; }
   #g-left { display:block; }
   #g-players {
     display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
@@ -1831,7 +1926,14 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   #g-players.players-4 { gap:6px; }
   #g-players .pi-timer-outer, #g-players .pi-card { min-width:0; }
   .mission-card { min-width:190px; flex-basis:190px; }
-  .bank-row { min-height:30px; }
+  .card-top { padding:3px 4px; }
+  .card-pts { font-size:1.02em; max-width:calc(var(--card-w) - 30px); }
+  .card-body { padding:calc(var(--card-bar-h) + 4px) 3px 4px; }
+  .cost-stack { left:3px; bottom:5px; }
+  .cost-badge .cost-n { font-size:.72em; }
+  .bank-row { min-height:36px; }
+  .g-name { font-size:.66em; }
+  .g-cnt { min-width:18px; font-size:.7em; }
 }
 
 @media (orientation:landscape) and (max-height:520px) and (max-width:900px) {
@@ -1841,11 +1943,16 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --card-bar-h:27px;
     --deck-icon-w:62px;
     --deck-icon-h:76px;
+    --card-gem-main:20px;
+    --card-gem-mid:18px;
+    --card-gem-small:16px;
+    --card-cost-badge:17px;
   }
   #g-main { flex-direction:row; }
   #g-left { order:1; width:170px; display:flex; flex-direction:column; flex-shrink:0; }
   #g-right { order:2; min-width:0; }
   #g-side {
+    display:grid;
     order:3; width:190px; min-width:180px; flex:0 0 190px;
     grid-template-rows:auto minmax(0,1fr);
     height:calc(100dvh - 76px); max-height:calc(100dvh - 76px); gap:6px;
@@ -1857,6 +1964,65 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   #g-bank { padding:12px 7px 9px; }
   .bank-row { min-height:30px; padding:4px 5px; }
   #g-missions { max-width:calc(100vw - 194px); }
+  .card-top { padding:4px 5px; min-height:var(--card-bar-h); }
+  .card-pts {
+    font-size:1.06em;
+    line-height:1;
+    max-width:calc(var(--card-w) - 32px);
+    overflow:hidden;
+  }
+  #g-cards .card-top .gem-img,
+  .refill-card-back .card-top .gem-img,
+  .intro-deal-card .card-top .gem-img,
+  body > .dev-card .card-top .gem-img,
+  #g-cards .card-top .gem-img.gem-img-g,
+  #g-cards .card-top .gem-img.gem-img-k,
+  .refill-card-back .card-top .gem-img.gem-img-g,
+  .refill-card-back .card-top .gem-img.gem-img-k,
+  .intro-deal-card .card-top .gem-img.gem-img-g,
+  .intro-deal-card .card-top .gem-img.gem-img-k,
+  body > .dev-card .card-top .gem-img.gem-img-g,
+  body > .dev-card .card-top .gem-img.gem-img-k {
+    width:var(--card-gem-main);
+    height:var(--card-gem-main);
+    top:calc((var(--card-bar-h) - var(--card-gem-main)) / 2);
+    right:5px;
+    transform:none;
+  }
+  #g-cards .card-top .gem-img.gem-img-w,
+  #g-cards .card-top .gem-img.gem-img-r,
+  #g-cards .card-top .gem-img.gem-img-gold,
+  .refill-card-back .card-top .gem-img.gem-img-w,
+  .refill-card-back .card-top .gem-img.gem-img-r,
+  .refill-card-back .card-top .gem-img.gem-img-gold,
+  .intro-deal-card .card-top .gem-img.gem-img-w,
+  .intro-deal-card .card-top .gem-img.gem-img-r,
+  .intro-deal-card .card-top .gem-img.gem-img-gold,
+  body > .dev-card .card-top .gem-img.gem-img-w,
+  body > .dev-card .card-top .gem-img.gem-img-r,
+  body > .dev-card .card-top .gem-img.gem-img-gold {
+    width:var(--card-gem-small);
+    height:var(--card-gem-small);
+    top:calc((var(--card-bar-h) - var(--card-gem-small)) / 2);
+    right:6px;
+    transform:none;
+  }
+  #g-cards .card-top .gem-img.gem-img-u,
+  .refill-card-back .card-top .gem-img.gem-img-u,
+  .intro-deal-card .card-top .gem-img.gem-img-u,
+  body > .dev-card .card-top .gem-img.gem-img-u {
+    width:var(--card-gem-mid);
+    height:var(--card-gem-mid);
+    top:calc((var(--card-bar-h) - var(--card-gem-mid)) / 2);
+    right:5px;
+    transform:none;
+  }
+  .card-body { padding:calc(var(--card-bar-h) + 5px) 4px 5px; }
+  .cost-stack { left:3px; bottom:5px; }
+  .cost-ln { min-height:calc(var(--card-cost-badge) - 1px); }
+  .cost-badge { width:var(--card-cost-badge); height:var(--card-cost-badge); }
+  .cost-badge .cost-n { font-size:.72em; -webkit-text-stroke:.42px rgba(0,0,0,.96); }
+  #g-cards .dev-card:hover { transform:none; }
 }
 
 /* ── Hero system ─────────────────────────────────────────────────────────── */
@@ -1932,6 +2098,56 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   background:rgba(85,204,136,.2); color:#55cc88; pointer-events:none;
 }
 .hero-select-footer { color:rgba(255,255,255,.32); font-size:.75em; text-align:center; margin-top:10px; }
+@media (max-width:760px) {
+  #hero-select-modal {
+    padding:16px 10px 18px;
+    gap:4px;
+    -webkit-overflow-scrolling:touch;
+  }
+  #hero-select-modal h2 { font-size:1.12em; margin-bottom:0; }
+  #hero-select-timer { font-size:2em; margin-bottom:6px; }
+  .hero-select-rows { gap:10px; max-width:none; }
+  .hero-player-row {
+    padding:10px 9px 11px;
+    border-radius:12px;
+  }
+  .hero-player-label {
+    margin-bottom:8px;
+    font-size:.7em;
+    letter-spacing:.04em;
+  }
+  .hero-options-row {
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:0 1px 8px;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+  }
+  .hero-option {
+    flex:0 0 214px;
+    min-width:214px;
+    max-width:214px;
+    padding:10px 11px 9px;
+    scroll-snap-align:start;
+    touch-action:manipulation;
+  }
+  .hero-option:hover:not(.locked) { transform:none; }
+  .hero-avatar-img,
+  .hero-avatar-fallback {
+    width:74px;
+    height:74px;
+    border-width:2px;
+  }
+  .hero-avatar-fallback { font-size:1.85em; }
+  .hero-option-name { font-size:.82em; }
+  .hero-option-skill { font-size:.68em; }
+  .hero-option-desc { font-size:.64em; line-height:1.42; }
+  .hero-row-foot { margin-top:6px; }
+  .hero-confirm-btn { min-width:116px; padding:8px 20px; }
+  .hero-select-footer { font-size:.62em; margin-top:6px; }
+}
 /* Scoreboard hero elements */
 .pi-hero-avatar {
   position:absolute; bottom:8px; right:8px;
@@ -1988,6 +2204,29 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 .pi-skill-btn.visible { opacity:1; pointer-events:all; }
 .pi-skill-btn.used { background:linear-gradient(135deg,#444,#666); border-color:rgba(200,200,200,.25); }
 .pi-skill-btn:hover:not(.used) { transform:translateY(-50%) scale(1.12); }
+@media (max-width:760px) {
+  .pi-hero-avatar,
+  .pi-hero-avatar-fallback {
+    width:42px;
+    height:42px;
+    right:7px;
+    bottom:7px;
+    border-width:2px;
+  }
+  .pi-hero-avatar-fallback { font-size:1.08em; }
+  .pi-hero-tooltip { display:none; }
+  .pi-skill-btn {
+    left:auto;
+    right:54px;
+    top:auto;
+    bottom:11px;
+    transform:none;
+    width:30px;
+    height:30px;
+    font-size:.66em;
+  }
+  .pi-skill-btn:hover:not(.used) { transform:none; }
+}
 /* Confirm skill modal */
 #hero-skill-confirm, #buffett-return-modal, #soros-return-modal, #dv-answer-modal {
   position:fixed; inset:0; z-index:820;
@@ -7010,18 +7249,18 @@ function rBank() {
   });
   // Action buttons inside bank panel
   if (myTurn && pg) {
-    h+=`<div style="display:flex;gap:5px;margin-top:8px">
+    h+=`<div class="bank-actions" style="display:flex;gap:5px;margin-top:8px">
       <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="takeGold()">確認領取金幣</button>
       <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
     </div>`;
   } else if (myTurn && tot>0) {
-    h+=`<div style="display:flex;gap:5px;margin-top:8px">
+    h+=`<div class="bank-actions" style="display:flex;gap:5px;margin-top:8px">
       <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認領取寶石</button>
       <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
     </div>`;
   }
   if (G.lastRound) {
-    h+=`<div style="font-size:.65em;color:#ff9955;margin-top:8px;line-height:1.4">⚠ 最終輪<br>${G.players[G.lastStarter].name}已達15分</div>`;
+    h+=`<div class="bank-round-note" style="font-size:.65em;color:#ff9955;margin-top:8px;line-height:1.4">⚠ 最終輪<br>${G.players[G.lastStarter].name}已達15分</div>`;
   }
   document.getElementById('g-bank').innerHTML=h;
 }
