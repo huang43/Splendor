@@ -1,0 +1,79 @@
+name: Cleanup inactive Splendor rooms
+
+on:
+  schedule:
+    # 00:00 Asia/Taipei = 16:00 UTC on the previous calendar day.
+    - cron: "0 16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Delete inactive Firebase rooms
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_DATABASE_AUTH: ${{ secrets.FIREBASE_DATABASE_AUTH }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function fromIndexHtml() {
+            const html = fs.readFileSync('index.html', 'utf8');
+            const match = html.match(/databaseURL\s*:\s*["']([^"']+)["']/);
+            return match && match[1];
+          }
+
+          const databaseUrl = (process.env.FIREBASE_DATABASE_URL || fromIndexHtml() || '').replace(/\/+$/, '');
+          const auth = process.env.FIREBASE_DATABASE_AUTH || '';
+
+          if (!databaseUrl) {
+            throw new Error('Firebase database URL was not found.');
+          }
+
+          function endpoint(path) {
+            const url = `${databaseUrl}/${path}.json`;
+            return auth ? `${url}?auth=${encodeURIComponent(auth)}` : url;
+          }
+
+          async function request(path, options = {}) {
+            const res = await fetch(endpoint(path), options);
+            if (!res.ok) {
+              const body = await res.text().catch(() => '');
+              throw new Error(`${options.method || 'GET'} ${path} failed: ${res.status} ${body}`);
+            }
+            if (res.status === 204) return null;
+            return res.json();
+          }
+
+          async function main() {
+            const rooms = await request('rooms');
+            const entries = Object.entries(rooms || {});
+            let deleted = 0;
+            let keptRunning = 0;
+
+            for (const [code, room] of entries) {
+              const running = !!(room && room.state && room.state.over !== true);
+              if (running) {
+                keptRunning++;
+                continue;
+              }
+              await request(`rooms/${encodeURIComponent(code)}`, { method: 'DELETE' });
+              deleted++;
+              console.log(`Deleted inactive room ${code}`);
+            }
+
+            console.log(`Cleanup complete. Deleted ${deleted}; kept running ${keptRunning}.`);
+          }
+
+          main().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
