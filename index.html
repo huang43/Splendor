@@ -1796,6 +1796,23 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   padding:16px 12px; text-align:center; color:rgba(230,238,255,.72);
   font-size:.86em; line-height:1.6;
 }
+.join-choice {
+  width:min(340px,calc(100vw - 32px));
+  display:none; flex-direction:column; gap:10px;
+  padding:10px; border-radius:12px;
+  border:1px solid rgba(255,224,138,.22);
+  background:rgba(8,13,24,.72);
+  box-shadow:0 10px 26px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.join-choice.on { display:flex; }
+.join-choice-head {
+  text-align:center; color:#ffe08a; font-size:.78em; font-weight:900;
+  letter-spacing:1px; line-height:1.5;
+}
+.join-choice-meta {
+  display:block; color:rgba(230,238,255,.68); font-size:.9em; font-weight:700;
+}
+.join-choice .btn-online { width:100%; }
 .code-display {
   font-size:2.8em; font-weight:900; letter-spacing:10px; color:#ffcc44;
   background:rgba(255,200,50,.1); border:2px solid rgba(255,200,50,.35);
@@ -1823,6 +1840,28 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   padding-left:25px;
   border-color:rgba(255,218,93,.72);
   box-shadow:0 8px 22px rgba(0,0,0,.28), 0 0 18px rgba(255,200,50,.18), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.wait-slot.kickable {
+  padding-right:42px;
+}
+.wait-kick {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  width:24px; height:24px; border-radius:50%;
+  border:1px solid rgba(255,130,100,.45);
+  background:rgba(90,18,12,.72); color:#ffd1c4;
+  cursor:pointer; font-weight:950; line-height:1;
+}
+.wait-kick:hover {
+  border-color:#ff775f; color:white; background:rgba(170,38,24,.86);
+}
+.wait-slot.spectator {
+  color:#ffe8aa;
+  border-color:rgba(255,224,138,.32);
+  background:linear-gradient(90deg,rgba(68,48,18,.86),rgba(24,18,10,.88));
+}
+.wait-spectator-head {
+  margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,224,138,.14);
+  font-size:.72em; color:rgba(255,232,176,.72); font-weight:900; letter-spacing:1px;
 }
 .host-crown {
   position:absolute; left:-10px; top:-13px; z-index:2;
@@ -2667,7 +2706,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <!-- Join room -->
 <div id="screen-join" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
   <div class="setup-title">加入房間</div>
-  <input id="jn-code" class="lb-input" placeholder="輸入房號" maxlength="6" style="letter-spacing:6px;font-size:1.5em;text-transform:uppercase">
+  <input id="jn-code" class="lb-input" placeholder="輸入房號" maxlength="6" style="letter-spacing:6px;font-size:1.5em;text-transform:uppercase" oninput="resetJoinChoice()">
   <input id="jn-name" class="lb-input" placeholder="登入帳號" maxlength="16" readonly>
   <div class="room-browser" aria-live="polite">
     <div class="room-browser-head">
@@ -2678,7 +2717,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
       <div class="room-empty">讀取房間中...</div>
     </div>
   </div>
-  <button class="btn-online primary" onclick="joinRoom()">加入</button>
+  <button class="btn-online primary" onclick="enterRoomLobby()">進入房間</button>
   <button class="btn-online" onclick="backToLobby()">← 返回</button>
 </div>
 
@@ -2696,6 +2735,14 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     </svg>
   </div>
   <div class="wait-list" id="wait-list"></div>
+  <div id="wait-choice" class="join-choice">
+    <div class="join-choice-head">
+      選擇進入方式
+      <span id="wait-choice-meta" class="join-choice-meta"></span>
+    </div>
+    <button id="wait-join-player" class="btn-online primary" onclick="joinRoom(roomCode)">參加對戰</button>
+    <button id="wait-join-spectator" class="btn-online" onclick="joinSpectator(roomCode)">觀戰</button>
+  </div>
   <button id="wait-ready" class="btn-online" onclick="toggleReady()" style="display:none;margin-top:4px">準備</button>
   <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="display:none;margin-top:4px">開始遊戲 ✦</button>
   <button class="btn-online" onclick="backToLobby()">← 離開房間</button>
@@ -2849,12 +2896,16 @@ let onlineMode = false;
 let myIdx = -1;
 let roomCode = '';
 let isHost = false;
+let spectatorMode = false;
+let spectatorId = '';
+let roomGuestMode = false;
 let _crNumP = 2;
 let _opponentCursors = {};  // { playerIdx: { pending:{}, hover:{tier,slot}|null } }
 let _hoverThrottle = null;
 let _roomListRef = null;
 let _hostRoomRef = null;
 let _presenceRef = null;
+let _presenceDisconnectRef = null;
 let _presenceUnloadHandler = null;
 let _lastPlayedRemoteAnimId = '';
 let _playedRemoteAnimIds = new Set();
@@ -2867,6 +2918,12 @@ let _chatQuery = null;
 let _chatHandler = null;
 let _chatMessages = [];
 let _chatLocalSeq = 0;
+let _accountSessionId = '';
+let _accountSessionRef = null;
+let _accountSessionHandler = null;
+let _accountTakeoverHandling = false;
+let _finishedGameExitCleanupKey = '';
+let _postGameRoomReturnInProgress = false;
 let practiceMode = false;
 let _aiThinkTimer = null;
 let _aiStartFallbackTimer = null;
@@ -2879,6 +2936,7 @@ const AUTHORIZED_SERIALS = [
 const LOGIN_STORAGE_KEY = 'splendor-login-serial';
 const TURN_LIMIT_SECONDS = 45;
 const AI_THINK_MAX_SECONDS = 10;
+const SPECTATOR_LIMIT = 6;
 let currentSerial = '';
 let _loginReconnectCheckId = 0;
 
@@ -2892,6 +2950,7 @@ function isPracticeAi(idx = G?.cur) {
   return !!(!roomCode && Number(idx) > 0 && p && (practiceMode || p.ai || /^AI\b/i.test(String(p.name || ''))));
 }
 function isMyTurn() {
+  if (isSpectator()) return false;
   if (onlineMode && roomCode) return G.cur === myIdx;
   if (practiceMode || hasPracticeAiPlayers()) return !isPracticeAi(G?.cur);
   return true;
@@ -2900,6 +2959,12 @@ function genCode() { return Math.random().toString(36).substr(2,6).toUpperCase()
 function normaliseSerial(v) { return String(v || '').trim().toLowerCase(); }
 function validSerial(v) { return AUTHORIZED_SERIALS.includes(normaliseSerial(v)); }
 function serialKey(v) { return normaliseSerial(v).replace(/[.#$\/\[\]]/g, '_'); }
+function isSpectator() { return !!(onlineMode && spectatorMode); }
+function isRoomGuest() { return !!(onlineMode && roomGuestMode); }
+function spectatorKey(v=currentSerial) { return serialKey(v || 'guest'); }
+function makeAccountSessionId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
+}
 function requireLogin() {
   if (currentSerial) return true;
   alert('請先輸入指定帳號登入');
@@ -2931,6 +2996,11 @@ function showOnly(id) {
 }
 async function backToLobby() {
   if (db && roomCode) {
+    if (isRoomGuest()) {
+      await cancelPresenceCleanup();
+    } else if (isSpectator()) {
+      await leaveSpectatorRoom(roomCode);
+    } else {
     const code = roomCode, idx = myIdx, leavingAsHost = isHost;
     try {
       const roomRef = db.ref(`rooms/${code}`);
@@ -2953,18 +3023,19 @@ async function backToLobby() {
       alert('離開房間失敗，請再試一次');
       return;
     }
+    }
   }
   clearPracticeAiWatcher();
   clearAiThinkTimer();
   stopChat();
-  roomCode=''; myIdx=-1; isHost=false; onlineMode=false; practiceMode=false;
+  roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false; practiceMode=false;
   updateAuthUi();
   showOnly('screen-lobby');
   warmEntryAssets();
 }
-function startLocal()       { if (!requireLogin()) return; clearPracticeAiWatcher(); clearAiThinkTimer(); roomCode=''; isHost=false; practiceMode=true; onlineMode=false; myIdx=0; buildInputs(); showOnly('screen-setup'); warmPregameAssets(); }
-function showOnlineCreate() { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-create'); warmPregameAssets(); }
-function showOnlineJoin()   { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-join'); warmPregameAssets(); startRoomList(); }
+function startLocal()       { if (!requireLogin()) return; clearPracticeAiWatcher(); clearAiThinkTimer(); roomCode=''; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; practiceMode=true; onlineMode=false; myIdx=0; buildInputs(); showOnly('screen-setup'); warmPregameAssets(); }
+function showOnlineCreate() { if (!requireLogin()) return; practiceMode=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-create'); warmPregameAssets(); }
+function showOnlineJoin()   { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); resetJoinChoice(); showOnly('screen-join'); warmPregameAssets(); startRoomList(); }
 function crSetN(n, btn) {
   _crNumP = n;
   document.querySelectorAll('#screen-create .btn-num').forEach(b=>b.classList.remove('active'));
@@ -2980,7 +3051,7 @@ function initLoginScreen() {
   warmEntryAssets();
 }
 
-function loginWithSerial() {
+async function loginWithSerial() {
   const input = document.getElementById('login-code');
   const err = document.getElementById('login-error');
   const serial = normaliseSerial(input && input.value);
@@ -2993,7 +3064,141 @@ function loginWithSerial() {
   const checkId = ++_loginReconnectCheckId;
   showOnly('screen-lobby');
   warmPregameAssets();
+  await claimAccountSession(serial);
+  await cleanupWaitingRoomsForSerial(serial);
   checkReconnectAfterLogin(serial, checkId);
+}
+
+function stopAccountSessionWatch() {
+  if (_accountSessionRef && _accountSessionHandler) _accountSessionRef.off('value', _accountSessionHandler);
+  _accountSessionRef = null;
+  _accountSessionHandler = null;
+}
+
+async function claimAccountSession(serial) {
+  fbInit();
+  stopAccountSessionWatch();
+  _accountSessionId = makeAccountSessionId();
+  _accountSessionRef = db.ref(`accountSessions/${serialKey(serial)}`);
+  await _accountSessionRef.set({
+    serial,
+    sessionId:_accountSessionId,
+    at:firebase.database.ServerValue.TIMESTAMP
+  });
+  _accountSessionHandler = snap => {
+    const data = snap.val();
+    if (!currentSerial || normaliseSerial(currentSerial) !== normaliseSerial(serial)) return;
+    if (!_accountSessionId || !data || data.sessionId === _accountSessionId) return;
+    handleAccountTakeover();
+  };
+  _accountSessionRef.on('value', _accountSessionHandler);
+}
+
+async function cleanupWaitingRoomsForSerial(serial) {
+  fbInit();
+  const wanted = normaliseSerial(serial);
+  const snap = await db.ref('rooms').once('value');
+  const rooms = snap.val() || {};
+  const updates = {};
+  Object.entries(rooms).forEach(([code, room]) => {
+    if (!room) return;
+    let touchedRoom = false;
+    Object.entries(room.spectators || {}).forEach(([id, spec]) => {
+      if (normaliseSerial(spec && (spec.serial || spec.name)) !== wanted) return;
+      updates[`rooms/${code}/spectators/${id}`] = null;
+      updates[`rooms/${code}/spectatorPresence/${id}`] = null;
+      touchedRoom = true;
+    });
+    if (room.state) {
+      if (touchedRoom) updates[`rooms/${code}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
+      return;
+    }
+    const ids = roomPlayerIds(room);
+    let removeWholeRoom = false;
+    Object.entries(ids).forEach(([idx, id]) => {
+      if (normaliseSerial(id) !== wanted) return;
+      if (Number(idx) === 0) {
+        removeWholeRoom = true;
+      } else {
+        updates[`rooms/${code}/players/${idx}`] = null;
+        updates[`rooms/${code}/playerIds/${idx}`] = null;
+        updates[`rooms/${code}/ready/${idx}`] = null;
+        updates[`rooms/${code}/presence/${idx}`] = null;
+      }
+    });
+    if (removeWholeRoom) {
+      Object.keys(updates).forEach(path => {
+        if (path.startsWith(`rooms/${code}/`)) delete updates[path];
+      });
+      updates[`rooms/${code}`] = null;
+    } else if (touchedRoom || Object.keys(updates).some(path => path.startsWith(`rooms/${code}/`))) {
+      updates[`rooms/${code}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
+    }
+  });
+  if (Object.keys(updates).length) await db.ref().update(updates);
+}
+
+async function handleAccountTakeover() {
+  if (_accountTakeoverHandling) return;
+  _accountTakeoverHandling = true;
+  try {
+    await releaseRoomForAccountTakeover();
+  } finally {
+    stopAccountSessionWatch();
+    _accountSessionId = '';
+    currentSerial = '';
+    try { localStorage.removeItem(LOGIN_STORAGE_KEY); } catch(e) {}
+    clearPracticeAiWatcher();
+    clearAiThinkTimer();
+    stopChat();
+    roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false; practiceMode=false;
+    updateAuthUi();
+    showOnly('screen-login');
+    alert('此帳號已在其他裝置登入，主導權已轉移到最後登入者。');
+    _accountTakeoverHandling = false;
+  }
+}
+
+async function releaseRoomForAccountTakeover() {
+  if (!db || !roomCode) return;
+  const code = roomCode;
+  if (isRoomGuest()) {
+    await cancelPresenceCleanup();
+    return;
+  }
+  if (isSpectator()) {
+    await leaveSpectatorRoom(code);
+    return;
+  }
+  if (myIdx < 0) return;
+  await cancelPresenceCleanup();
+  const snap = await db.ref(`rooms/${code}`).once('value');
+  const room = snap.val();
+  if (!room) return;
+  if (room.state) {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const sessionSnap = await db.ref(`rooms/${code}/state/players/${myIdx}/sessionId`).once('value').catch(() => null);
+    const activeSessionId = sessionSnap && sessionSnap.val();
+    if (activeSessionId && activeSessionId !== _accountSessionId) return;
+    await db.ref(`rooms/${code}`).update({
+      [`presence/${myIdx}`]: false,
+      [`state/players/${myIdx}/offline`]: true,
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    }).catch(() => {});
+    return;
+  }
+  if (isHost) {
+    await cancelHostRoomCleanup();
+    await db.ref(`rooms/${code}`).remove().catch(() => {});
+  } else {
+    await db.ref(`rooms/${code}`).update({
+      [`players/${myIdx}`]: null,
+      [`playerIds/${myIdx}`]: null,
+      [`ready/${myIdx}`]: null,
+      [`presence/${myIdx}`]: null,
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    }).catch(() => {});
+  }
 }
 
 async function checkReconnectAfterLogin(serial, checkId) {
@@ -3016,7 +3221,16 @@ async function checkReconnectAfterLogin(serial, checkId) {
 
 async function logoutSerial() {
   _loginReconnectCheckId++;
-  if (onlineMode && roomCode) {
+  stopAccountSessionWatch();
+  _accountSessionId = '';
+  if (isSpectator() && roomCode) {
+    try {
+      fbInit();
+      await leaveSpectatorRoom(roomCode);
+    } catch (e) {
+      console.warn('spectator logout cleanup failed', e);
+    }
+  } else if (onlineMode && roomCode && !isRoomGuest()) {
     try {
       fbInit();
       const code = roomCode, idx = myIdx;
@@ -3035,7 +3249,7 @@ async function logoutSerial() {
   try { localStorage.removeItem(LOGIN_STORAGE_KEY); } catch(e) {}
   clearPracticeAiWatcher();
   clearAiThinkTimer();
-  roomCode=''; myIdx=-1; isHost=false; onlineMode=false; practiceMode=false;
+  roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false; practiceMode=false;
   const input = document.getElementById('login-code');
   if (input) input.value = '';
   updateAuthUi();
@@ -3058,7 +3272,45 @@ function findSerialSlot(room, serial) {
   return fallback >= 0 ? fallback : -1;
 }
 
+function getSpectatorInfo(room) {
+  const spectators = room && room.spectators ? room.spectators : {};
+  const presence = room && room.spectatorPresence ? room.spectatorPresence : {};
+  const max = Number(room && room.spectatorLimit) || SPECTATOR_LIMIT;
+  const entries = Object.entries(spectators)
+    .filter(([id, spec]) => spec && presence[id] !== false)
+    .map(([id, spec]) => ({
+      id,
+      name:String(spec.name || spec.serial || '觀戰者').slice(0, 24),
+      serial:normaliseSerial(spec.serial || spec.name || '')
+    }));
+  return {entries, joined:entries.length, max};
+}
+
+function activeViewIdx() {
+  if (!G || !G.players || !G.players.length) return -1;
+  if (isSpectator()) {
+    const cur = Number(G.cur);
+    return Number.isFinite(cur) && cur >= 0 && cur < G.players.length ? cur : 0;
+  }
+  if (onlineMode && myIdx >= 0 && myIdx < G.players.length) return myIdx;
+  if (practiceMode || hasPracticeAiPlayers()) return G.players[0] ? 0 : -1;
+  const cur = Number(G.cur);
+  return Number.isFinite(cur) && cur >= 0 && cur < G.players.length ? cur : 0;
+}
+
+function activeViewPlayer() {
+  const idx = activeViewIdx();
+  return idx >= 0 && G && G.players ? G.players[idx] : null;
+}
+
+function turnCallbackFor(playerIdx) {
+  return !isSpectator() && onlineMode && Number(playerIdx) === Number(myIdx)
+    ? startHumanTurn
+    : startTimerDisplay;
+}
+
 function syncMyIdxFromStatePlayers() {
+  if (isSpectator()) return false;
   if (!onlineMode || !G || !G.players || !currentSerial) return false;
   const nextIdx = G.players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === normaliseSerial(currentSerial));
   if (nextIdx < 0 || nextIdx === myIdx) return false;
@@ -3148,7 +3400,8 @@ function getRoomCount(room) {
   const players = room && room.players ? room.players : {};
   const joined = Object.values(players).filter(name => String(name || '').trim()).length;
   const max = Number(room && room.numP) || joined || 0;
-  return { joined, max };
+  const spectators = getSpectatorInfo(room);
+  return { joined, max, spectators: spectators.joined, spectatorMax: spectators.max };
 }
 
 function renderRoomList(rooms) {
@@ -3162,7 +3415,10 @@ function renderRoomList(rooms) {
         room,
         joined:count.joined,
         max:count.max,
+        spectators:count.spectators,
+        spectatorMax:count.spectatorMax,
         playing:!!(room && room.state),
+        ended:!!(room && room.state && room.state.over),
         createdAt:Number(room && room.createdAt) || 0
       };
     })
@@ -3182,15 +3438,23 @@ function renderRoomList(rooms) {
     const reconnectPlayer = reconnectIdx >= 0 && item.room.state ? toArr(item.room.state.players)[reconnectIdx] : null;
     const canReconnect = item.playing && reconnectIdx >= 0 && !item.room.state?.over && reconnectPlayer && !reconnectPlayer.disconnected;
     const full = item.max > 0 && item.joined >= item.max;
+    const alreadySpectator = getSpectatorInfo(item.room).entries.some(spec => spec.serial === normaliseSerial(currentSerial));
+    const canSpectate = safeCode && !item.ended && reconnectIdx < 0 && (alreadySpectator || item.spectators < item.spectatorMax);
     const canJoin = (!item.playing && !full && safeCode) || canReconnect;
-    const status = item.playing ? '進行中' : '等待中';
-    const action = canReconnect ? '重連' : item.playing ? '進行中' : full ? '已滿' : '加入';
-    const actionAttr = canReconnect ? `onclick="reconnectToRoom('${safeCode}',${reconnectIdx})"` : canJoin ? `onclick="joinListedRoom('${safeCode}')"` : 'disabled';
+    const canEnter = safeCode && !item.ended && (canJoin || canSpectate);
+    const canClick = canReconnect || canEnter;
+    const status = item.ended ? '已結束' : item.playing ? '進行中' : '等待中';
+    const action = canReconnect ? '重連' : canEnter ? '進入' : item.ended ? '已結束' : full ? '已滿' : '進行中';
+    const actionAttr = canReconnect
+      ? `onclick="reconnectToRoom('${safeCode}',${reconnectIdx})"`
+      : canEnter
+        ? `onclick="joinListedRoom('${safeCode}')"`
+        : 'disabled';
     return `
-      <button type="button" class="room-card ${canJoin ? '' : 'disabled'}" ${actionAttr}>
+      <button type="button" class="room-card ${canClick ? '' : 'disabled'}" ${actionAttr}>
         <div class="room-code">${htmlEsc(item.code)}</div>
         <div class="room-status ${item.playing ? 'playing' : 'waiting'}">${status}</div>
-        <div class="room-count">${item.joined}/${item.max} 人</div>
+        <div class="room-count">玩家 ${item.joined}/${item.max} · 觀戰 ${item.spectators}/${item.spectatorMax}</div>
         <div class="room-action">${action}</div>
       </button>
     `;
@@ -3216,8 +3480,90 @@ function refreshRoomList() { startRoomList(); }
 function joinListedRoom(code) {
   const input = document.getElementById('jn-code');
   if (input) input.value = String(code || '').toUpperCase();
-  joinRoom();
+  enterRoomLobby(String(code || '').toUpperCase());
 }
+
+function joinListedSpectator(code) {
+  const input = document.getElementById('jn-code');
+  if (input) input.value = String(code || '').toUpperCase();
+  enterRoomLobby(String(code || '').toUpperCase());
+}
+
+function resetJoinChoice() {
+  const box = document.getElementById('wait-choice');
+  if (box) box.classList.remove('on');
+}
+
+async function enterRoomLobby(codeOverride='') {
+  if (!requireLogin()) return;
+  const input = document.getElementById('jn-code');
+  const code = String(codeOverride || (input && input.value) || '').trim().toUpperCase();
+  if (input) input.value = code;
+  if (code.length < 4) { alert('請輸入正確房號'); return; }
+  try {
+    fbInit();
+    const snap = await db.ref(`rooms/${code}`).once('value');
+    const room = snap.val();
+    if (!room) { alert('找不到房間，請確認房號'); return; }
+    const playerIdx = findSerialSlot(room, currentSerial);
+    const reconnectPlayer = playerIdx >= 0 && room.state ? toArr(room.state.players)[playerIdx] : null;
+    if (room.state) {
+      if (playerIdx >= 0 && !room.state.over && reconnectPlayer && !reconnectPlayer.disconnected) {
+        await reconnectToRoom(code, playerIdx, room);
+        return;
+      }
+      await enterRoomAsGuest(code, room);
+      return;
+    }
+    await enterRoomAsGuest(code, room);
+  } catch (err) {
+    alert('讀取房間失敗，請稍後再試');
+  }
+}
+
+async function enterRoomAsGuest(code, room) {
+  const playerIdx = findSerialSlot(room, currentSerial);
+  const sid = spectatorKey(currentSerial);
+  const spectatorInfo = getSpectatorInfo(room);
+  const alreadySpectator = spectatorInfo.entries.some(spec => spec.id === sid);
+
+  roomCode = String(code || '').toUpperCase();
+  isHost = false;
+  onlineMode = true;
+  practiceMode = false;
+  numP = Number((room.state && room.state.numP) || room.numP || 0);
+
+  if (!room.state && playerIdx >= 0) {
+    myIdx = playerIdx;
+    isHost = myIdx === 0;
+    spectatorMode = false;
+    spectatorId = '';
+    roomGuestMode = false;
+    await setupWaitingPresence(roomCode, myIdx, {host:myIdx===0});
+  } else if (alreadySpectator) {
+    myIdx = -1;
+    spectatorMode = true;
+    spectatorId = sid;
+    roomGuestMode = false;
+    await setupSpectatorPresence(roomCode, sid);
+  } else {
+    myIdx = -1;
+    spectatorMode = false;
+    spectatorId = '';
+    roomGuestMode = true;
+    await cancelPresenceCleanup();
+  }
+
+  showOnly('screen-wait');
+  warmPregameAssets();
+  document.getElementById('wait-code-text').textContent = roomCode;
+  document.getElementById('wait-crown').style.display = 'none';
+  document.getElementById('wait-ready').style.display = 'none';
+  document.getElementById('wait-start').style.display = 'none';
+  listenWait(roomCode);
+}
+
+const showJoinChoice = enterRoomLobby;
 
 async function setupHostRoomCleanup(code) {
   await cancelHostRoomCleanup();
@@ -3245,9 +3591,10 @@ async function createRoom() {
   const name = currentSerial;
   fbInit();
   const code = genCode();
-  roomCode = code; myIdx = 0; isHost = true; onlineMode = true; numP = _crNumP;
+  roomCode = code; myIdx = 0; isHost = true; spectatorMode = false; spectatorId = ''; roomGuestMode = false; onlineMode = true; numP = _crNumP;
   await db.ref(`rooms/${code}`).set({
     numP:_crNumP,
+    spectatorLimit:SPECTATOR_LIMIT,
     players:{0:name},
     playerIds:{0:currentSerial},
     state:null,
@@ -3265,9 +3612,9 @@ async function createRoom() {
   listenWait(code);
 }
 
-async function joinRoom() {
+async function joinRoom(codeOverride='') {
   if (!requireLogin()) return;
-  const code = (document.getElementById('jn-code').value||'').trim().toUpperCase();
+  const code = String(codeOverride || document.getElementById('jn-code')?.value || roomCode || '').trim().toUpperCase();
   const name = currentSerial;
   if (code.length < 4) { alert('請輸入正確房號'); return; }
   fbInit();
@@ -3281,20 +3628,23 @@ async function joinRoom() {
       await reconnectToRoom(code, rejoinIdx, room);
       return;
     }
-    alert('遊戲已開始，無法加入');
+    alert('遊戲已開始，無法加入玩家；可以改用觀戰');
     return;
   }
   if (findSerialSlot(room, currentSerial) >= 0) { alert('這個帳號已在房間內'); return; }
   const taken = Object.keys(room.players||{}).map(Number);
   let slot = 0; while (taken.includes(slot)) slot++;
   if (slot >= room.numP) { alert('房間已滿'); return; }
-  roomCode = code; myIdx = slot; isHost = false; onlineMode = true; numP = room.numP;
+  const sid = spectatorKey(currentSerial);
+  roomCode = code; myIdx = slot; isHost = false; spectatorMode = false; spectatorId = ''; roomGuestMode = false; onlineMode = true; numP = room.numP;
   await db.ref(`rooms/${code}`).update({
     [`players/${slot}`]: name,
     [`playerIds/${slot}`]: currentSerial,
+    [`spectators/${sid}`]: null,
+    [`spectatorPresence/${sid}`]: null,
     updatedAt:firebase.database.ServerValue.TIMESTAMP
   });
-  await setupPresence(code, slot);
+  await setupWaitingPresence(code, slot);
   showOnly('screen-wait');
   warmPregameAssets();
   document.getElementById('wait-code-text').textContent = code;
@@ -3302,6 +3652,125 @@ async function joinRoom() {
   document.getElementById('wait-ready').style.display = 'inline-block';
   document.getElementById('wait-start').style.display = 'none';
   listenWait(code);
+}
+
+async function joinSpectator(codeOverride='') {
+  if (!requireLogin()) return;
+  const code = String(codeOverride || document.getElementById('jn-code')?.value || roomCode || '').trim().toUpperCase();
+  if (code.length < 4) { alert('請輸入正確房號'); return; }
+  fbInit();
+  const snap = await db.ref(`rooms/${code}`).once('value');
+  const room = snap.val();
+  if (!room) { alert('找不到房間，請確認房號'); return; }
+  if (room.state && room.state.over) { alert('遊戲已結束，無法觀戰'); return; }
+  const playerIdx = findSerialSlot(room, currentSerial);
+  if (playerIdx >= 0) {
+    if (room.state) await reconnectToRoom(code, playerIdx, room);
+    else alert('你已經是這個房間的玩家');
+    return;
+  }
+  const sid = spectatorKey(currentSerial);
+  const spectatorInfo = getSpectatorInfo(room);
+  const alreadySpectator = spectatorInfo.entries.some(spec => spec.id === sid);
+  if (!alreadySpectator && spectatorInfo.joined >= spectatorInfo.max) {
+    alert('觀戰席已滿');
+    return;
+  }
+  roomCode = code;
+  myIdx = -1;
+  isHost = false;
+  spectatorMode = true;
+  spectatorId = sid;
+  roomGuestMode = false;
+  onlineMode = true;
+  practiceMode = false;
+  numP = Number((room.state && room.state.numP) || room.numP || 0);
+  await db.ref(`rooms/${code}`).update({
+    [`spectators/${sid}`]: {
+      name:currentSerial,
+      serial:currentSerial,
+      joinedAt:firebase.database.ServerValue.TIMESTAMP
+    },
+    [`spectatorPresence/${sid}`]: true,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  });
+  await setupSpectatorPresence(code, sid);
+  warmPregameAssets();
+  document.getElementById('wait-code-text').textContent = code;
+  document.getElementById('wait-crown').style.display = 'none';
+  document.getElementById('wait-ready').style.display = 'none';
+  document.getElementById('wait-start').style.display = 'none';
+  if (room.state) {
+    enterOnlineGameFromState(code, room.state, {opening:false});
+  } else {
+    showOnly('screen-wait');
+    listenWait(code);
+  }
+}
+
+function startOnlineGameRuntime(code, options={}) {
+  const opening = options.opening !== false;
+  function begin() {
+    if (opening) {
+      beginOpeningCeremony(()=>showTurnNotification(G.cur, turnCallbackFor(G.cur)));
+    } else {
+      showTurnNotification(G.cur, turnCallbackFor(G.cur));
+    }
+    listenGame(code);
+    listenLiveAnim(code);
+    listenTurnPause(code);
+  }
+  if (G.heroPool && !G.heroes && isSpectator()) {
+    waitSpectatorHeroSelection(code, begin);
+    return;
+  }
+  if (G.heroPool && !G.heroes && !isSpectator()) showOnlineHeroSelect(code, begin);
+  else begin();
+}
+
+function waitSpectatorHeroSelection(code, onReady) {
+  clearInterval(_heroSelectTimer);
+  const modal = document.getElementById('hero-select-modal') || document.createElement('div');
+  modal.id = 'hero-select-modal';
+  if (!modal.parentNode) document.body.appendChild(modal);
+  modal.innerHTML = `
+    <h2>觀戰席</h2>
+    <div class="hero-select-rows">
+      <div class="hero-player-row confirmed">
+        <div class="hero-player-label" style="color:#ffe08a">等待玩家選擇角色</div>
+        <div style="opacity:.52;font-size:.85em;margin-top:12px;line-height:1.7">
+          全員選完後，觀戰者會一起進入開場倒數。
+        </div>
+      </div>
+    </div>`;
+  const ref = db.ref(`rooms/${code}/state`);
+  const handler = snap => {
+    const data = snap.val();
+    if (!data) return;
+    if (!data.heroes) return;
+    ref.off('value', handler);
+    applyRemoteState(data);
+    render();
+    document.getElementById('hero-select-modal')?.remove();
+    onReady();
+  };
+  ref.on('value', handler);
+}
+
+function enterOnlineGameFromState(code, state, options={}) {
+  _finishedGameExitCleanupKey = '';
+  applyRemoteState(state);
+  setupActiveGamePresence(code).catch(() => {});
+  warmKnownGameStateAssets({priority:'high'});
+  showOnly('screen-game');
+  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  render();
+  listenChat(code);
+  _knownDisc = new Set();
+  _knownOffline = new Set();
+  listenCursor(code);
+  listenPresence(code);
+  startOnlineGameRuntime(code, options);
 }
 
 async function reconnectToRoom(code, idx, cachedRoom=null) {
@@ -3323,12 +3792,17 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   roomCode = String(code || '').toUpperCase();
   myIdx = Number(idx);
   isHost = myIdx === 0;
+  spectatorMode = false;
+  spectatorId = '';
+  roomGuestMode = false;
   onlineMode = true;
   numP = Number(room.state.numP || room.numP || 2);
+  _finishedGameExitCleanupKey = '';
   await db.ref(`rooms/${roomCode}`).update({
     [`presence/${myIdx}`]: true,
     [`state/players/${myIdx}/offline`]: false,
     [`state/players/${myIdx}/disconnected`]: false,
+    [`state/players/${myIdx}/sessionId`]: _accountSessionId || '',
     updatedAt:firebase.database.ServerValue.TIMESTAMP
   });
   await setupPresence(roomCode, myIdx);
@@ -3350,7 +3824,7 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   const begin = () => {
     listenGame(roomCode);
     listenLiveAnim(roomCode);
-    showTurnNotification(G.cur, G.cur===myIdx ? startHumanTurn : startTimerDisplay);
+    showTurnNotification(G.cur, turnCallbackFor(G.cur));
   };
   if (G.heroPool && !G.heroes) showOnlineHeroSelect(roomCode, begin);
   else begin();
@@ -3396,13 +3870,13 @@ async function markPlayerLeftRoom(code, idx) {
 
 // ── Wait room listener ────────────────────────────────────────────────────
 function listenWait(code) {
-  db.ref(`rooms/${code}`).on('value', snap => {
+  db.ref(`rooms/${code}`).on('value', async snap => {
     const room = snap.val();
     if (!room) {
       db.ref(`rooms/${code}`).off();
       if (roomCode === code) {
         const wasHost = isHost;
-        roomCode=''; myIdx=-1; isHost=false; onlineMode=false;
+        roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
         if (!wasHost) alert('房主已離開，房間已關閉');
         showOnly('screen-lobby');
       }
@@ -3410,31 +3884,30 @@ function listenWait(code) {
     }
     if (room.state) {
       db.ref(`rooms/${code}`).off();
-      applyRemoteState(room.state);
-      warmKnownGameStateAssets({priority:'high'});
-      showOnly('screen-game');
-      G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
-      render();
-      listenChat(code);
-      _knownDisc = new Set();
-      _knownOffline = new Set();
-      listenCursor(code);
-      listenPresence(code);
-      function _beginOnlineGame() {
-        beginOpeningCeremony(()=>showTurnNotification(G.cur, G.cur===myIdx ? startHumanTurn : startTimerDisplay));
-        listenGame(code);
-        listenLiveAnim(code);
-        listenTurnPause(code);
+      if (isRoomGuest()) {
+        await joinSpectator(code);
+        return;
       }
-      if (G.heroPool && !G.heroes) {
-        showOnlineHeroSelect(code, _beginOnlineGame);
-      } else {
-        _beginOnlineGame();
-      }
+      enterOnlineGameFromState(code, room.state, {opening:true});
       return;
     }
     const players = room.players||{}, n = room.numP;
     const ready = room.ready||{};
+    const spectatorInfo = getSpectatorInfo(room);
+    if (!room.starting && onlineMode && roomCode === code && !isSpectator() && !isHost && myIdx >= 0 && !players[myIdx]) {
+      cancelPresenceCleanup();
+      roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
+      alert('你已被市長移出房間');
+      showOnly('screen-lobby');
+      return;
+    }
+    if (onlineMode && roomCode === code && isSpectator() && spectatorId && !spectatorInfo.entries.some(spec => spec.id === spectatorId)) {
+      cancelPresenceCleanup();
+      roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
+      alert('你已被市長移出觀戰席');
+      showOnly('screen-lobby');
+      return;
+    }
     // Build player list with ready indicators
     let html='';
     for (let i=0;i<n;i++) {
@@ -3444,15 +3917,34 @@ function listenWait(code) {
         const isReady = isPlayerHost || ready[i];
         const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
         const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
-        html+=`<div class="wait-slot filled ${isPlayerHost?'host':''}">${hostCrown}${PC_NAME[i]} ${nm}${badge}</div>`;
+        const kick = isHost && !isPlayerHost ? `<button class="wait-kick" title="踢出玩家" onclick="kickWaitingPlayer(${i},event)">×</button>` : '';
+        html+=`<div class="wait-slot filled ${isPlayerHost?'host':''} ${kick?'kickable':''}">${hostCrown}${PC_NAME[i]} ${htmlEsc(nm)}${badge}${kick}</div>`;
       } else {
         html+=`<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
       }
     }
+    html+=`<div class="wait-spectator-head">觀戰席 ${spectatorInfo.joined}/${spectatorInfo.max}</div>`;
+    if (spectatorInfo.entries.length) {
+      spectatorInfo.entries.forEach(spec => {
+        const me = isSpectator() && spec.id === spectatorId;
+        const safeSpecId = String(spec.id || '').replace(/[^a-zA-Z0-9_-]/g,'');
+        const kick = isHost ? `<button class="wait-kick" title="移出觀戰席" onclick="kickWaitingSpectator('${safeSpecId}',event)">×</button>` : '';
+        html+=`<div class="wait-slot spectator ${kick?'kickable':''}">${me?'👁 ':''}觀戰 ${htmlEsc(spec.name)}${kick}</div>`;
+      });
+    } else {
+      html+=`<div class="wait-slot empty">目前沒有觀戰者</div>`;
+    }
     document.getElementById('wait-list').innerHTML = html;
+    updateWaitChoice(room, players, spectatorInfo);
     // Update ready button label for non-host
-    if (!isHost) {
+    if (isSpectator() || isRoomGuest()) {
       const btn = document.getElementById('wait-ready');
+      if (btn) btn.style.display = 'none';
+      const startBtn = document.getElementById('wait-start');
+      if (startBtn) startBtn.style.display = 'none';
+    } else if (!isHost) {
+      const btn = document.getElementById('wait-ready');
+      if (btn) btn.style.display = 'inline-block';
       if (ready[myIdx]) {
         btn.textContent = '取消準備';
         btn.style.opacity = '0.95';
@@ -3491,7 +3983,7 @@ function copyCode() {
 }
 
 function toggleReady() {
-  if (isHost) return;
+  if (isHost || isSpectator()) return;
   db.ref(`rooms/${roomCode}/ready/${myIdx}`).once('value', snap => {
     const isReady = snap.val() === true;
     if (isReady) {
@@ -3501,7 +3993,72 @@ function toggleReady() {
     }
   });
 }
+
+function updateWaitChoice(room, players, spectatorInfo) {
+  const box = document.getElementById('wait-choice');
+  if (!box) return;
+  if (!isRoomGuest()) {
+    box.classList.remove('on');
+    return;
+  }
+  const joined = Object.values(players || {}).filter(name => String(name || '').trim()).length;
+  const maxPlayers = Number(room && room.numP) || joined || 0;
+  const canJoinPlayer = joined < maxPlayers && findSerialSlot(room, currentSerial) < 0;
+  const canSpectate = spectatorInfo.joined < spectatorInfo.max;
+  const meta = document.getElementById('wait-choice-meta');
+  if (meta) meta.textContent = `玩家 ${joined}/${maxPlayers} · 觀戰 ${spectatorInfo.joined}/${spectatorInfo.max}`;
+  const playerBtn = document.getElementById('wait-join-player');
+  const specBtn = document.getElementById('wait-join-spectator');
+  if (playerBtn) playerBtn.disabled = !canJoinPlayer;
+  if (specBtn) specBtn.disabled = !canSpectate;
+  box.classList.add('on');
+}
 const PC_NAME = ['🟠','🔵','🟢','🟣'];
+
+async function kickWaitingPlayer(slot, ev) {
+  if (ev) ev.stopPropagation();
+  if (!isHost || !roomCode) return;
+  slot = Number(slot);
+  if (!Number.isFinite(slot) || slot <= 0) return;
+  fbInit();
+  const roomRef = db.ref(`rooms/${roomCode}`);
+  const snap = await roomRef.once('value');
+  const room = snap.val();
+  if (!room || room.state) return;
+  const name = room.players && room.players[slot];
+  if (!name) return;
+  if (!confirm(`要將 ${name} 踢出房間嗎？`)) return;
+  await roomRef.update({
+    [`players/${slot}`]: null,
+    [`playerIds/${slot}`]: null,
+    [`ready/${slot}`]: null,
+    [`presence/${slot}`]: null,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  });
+  toast(`已將 ${name} 移出房間`);
+}
+
+async function kickWaitingSpectator(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!isHost || !roomCode) return;
+  id = String(id || '').replace(/[^a-zA-Z0-9_-]/g,'');
+  if (!id) return;
+  fbInit();
+  const roomRef = db.ref(`rooms/${roomCode}`);
+  const snap = await roomRef.once('value');
+  const room = snap.val();
+  if (!room || room.state) return;
+  const spec = room.spectators && room.spectators[id];
+  if (!spec) return;
+  const name = spec.name || spec.serial || '觀戰者';
+  if (!confirm(`要將 ${name} 移出觀戰席嗎？`)) return;
+  await roomRef.update({
+    [`spectators/${id}`]: null,
+    [`spectatorPresence/${id}`]: null,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  });
+  toast(`已將 ${name} 移出觀戰席`);
+}
 
 async function hostStart() {
   if (!isHost) return;
@@ -3533,6 +4090,7 @@ async function hostStart() {
     playerIds:nextPlayerIds,
     ready:nextReady,
     presence:nextPresence,
+    starting:true,
     seatOrder:entries.map((entry, i)=>({seat:i, waitingSlot:entry.waitingSlot, serial:entry.serial})),
     updatedAt:firebase.database.ServerValue.TIMESTAMP
   });
@@ -3762,6 +4320,7 @@ function normaliseChatMessage(id, msg) {
     playerName:String(msg.playerName || '玩家').slice(0, 24),
     color:safeChatColor(msg.color || '#ffe08a'),
     ts:Number(msg.ts) || Date.now(),
+    spectator:!!msg.spectator,
   };
   if (msg.card && typeof msg.card === 'object') out.card = normaliseChatCard(msg.card);
   return out;
@@ -3791,17 +4350,26 @@ function safeChatColor(v) {
 }
 
 function chatPlayerInfo() {
+  if (isSpectator()) {
+    return {
+      idx:-1,
+      name:currentSerial || '觀戰者',
+      color:'#ffe08a',
+      spectator:true
+    };
+  }
   const idx = (onlineMode && myIdx >= 0) ? myIdx : 0;
   const pl = G && G.players && G.players[idx];
   return {
     idx,
     name:(pl && pl.name) || currentSerial || '玩家',
-    color:safeChatColor((pl && pl.color) || '#ffe08a')
+    color:safeChatColor((pl && pl.color) || '#ffe08a'),
+    spectator:false
   };
 }
 
 function chatSpeakerIsTenpai(who = chatPlayerInfo()) {
-  return !!(G && G.players && typeof isPlayerTenpai === 'function' && isPlayerTenpai(who.idx));
+  return !!(who.idx >= 0 && G && G.players && typeof isPlayerTenpai === 'function' && isPlayerTenpai(who.idx));
 }
 
 function blockTenpaiChat(who = chatPlayerInfo()) {
@@ -3818,7 +4386,8 @@ function publishChatMessage(payload, who = chatPlayerInfo()) {
     playerIdx:who.idx,
     playerName:who.name,
     color:who.color,
-    ts:Date.now()
+    ts:Date.now(),
+    spectator:!!who.spectator
   };
   if (payload.card) msg.card = payload.card;
   if (!msg.text && !msg.card) return;
@@ -3947,12 +4516,15 @@ function chatCardPreviewHtml(card) {
 }
 
 function chatMessageHtml(msg) {
-  const mine = Number(msg.playerIdx) === Number((onlineMode && myIdx >= 0) ? myIdx : 0);
+  const mine = isSpectator()
+    ? !!msg.spectator && normaliseSerial(msg.playerName) === normaliseSerial(currentSerial)
+    : Number(msg.playerIdx) === Number((onlineMode && myIdx >= 0) ? myIdx : 0);
+  const role = msg.spectator ? `<span style="color:rgba(255,224,138,.52);font-size:.88em;margin-left:4px">觀戰</span>` : '';
   const text = msg.text ? `<div class="chat-text">${htmlEsc(msg.text)}</div>` : '';
   const card = msg.card ? `<div class="chat-card-wrap">${chatCardPreviewHtml(msg.card)}</div>` : '';
   return `<div class="chat-entry ${mine?'mine':''}">
     <div class="chat-meta">
-      <span class="chat-name" style="color:${htmlEsc(msg.color || '#ffe08a')}">${htmlEsc(msg.playerName || '玩家')}</span>
+      <span class="chat-name" style="color:${htmlEsc(msg.color || '#ffe08a')}">${htmlEsc(msg.playerName || '玩家')}${role}</span>
       <span class="chat-time">${chatTimeText(msg.ts)}</span>
     </div>
     ${text}${card}
@@ -4013,14 +4585,34 @@ function applyRemoteState(data) {
   if (data.heroDVPrompt)    G.heroDVPrompt     = data.heroDVPrompt;
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
   G.virtualGemSupply = data.virtualGemSupply || {};
-  syncMyIdxFromStatePlayers();
+  if (!isSpectator()) syncMyIdxFromStatePlayers();
   G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
   reconcileGemBank('remote');
 }
 
 function listenGame(code) {
   db.ref(`rooms/${code}/state`).on('value', async snap => {
-    const data = snap.val(); if (!data) return;
+    const data = snap.val();
+    if (!data) {
+      if (onlineMode && roomCode === code && G && G.over && !_postGameRoomReturnInProgress) {
+        _postGameRoomReturnInProgress = true;
+        try {
+          const roomSnap = await db.ref(`rooms/${code}`).once('value');
+          const room = roomSnap.val();
+          if (room && !room.state) {
+            document.getElementById('m-over').style.display = 'none';
+            stopTimer();
+            _turnNotifCallback = null;
+            document.getElementById('turn-notif')?.classList.remove('on');
+            stopChat(false);
+            await enterRoomAsGuest(code, room);
+          }
+        } finally {
+          _postGameRoomReturnInProgress = false;
+        }
+      }
+      return;
+    }
     const prevCur = typeof G.cur==='number' ? G.cur : -1;
     applyRemoteState(data);
     render();
@@ -4031,7 +4623,7 @@ function listenGame(code) {
     if (G.over) { showOverMod(); return; }
     if (G.cur !== prevCur) {
       stopTimer();
-      showTurnNotification(G.cur, G.cur===myIdx ? startHumanTurn : startTimerDisplay);
+      showTurnNotification(G.cur, turnCallbackFor(G.cur));
     }
   });
 }
@@ -4054,8 +4646,9 @@ function cancelPresenceCleanup() {
     _presenceUnloadHandler = null;
   }
   if (!_presenceRef) return Promise.resolve();
-  const ref = _presenceRef;
+  const ref = _presenceDisconnectRef || _presenceRef;
   _presenceRef = null;
+  _presenceDisconnectRef = null;
   return ref.onDisconnect().cancel().catch(() => {});
 }
 
@@ -4063,10 +4656,105 @@ async function setupPresence(code, idx, opts={}) {
   await cancelPresenceCleanup();
   const ref = db.ref(`rooms/${code}/presence/${idx}`);
   _presenceRef = ref;
+  _presenceDisconnectRef = ref;
   await ref.set(true);
   if (opts.trackDisconnect === false) return;
   await ref.onDisconnect().set(false);
   _presenceUnloadHandler = () => { ref.set(false); };
+  window.addEventListener('beforeunload', _presenceUnloadHandler);
+}
+
+async function setupActiveGamePresence(code) {
+  if (!onlineMode || !code || isSpectator() || myIdx < 0) return;
+  await setupPresence(code, myIdx);
+  await db.ref(`rooms/${code}`).update({
+    [`presence/${myIdx}`]: true,
+    [`state/players/${myIdx}/offline`]: false,
+    [`state/players/${myIdx}/sessionId`]: _accountSessionId || '',
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  }).catch(() => {});
+}
+
+async function setupWaitingPresence(code, idx, opts={}) {
+  await cancelPresenceCleanup();
+  const host = !!opts.host;
+  if (host) {
+    await setupHostRoomCleanup(code);
+    await setupPresence(code, idx, {trackDisconnect:false});
+    return;
+  }
+  const roomRef = db.ref(`rooms/${code}`);
+  const presenceRef = db.ref(`rooms/${code}/presence/${idx}`);
+  _presenceRef = presenceRef;
+  _presenceDisconnectRef = roomRef;
+  await presenceRef.set(true);
+  const removeUpdates = {
+    [`players/${idx}`]: null,
+    [`playerIds/${idx}`]: null,
+    [`ready/${idx}`]: null,
+    [`presence/${idx}`]: null,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  };
+  await roomRef.onDisconnect().update(removeUpdates);
+  _presenceUnloadHandler = () => { roomRef.update(removeUpdates).catch(() => {}); };
+  window.addEventListener('beforeunload', _presenceUnloadHandler);
+}
+
+async function setupSpectatorPresence(code, id) {
+  await cancelPresenceCleanup();
+  const ref = db.ref(`rooms/${code}/spectatorPresence/${id}`);
+  _presenceRef = ref;
+  _presenceDisconnectRef = ref;
+  await ref.set(true);
+  await ref.onDisconnect().set(false);
+  _presenceUnloadHandler = () => { ref.set(false); };
+  window.addEventListener('beforeunload', _presenceUnloadHandler);
+}
+
+async function leaveSpectatorRoom(code=roomCode) {
+  if (!db || !code) return;
+  const sid = spectatorId || spectatorKey(currentSerial);
+  await cancelPresenceCleanup();
+  await db.ref(`rooms/${code}`).update({
+    [`spectators/${sid}`]: null,
+    [`spectatorPresence/${sid}`]: null,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  }).catch(() => {});
+}
+
+async function armFinishedGameExitCleanup() {
+  if (!onlineMode || !roomCode) return;
+  const role = isSpectator() ? `s:${spectatorId || spectatorKey(currentSerial)}` : `p:${myIdx}`;
+  const key = `${roomCode}:${role}:${G && (G.turnCount || 0)}`;
+  if (_finishedGameExitCleanupKey === key) return;
+  _finishedGameExitCleanupKey = key;
+  const code = roomCode;
+  await cancelPresenceCleanup();
+  if (_finishedGameExitCleanupKey !== key || roomCode !== code) return;
+  const roomRef = db.ref(`rooms/${code}`);
+  if (isSpectator()) {
+    const sid = spectatorId || spectatorKey(currentSerial);
+    const updates = {
+      [`spectators/${sid}`]: null,
+      [`spectatorPresence/${sid}`]: null,
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    };
+    _presenceRef = db.ref(`rooms/${code}/spectatorPresence/${sid}`);
+    _presenceDisconnectRef = roomRef;
+    await roomRef.onDisconnect().update(updates);
+    _presenceUnloadHandler = () => { roomRef.update(updates).catch(() => {}); };
+    window.addEventListener('beforeunload', _presenceUnloadHandler);
+    return;
+  }
+  if (myIdx < 0) return;
+  const updates = {
+    [`presence/${myIdx}`]: false,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  };
+  _presenceRef = db.ref(`rooms/${code}/presence/${myIdx}`);
+  _presenceDisconnectRef = roomRef;
+  await roomRef.onDisconnect().update(updates);
+  _presenceUnloadHandler = () => { roomRef.update(updates).catch(() => {}); };
   window.addEventListener('beforeunload', _presenceUnloadHandler);
 }
 
@@ -4097,6 +4785,7 @@ function isTurnUnavailable(p) {
 }
 
 function isLeader() {
+  if (isSpectator()) return false;
   const idx = G.players.findIndex(p => !isTurnUnavailable(p));
   return myIdx === idx;
 }
@@ -4146,7 +4835,7 @@ function handleDisconnect(discIdx) {
     stopTimer();
     if (isLeader()) {
       pushG();
-      showTurnNotification(G.cur, G.cur === myIdx ? startHumanTurn : startTimerDisplay);
+      showTurnNotification(G.cur, turnCallbackFor(G.cur));
     }
   } else {
     // Not their turn, just sync the disconnected flag
@@ -4211,6 +4900,7 @@ function resetPreGemAction() {
 
 function preActionPlayerIdx() {
   if (!G || !G.players) return -1;
+  if (isSpectator()) return -1;
   if (onlineMode && roomCode) return myIdx>=0 && myIdx<G.players.length ? myIdx : -1;
   if (practiceMode || hasPracticeAiPlayers()) return G.players[0] && !isPracticeAi(0) ? 0 : -1;
   return -1;
@@ -4284,6 +4974,7 @@ function preGemActionText() {
 }
 
 function clickPreBank(col) {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!canSelectPreGemAction()) { toast('還沒輪到你'); return; }
   if (_preGemAction.pendGold){ toast('已預選金幣，請先取消'); return; }
   const p=_preGemAction.pending, b=G.bank, cnt=p[col]||0;
@@ -4308,6 +4999,7 @@ function clickPreBank(col) {
 }
 
 function clickPreGold() {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!canSelectPreGemAction()) { toast('還沒輪到你'); return; }
   if (_preGemAction.pendGold) {
     _preGemAction.pendGold=false;
@@ -6284,7 +6976,7 @@ function beginOpeningCeremony(callback) {
 function startGame() {
   clearPracticeAiWatcher();
   clearAiThinkTimer();
-  if (practiceMode) { roomCode=''; onlineMode=false; isHost=false; myIdx=0; }
+  if (practiceMode) { roomCode=''; onlineMode=false; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; myIdx=0; }
   const names = Array.from({length:numP},(_,i)=>document.getElementById(`pn${i}`)?.value.trim()||`玩家${i+1}`);
   if (practiceMode) {
     names[0] = names[0] || currentSerial || '玩家1';
@@ -6313,8 +7005,10 @@ function startGame() {
 
 function startGameOnline(names, serials=[]) {
   // Host only — build G and push to Firebase
+  _finishedGameExitCleanupKey = '';
   G = _buildG(names, serials);
   syncMyIdxFromStatePlayers();
+  if (onlineMode && myIdx >= 0 && G.players && G.players[myIdx]) G.players[myIdx].sessionId = _accountSessionId || '';
   G.heroPool = drawHeroPool(names.length);
   prepareOpeningBoardWarmup({priority:'high', decode:true, deadlineMs:2600});
   warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
@@ -6533,7 +7227,7 @@ function flyingCardHtml(card) {
 }
 
 function boardCardFace(card, pl) {
-  const viewer = pl || ((onlineMode && myIdx >= 0) ? G.players[myIdx] : G.players[G.cur]);
+  const viewer = pl || activeViewPlayer() || G.players[G.cur];
   const afford = viewer ? canBuy(viewer, card) : false;
   const e = viewer ? effCost(viewer, card) : (card.cost || {});
   const costH = CI.filter(c=>(card.cost[c]||0)>0).map(c=>{
@@ -7529,7 +8223,7 @@ function advanceTurn() {
     pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
     pushG();
     // listenGame won't fire turn notification for us (G.cur already changed locally), so do it here
-    showTurnNotification(G.cur, G.cur===myIdx ? startHumanTurn : startTimerDisplay);
+    showTurnNotification(G.cur, turnCallbackFor(G.cur));
   } else {
     const aiTurn = isPracticeAi(G.cur);
     const turnKey = G.turnCount || 0;
@@ -8283,7 +8977,7 @@ function missionProgress(m, p) {
 
 function missionProgressHtml(m) {
   if (!G.players || m.claimedBy!==null) return '';
-  const idx = (practiceMode || hasPracticeAiPlayers()) ? 0 : ((onlineMode && myIdx >= 0) ? myIdx : G.cur);
+  const idx = activeViewIdx();
   const p = G.players[idx];
   if (!p) return '';
   const prog = missionProgress(m, p);
@@ -8376,7 +9070,7 @@ function clickGold() {
 
 function rCards() {
   // In online mode always highlight based on your own wallet, not the current player's
-  const pl = (onlineMode && myIdx >= 0) ? G.players[myIdx] : G.players[G.cur];
+  const pl = activeViewPlayer() || G.players[G.cur];
   let h='';
   [3,2,1].forEach(t=>{
     const tc={3:'#ffe066',2:'#8ec8ff',1:'#d6aa72'}[t];
@@ -8420,7 +9114,8 @@ function rBottom() {
 
 function playerViewOrder() {
   const n = G.players.length;
-  const start = (onlineMode && myIdx >= 0 && myIdx < n) ? myIdx : 0;
+  const viewIdx = activeViewIdx();
+  const start = viewIdx >= 0 && viewIdx < n ? viewIdx : 0;
   return Array.from({length:n}, (_, offset) => (start + offset) % n);
 }
 
@@ -8530,7 +9225,7 @@ function viewResCard(pi, ri) {
   const card=p&&p.reserved[ri];
   if (!card) return;
   // If it's my own card and it's my turn → allow buy
-  const isMine = onlineMode ? pi===myIdx : pi===G.cur;
+  const isMine = !isSpectator() && (onlineMode ? pi===myIdx : pi===G.cur);
   if (isMine && isMyTurn() && !G.ui.acted) { openResCard(ri); return; }
   // Read-only view
   const tierN={1:'初級卡',2:'中級卡',3:'高級卡'}[card.tier];
@@ -8700,8 +9395,101 @@ function cancelRet() {
 }
 
 // ── Game over ─────────────────────────────────────────────────────────────
+function restoredWaitingRoomFromGameRoom(room) {
+  const state = room && room.state ? room.state : {};
+  const statePlayers = toArr(state.players);
+  const seatOrder = toArr(room && room.seatOrder);
+  const presence = room && room.presence ? room.presence : {};
+  const max = Number(state.numP || room?.numP || statePlayers.length || 0);
+  const used = new Set();
+  const nextFreeSlot = () => {
+    for (let i = 0; i < Math.max(max, statePlayers.length, 1); i++) {
+      if (!used.has(i)) return i;
+    }
+    return used.size;
+  };
+  const entries = statePlayers
+    .map((p, seat) => ({p, seat, order:seatOrder[seat] || {}}))
+    .filter(({p, seat}) => p && !p.disconnected && !p.offline && presence[seat] !== false)
+    .map(({p, seat, order}) => {
+      let waitingSlot = Number(order.waitingSlot);
+      if (!Number.isFinite(waitingSlot) || waitingSlot < 0 || used.has(waitingSlot)) waitingSlot = nextFreeSlot();
+      used.add(waitingSlot);
+      return {
+        waitingSlot,
+        name:p.name || `玩家${seat+1}`,
+        serial:normaliseSerial(order.serial || p.serial || p.name || `player${seat+1}`)
+      };
+    })
+    .sort((a,b)=>a.waitingSlot-b.waitingSlot);
+  if (entries.length && !entries.some(entry => entry.waitingSlot === 0)) {
+    entries.forEach((entry, i) => { entry.waitingSlot = i; });
+  }
+  const players = {};
+  const playerIds = {};
+  const ready = {};
+  const nextPresence = {};
+  entries.forEach(entry => {
+    players[entry.waitingSlot] = entry.name;
+    playerIds[entry.waitingSlot] = entry.serial;
+    ready[entry.waitingSlot] = entry.waitingSlot === 0;
+    nextPresence[entry.waitingSlot] = true;
+  });
+  return {players, playerIds, ready, presence:nextPresence, entries, numP:max || entries.length || 2};
+}
+
+async function returnToRoomAfterGame() {
+  if (!onlineMode || !roomCode) {
+    location.reload();
+    return;
+  }
+  if (_postGameRoomReturnInProgress) return;
+  _postGameRoomReturnInProgress = true;
+  fbInit();
+  try {
+    const code = roomCode;
+    const roomRef = db.ref(`rooms/${code}`);
+    const snap = await roomRef.once('value');
+    const room = snap.val();
+    if (!room) {
+      location.reload();
+      return;
+    }
+    let nextRoom = room;
+    if (room.state) {
+      const restored = restoredWaitingRoomFromGameRoom(room);
+      const updates = {
+        state:null,
+        anim:null,
+        heroSelections:null,
+        turnPause:null,
+        ladderAwarded:null,
+        starting:false,
+        players:restored.players,
+        playerIds:restored.playerIds,
+        ready:restored.ready,
+        presence:restored.presence,
+        numP:restored.numP,
+        seatOrder:null,
+        updatedAt:firebase.database.ServerValue.TIMESTAMP
+      };
+      await roomRef.update(updates);
+      nextRoom = {...room, ...updates, state:null, seatOrder:null};
+    }
+    document.getElementById('m-over').style.display = 'none';
+    stopTimer();
+    _turnNotifCallback = null;
+    document.getElementById('turn-notif')?.classList.remove('on');
+    stopChat(false);
+    await enterRoomAsGuest(code, nextRoom);
+  } finally {
+    _postGameRoomReturnInProgress = false;
+  }
+}
+
 function showOverMod() {
   stopTimer();
+  armFinishedGameExitCleanup().catch(() => {});
   clearTimeout(window._tndTimer);
   _turnNotifCallback = null;
   document.getElementById('turn-notif')?.classList.remove('on');
@@ -8753,7 +9541,7 @@ function showOverMod() {
     <div class="over-rows">
     ${rows}
     </div>
-    <button class="over-restart" onclick="location.reload()">再玩一次</button>
+    <button class="over-restart" onclick="${onlineMode && roomCode ? 'returnToRoomAfterGame()' : 'location.reload()'}">${onlineMode && roomCode ? '回到房間' : '再玩一次'}</button>
   </section>`;
   awardLadderPointsOnce();
 }
