@@ -142,7 +142,33 @@ body {
 .chat-hint { font-size:.56em; color:rgba(255,236,190,.5); white-space:nowrap; }
 .chat-list {
   flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
-  display:flex; flex-direction:column; gap:9px; padding-right:2px;
+  display:flex; flex-direction:column; gap:9px; padding-right:5px;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(198,139,48,.9) rgba(10,7,5,.45);
+}
+.chat-list::-webkit-scrollbar {
+  width:10px;
+}
+.chat-list::-webkit-scrollbar-track {
+  margin:2px 0; border-radius:999px;
+  background:linear-gradient(180deg,rgba(7,5,4,.12),rgba(0,0,0,.44)), rgba(255,220,140,.05);
+  box-shadow:inset 0 0 0 1px rgba(255,222,145,.08), inset 0 0 8px rgba(0,0,0,.65);
+}
+.chat-list::-webkit-scrollbar-thumb {
+  min-height:38px; border-radius:999px;
+  border:1px solid rgba(255,224,138,.18);
+  background:
+    url('splendor-card-art/chat-scrollbar-thumb.png?v=1') center / 100% 100% no-repeat,
+    linear-gradient(180deg,#d19a36,#5e3511);
+  box-shadow:0 0 0 1px rgba(20,10,4,.55), 0 0 9px rgba(255,190,70,.12);
+}
+.chat-list::-webkit-scrollbar-thumb:hover {
+  border-color:rgba(255,232,170,.34);
+  box-shadow:0 0 0 1px rgba(20,10,4,.6), 0 0 11px rgba(255,205,92,.22);
+}
+.chat-list::-webkit-scrollbar-corner {
+  background:transparent;
 }
 .chat-empty {
   margin:auto 0; padding:12px 7px;
@@ -3774,8 +3800,18 @@ function chatPlayerInfo() {
   };
 }
 
-function publishChatMessage(payload) {
-  const who = chatPlayerInfo();
+function chatSpeakerIsTenpai(who = chatPlayerInfo()) {
+  return !!(G && G.players && typeof isPlayerTenpai === 'function' && isPlayerTenpai(who.idx));
+}
+
+function blockTenpaiChat(who = chatPlayerInfo()) {
+  if (!chatSpeakerIsTenpai(who)) return false;
+  toast('聽牌玩家無法發話');
+  return true;
+}
+
+function publishChatMessage(payload, who = chatPlayerInfo()) {
+  if (blockTenpaiChat(who)) return false;
   const msg = {
     type:payload.type || 'text',
     text:String(payload.text || '').trim().slice(0, 120),
@@ -3788,19 +3824,22 @@ function publishChatMessage(payload) {
   if (!msg.text && !msg.card) return;
   if (onlineMode && db && roomCode && _chatRef) {
     _chatRef.push({...msg, ts:firebase.database.ServerValue.TIMESTAMP});
-    return;
+    return true;
   }
   _chatMessages.push({...msg, id:`local-${++_chatLocalSeq}`});
   _chatMessages = _chatMessages.slice(-CHAT_MAX_MESSAGES);
   renderChatMessages();
+  return true;
 }
 
 function sendChatText() {
   const input = document.getElementById('chat-input');
   const text = String(input && input.value || '').trim();
   if (!text) return;
+  const who = chatPlayerInfo();
+  if (blockTenpaiChat(who)) return;
   if (input) input.value = '';
-  publishChatMessage({type:'text', text});
+  publishChatMessage({type:'text', text}, who);
 }
 
 function makeChatCardPayload(card) {
@@ -3869,8 +3908,10 @@ function dropChatCard(ev) {
   if (!card) { toast('這張牌已不在牌桌上'); return; }
   const input = document.getElementById('chat-input');
   const text = String(input && input.value || '').trim();
+  const who = chatPlayerInfo();
+  if (blockTenpaiChat(who)) return;
   if (input && text) input.value = '';
-  publishChatMessage({type:'card', text, card:makeChatCardPayload(card)});
+  publishChatMessage({type:'card', text, card:makeChatCardPayload(card)}, who);
 }
 
 function chatTimeText(ts) {
