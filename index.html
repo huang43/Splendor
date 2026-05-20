@@ -2773,10 +2773,11 @@ async function backToLobby() {
   roomCode=''; myIdx=-1; isHost=false; onlineMode=false; practiceMode=false;
   updateAuthUi();
   showOnly('screen-lobby');
+  warmEntryAssets();
 }
-function startLocal()       { if (!requireLogin()) return; clearPracticeAiWatcher(); clearAiThinkTimer(); roomCode=''; isHost=false; practiceMode=true; onlineMode=false; myIdx=0; buildInputs(); showOnly('screen-setup'); }
-function showOnlineCreate() { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-create'); }
-function showOnlineJoin()   { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-join'); startRoomList(); }
+function startLocal()       { if (!requireLogin()) return; clearPracticeAiWatcher(); clearAiThinkTimer(); roomCode=''; isHost=false; practiceMode=true; onlineMode=false; myIdx=0; buildInputs(); showOnly('screen-setup'); warmPregameAssets(); }
+function showOnlineCreate() { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-create'); warmPregameAssets(); }
+function showOnlineJoin()   { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-join'); warmPregameAssets(); startRoomList(); }
 function crSetN(n, btn) {
   _crNumP = n;
   document.querySelectorAll('#screen-create .btn-num').forEach(b=>b.classList.remove('active'));
@@ -2789,6 +2790,7 @@ function initLoginScreen() {
   const input = document.getElementById('login-code');
   if (input && remembered) input.value = remembered;
   updateAuthUi();
+  warmEntryAssets();
 }
 
 function loginWithSerial() {
@@ -2803,6 +2805,7 @@ function loginWithSerial() {
   setCurrentSerial(serial);
   const checkId = ++_loginReconnectCheckId;
   showOnly('screen-lobby');
+  warmPregameAssets();
   checkReconnectAfterLogin(serial, checkId);
 }
 
@@ -3044,6 +3047,7 @@ async function createRoom() {
   await setupHostRoomCleanup(code);
   await setupPresence(code, 0, {trackDisconnect:false});
   showOnly('screen-wait');
+  warmPregameAssets();
   document.getElementById('wait-code-text').textContent = code;
   document.getElementById('wait-crown').style.display = 'inline';
   document.getElementById('wait-ready').style.display = 'none';
@@ -3082,6 +3086,7 @@ async function joinRoom() {
   });
   await setupPresence(code, slot);
   showOnly('screen-wait');
+  warmPregameAssets();
   document.getElementById('wait-code-text').textContent = code;
   document.getElementById('wait-crown').style.display = 'none';
   document.getElementById('wait-ready').style.display = 'inline-block';
@@ -3118,6 +3123,7 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   });
   await setupPresence(roomCode, myIdx);
   applyRemoteState(room.state);
+  warmKnownGameStateAssets({priority:'high'});
   if (G.players && G.players[myIdx]) {
     G.players[myIdx].offline = false;
     G.players[myIdx].disconnected = false;
@@ -3193,6 +3199,7 @@ function listenWait(code) {
     if (room.state) {
       db.ref(`rooms/${code}`).off();
       applyRemoteState(room.state);
+      warmKnownGameStateAssets({priority:'high'});
       showOnly('screen-game');
       G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
       render();
@@ -3302,6 +3309,7 @@ async function hostStart() {
 // ── Game state sync ────────────────────────────────────────────────────────
 function pushG() {
   if (!onlineMode || !db || !roomCode) return;
+  reconcileGemBank('push');
   const serial = {
     numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
     lastStarter:G.lastStarter, over:G.over, normalEnd:!!G.normalEnd,
@@ -3432,6 +3440,7 @@ function applyRemoteState(data) {
   if (data.heroDVPrompt)    G.heroDVPrompt     = data.heroDVPrompt;
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
   G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
+  reconcileGemBank('remote');
 }
 
 function listenGame(code) {
@@ -3800,6 +3809,248 @@ function heroAvatarHTML(hero, cls='hero-avatar-img', style='') {
   return `<img class="${cls}" src="${src}" style="${style}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${hero.name}"><span class="${cls.replace('img','fallback')}" style="display:none;${style}">${HERO_EMOJI[hero.key]||'👤'}</span>`;
 }
 
+const HERO_SPECIAL_SKILL_ASSETS = {
+  lehman: {
+    showcase:['lehman_破產宣告_第二段.png'],
+    cutout:['lehman_phase2_cutout.png']
+  },
+  DV: {
+    showcase:['dv_你還愛我嗎.png'],
+    cutout:['dv_phase2_cutout.png']
+  },
+  shiyuan: {
+    showcase:['shiyuan_鹹酥雞_第二段.png','shiyuan_點石成雞.png'],
+    cutout:['shiyuan_stall_cutout.png']
+  }
+};
+
+const _assetWarm = {
+  seen:new Set(),
+  loaded:new Set(),
+  failed:new Set(),
+  promises:new Map(),
+  items:new Map(),
+  high:[],
+  normal:[],
+  active:0,
+  scheduled:false,
+  refs:[]
+};
+
+function normaliseWarmAssetUrl(url) {
+  const clean = String(url || '').trim();
+  if (!clean || clean.startsWith('data:') || /^https?:\/\//i.test(clean)) return '';
+  return clean;
+}
+
+function scheduleAssetWarmPump(force=false) {
+  if (_assetWarm.scheduled && !force) return;
+  _assetWarm.scheduled = true;
+  const run = () => {
+    _assetWarm.scheduled = false;
+    pumpAssetWarmQueue();
+  };
+  if (!force && !_assetWarm.high.length && window.requestIdleCallback) {
+    window.requestIdleCallback(run, {timeout:700});
+  } else {
+    window.setTimeout(run, 0);
+  }
+}
+
+function promoteWarmItem(item) {
+  if (!item || item.priority === 'high') return;
+  item.priority = 'high';
+  item.decode = true;
+  _assetWarm.normal = _assetWarm.normal.filter(x => x !== item);
+  _assetWarm.high.push(item);
+}
+
+function warmAsset(url, options={}) {
+  const clean = normaliseWarmAssetUrl(url);
+  if (!clean || _assetWarm.loaded.has(clean)) return Promise.resolve(true);
+  const existing = _assetWarm.promises.get(clean);
+  if (existing) {
+    if (options.priority === 'high') promoteWarmItem(_assetWarm.items.get(clean));
+    scheduleAssetWarmPump(options.priority === 'high');
+    return existing;
+  }
+  const item = {
+    url:clean,
+    priority:options.priority === 'high' ? 'high' : 'normal',
+    decode:!!options.decode,
+    resolve:null
+  };
+  const promise = new Promise(resolve => { item.resolve = resolve; });
+  _assetWarm.promises.set(clean, promise);
+  _assetWarm.items.set(clean, item);
+  _assetWarm.seen.add(clean);
+  if (item.priority === 'high') _assetWarm.high.push(item);
+  else _assetWarm.normal.push(item);
+  scheduleAssetWarmPump(item.priority === 'high');
+  return promise;
+}
+
+function warmAssetUrls(urls, options={}) {
+  return Promise.all((urls || []).map(url => warmAsset(url, options)));
+}
+
+function warmAssetUrlsWithDeadline(urls, options={}, deadlineMs=2200) {
+  const list = (urls || []).filter(Boolean);
+  if (!list.length) return Promise.resolve([]);
+  const warm = warmAssetUrls(list, options);
+  return Promise.race([
+    warm,
+    new Promise(resolve => window.setTimeout(() => resolve([]), deadlineMs))
+  ]);
+}
+
+function pumpAssetWarmQueue() {
+  const limit = _assetWarm.high.length ? 4 : 2;
+  while (_assetWarm.active < limit) {
+    const item = _assetWarm.high.shift() || _assetWarm.normal.shift();
+    if (!item) return;
+    _assetWarm.items.delete(item.url);
+    _assetWarm.active++;
+    loadWarmImage(item).then(ok => {
+      if (ok) _assetWarm.loaded.add(item.url);
+      else _assetWarm.failed.add(item.url);
+      if (item.resolve) item.resolve(ok);
+    }).finally(() => {
+      _assetWarm.active--;
+      scheduleAssetWarmPump(!!_assetWarm.high.length);
+    });
+  }
+}
+
+function loadWarmImage(item) {
+  return new Promise(resolve => {
+    const img = new Image();
+    let done = false;
+    let timer = null;
+    if ('decoding' in img) img.decoding = 'async';
+    if ('fetchPriority' in img) img.fetchPriority = item.priority === 'high' ? 'high' : 'low';
+    _assetWarm.refs.push(img);
+    const cleanup = () => {
+      const idx = _assetWarm.refs.indexOf(img);
+      if (idx >= 0) _assetWarm.refs.splice(idx, 1);
+      img.onload = null;
+      img.onerror = null;
+      window.clearTimeout(timer);
+    };
+    const finish = ok => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(ok);
+    };
+    img.onload = () => {
+      if (item.decode && img.decode) img.decode().then(() => finish(true)).catch(() => finish(true));
+      else finish(true);
+    };
+    img.onerror = () => finish(false);
+    timer = window.setTimeout(() => finish(false), item.priority === 'high' ? 22000 : 45000);
+    img.src = item.url;
+    if (img.complete && img.naturalWidth > 0) finish(true);
+  });
+}
+
+function coreGameAssetUrls() {
+  return [
+    'splendor-card-art/game-bg-cellar-02.png',
+    'splendor-card-art/title-treasure-brawl-v3-cutout.png',
+    'splendor-card-art/button-treasure-03-clean.png',
+    'splendor-card-art/button-gem-clean.png',
+    'splendor-card-art/table-surface-frame.png',
+    'splendor-card-art/mission-parchment.png',
+    'splendor-card-art/deck-tier1-hearthlike.png',
+    'splendor-card-art/deck-tier2-hearthlike.png',
+    'splendor-card-art/deck-tier3-hearthlike.png',
+    `splendor-card-art/card-tier1-single.png?v=${CARD_ART_VERSION}`,
+    `splendor-card-art/card-tier2-single.png?v=${CARD_ART_VERSION}`,
+    `splendor-card-art/card-tier3-single.png?v=${CARD_ART_VERSION}`,
+    ...Object.values(GEM_ICON_SRC)
+  ];
+}
+
+function cardArtUrl(card) {
+  const name = card ? cardArtName(card) : '';
+  return name ? `splendor-card-art/${name}?v=${CARD_ART_VERSION}` : '';
+}
+
+function allCardArtUrls() {
+  return Array.from(new Set(Object.values(CARD_ART_BY_ID).map(name => `splendor-card-art/${name}?v=${CARD_ART_VERSION}`)));
+}
+
+function heroAssetUrls(hero, includeSkill=false) {
+  if (!hero) return [];
+  const urls = [heroImgSrc(hero.key)];
+  if (!includeSkill) return urls;
+  const showcaseFile = HERO_SHOWCASE[hero.key];
+  const cutoutFile = HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
+  if (showcaseFile) urls.push(`heros/skill_showcases/${showcaseFile}`);
+  urls.push(`heros/skill_showcases/_cutouts/${cutoutFile}`);
+  const special = HERO_SPECIAL_SKILL_ASSETS[hero.key];
+  if (special) {
+    (special.showcase || []).forEach(name => urls.push(`heros/skill_showcases/${name}`));
+    (special.cutout || []).forEach(name => urls.push(`heros/skill_showcases/_cutouts/${name}`));
+  }
+  return urls;
+}
+
+function heroesFromIds(ids) {
+  return (ids || []).map(id => HEROES.find(h => h.id === id)).filter(Boolean);
+}
+
+function warmEntryAssets() {
+  warmAssetUrls(coreGameAssetUrls(), {priority:'normal'});
+  warmAssetUrls(HEROES.map(h => heroImgSrc(h.key)), {priority:'normal'});
+}
+
+function warmPregameAssets() {
+  warmEntryAssets();
+  warmAssetUrls(HEROES.flatMap(h => heroAssetUrls(h, true)), {priority:'normal'});
+}
+
+function warmHeroPoolAssets(playerPools, options={}) {
+  const heroes = (playerPools || []).flatMap(ids => heroesFromIds(ids));
+  return warmAssetUrls(heroes.flatMap(h => heroAssetUrls(h, true)), {
+    priority:options.priority || 'normal',
+    decode:!!options.decode
+  });
+}
+
+function warmSelectedHeroAssets(options={}) {
+  if (!G || !G.heroes) return Promise.resolve([]);
+  return warmAssetUrls(heroesFromIds(G.heroes).flatMap(h => heroAssetUrls(h, true)), {
+    priority:options.priority || 'high',
+    decode:options.decode !== false
+  });
+}
+
+function warmKnownOpeningBoardAssets(options={}) {
+  if (!G || !G.board) return Promise.resolve([]);
+  return warmAssetUrlsWithDeadline(
+    getOpeningBoardCards().map(cardArtUrl),
+    {priority:options.priority || 'high', decode:options.decode !== false},
+    options.deadlineMs || 2600
+  );
+}
+
+function prepareOpeningBoardWarmup(options={}) {
+  if (!G) return Promise.resolve([]);
+  if (!G.openingDealt) ensureOpeningBoardDealt();
+  warmAssetUrls(allCardArtUrls(), {priority:'normal'});
+  return warmKnownOpeningBoardAssets(options);
+}
+
+function warmKnownGameStateAssets(options={}) {
+  warmEntryAssets();
+  const priority = options.priority || 'high';
+  if (G && G.heroPool) warmHeroPoolAssets(G.heroPool, {priority:'normal'});
+  if (G && G.heroes) warmSelectedHeroAssets({priority});
+  return warmKnownOpeningBoardAssets({priority, decode:true, deadlineMs:options.deadlineMs || 2200});
+}
+
 // ── Hero selection ────────────────────────────────────────────────────────
 let _heroSelectTimer = null;
 let _heroSelectSec   = 10;
@@ -3822,6 +4073,7 @@ function showHeroSelect(playerPools, onDone) {
   const modal = document.createElement('div');
   modal.id = 'hero-select-modal';
   document.body.appendChild(modal);
+  warmHeroPoolAssets(playerPools, {priority:'high', decode:true});
 
   _mySelectIdx = 0;
   if (typeof myIdx === 'number' && myIdx >= 0) _mySelectIdx = myIdx;
@@ -3933,6 +4185,7 @@ function finishHeroSelect(assigned, playerPools, onDone) {
   G.heroActedThisTurn = Array(G.numP).fill(false);
   const modal = document.getElementById('hero-select-modal');
   if (modal) modal.remove();
+  warmSelectedHeroAssets({priority:'high', decode:true});
   onDone();
 }
 
@@ -3946,6 +4199,7 @@ function showOnlineHeroSelect(code, onDone) {
   const modal = document.createElement('div');
   modal.id = 'hero-select-modal';
   document.body.appendChild(modal);
+  warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
 
   function renderModal(waiting) {
     const pl = G.players[myIdx];
@@ -4027,6 +4281,7 @@ function showOnlineHeroSelect(code, onDone) {
     G.heroActedThisTurn = Array(G.numP).fill(false);
     const m = document.getElementById('hero-select-modal');
     if (m) m.remove();
+    warmSelectedHeroAssets({priority:'high', decode:true});
     // Leader writes final heroes into shared state; others just read it
     if (isLeader()) pushG();
     onDone();
@@ -4227,6 +4482,7 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
   const showcaseSrc  = showcaseFile ? `heros/skill_showcases/${showcaseFile}` : '';
   const cutoutFile   = options.cutoutFile || HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
   const cutoutSrc    = `heros/skill_showcases/_cutouts/${cutoutFile}`;
+  warmAssetUrls([showcaseSrc, cutoutSrc, avatarSrc], {priority:'high', decode:true});
 
   overlay.innerHTML = `
     <div class="hero-overlay-bg"></div>
@@ -5321,6 +5577,8 @@ function startGame() {
     ensurePracticeAiWatcher();
   }
   G.heroPool = drawHeroPool(numP);
+  prepareOpeningBoardWarmup({priority:'high', decode:true, deadlineMs:2600});
+  warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
   showOnly('screen-game');
   render();
   _mySelectIdx = 0;
@@ -5333,6 +5591,8 @@ function startGameOnline(names, serials=[]) {
   // Host only — build G and push to Firebase
   G = _buildG(names, serials);
   G.heroPool = drawHeroPool(names.length);
+  prepareOpeningBoardWarmup({priority:'high', decode:true, deadlineMs:2600});
+  warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
   _knownDisc = new Set();
   pushG(); // Triggers listenWait → game starts for all clients
   listenPresence(roomCode);
@@ -5340,6 +5600,44 @@ function startGameOnline(names, serials=[]) {
 
 // ── Core helpers ─────────────────────────────────────────────────────────
 function gsum(gems) { return CI.reduce((s,c)=>s+(gems[c]||0),0)+(gems.gold||0); }
+
+function makeActionSnapshot(pl, pending={}) {
+  return {
+    playerIdx:G.cur,
+    turnCount:G.turnCount || 0,
+    gems:{...pl.gems},
+    bank:{...G.bank},
+    pending:{...pending},
+    reserved:[...pl.reserved],
+    board:JSON.parse(JSON.stringify(G.board)),
+    decks:JSON.parse(JSON.stringify(G.decks)),
+    log:[...(G.log||[])]
+  };
+}
+
+function isCurrentActionSnapshot(snap) {
+  return !!(snap && Number(snap.playerIdx) === Number(G.cur) && Number(snap.turnCount) === Number(G.turnCount || 0));
+}
+
+function clearActionSnapshot() {
+  window._retSnapshot = null;
+}
+
+function reconcileGemBank(reason='') {
+  if (!G || !G.players || !G.bank) return;
+  const expectedColor = GEMCNT[G.numP] || GEMCNT[numP] || 0;
+  const expected = {w:expectedColor,u:expectedColor,g:expectedColor,r:expectedColor,k:expectedColor,gold:5};
+  let changed = false;
+  [...CI,'gold'].forEach(col => {
+    const held = G.players.reduce((sum,p) => sum + Number((p && p.gems && p.gems[col]) || 0), 0);
+    const correctBank = Math.max(0, expected[col] - held);
+    if (Number(G.bank[col] || 0) !== correctBank) {
+      G.bank[col] = correctBank;
+      changed = true;
+    }
+  });
+  if (changed) console.warn('gem bank reconciled', reason);
+}
 
 function htmlEsc(v) {
   return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -5544,18 +5842,7 @@ function refillDeckCardStyle(tier) {
 }
 
 function preloadCardArt(card) {
-  return new Promise(resolve=>{
-    const name = card ? cardArtName(card) : '';
-    if (!name) { resolve(); return; }
-    const img = new Image();
-    let done = false;
-    const finish = () => { if (!done) { done = true; resolve(); } };
-    img.onload = finish;
-    img.onerror = finish;
-    img.src = `splendor-card-art/${name}?v=${CARD_ART_VERSION}`;
-    if (img.complete) finish();
-    setTimeout(finish, 1400);
-  });
+  return warmAssetUrlsWithDeadline([cardArtUrl(card)], {priority:'high', decode:true}, 1400);
 }
 
 function completeRefillThen(refill, nextStep) {
@@ -5852,7 +6139,8 @@ function runStartCeremony(callback) {
     ensureOpeningBoardDealt();
     if (onlineMode && typeof isLeader === 'function' && isLeader()) pushG();
     render();
-    artReady = Promise.all(getOpeningBoardCards().map(preloadCardArt));
+    warmSelectedHeroAssets({priority:'high', decode:true});
+    artReady = warmKnownOpeningBoardAssets({priority:'high', decode:true, deadlineMs:2600});
     await introWait(1140 * pace);
     overlay.classList.remove('on');
     await artReady;
@@ -5956,7 +6244,7 @@ function execReserve(card, tier, bi) {
   if (pl.reserved.length>=3){ toast('最多預留3張牌'); return false; }
   const animSource = tier!==null && bi!==null ? {kind:'board', tier, slot:bi} : {kind:'deck', tier:card.tier};
   const refillPreview = tier!==null && bi!==null ? previewBoardRefill(animSource) : null;
-  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...G.ui.pending},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks)),log:[...(G.log||[])]};
+  window._retSnapshot = makeActionSnapshot(pl, G.ui.pending);
   pl.reserved.push(card);
   const gotGold = G.bank.gold>0;
   if (gotGold){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; }
@@ -5976,7 +6264,7 @@ function execReserve(card, tier, bi) {
     const refill = tier!==null && bi!==null ? fillBoard(card) : null;
     completeRefillThen(refill, ()=>{
       if (gsum(pl.gems)>10){ render(); showRetMod(muskRes ? {mode:'musk'} : {}); }
-      else if (muskRes) { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
+      else if (muskRes) { clearActionSnapshot(); toast('✅ 留牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
       else { afterAct(); render(); }
     });
   });
@@ -6458,7 +6746,7 @@ function execTakeGems() {
 
   const pl=G.players[G.cur];
   const take={...p};
-  window._retSnapshot={gems:{...pl.gems},bank:{...G.bank},pending:{...take},reserved:[...pl.reserved],board:JSON.parse(JSON.stringify(G.board)),decks:JSON.parse(JSON.stringify(G.decks)),log:[...(G.log||[])]};
+  window._retSnapshot = makeActionSnapshot(pl, take);
   markGemFlyAnim(take, G.cur);
   G.ui.acted=true;
   render();
@@ -6472,6 +6760,7 @@ function execTakeGems() {
 }
 
 function afterAct() {
+  clearActionSnapshot();
   deactivateAllZones();
   checkMissions();
   advanceTurn();
@@ -6577,11 +6866,14 @@ function skipCurrentTurn(reason='timeout') {
   if (!pl) return;
   const label = reason === 'offline' ? '斷線跳過回合' : '時間到，放棄回合';
   if (window._retSnapshot) {
-    pl.gems=window._retSnapshot.gems; G.bank=window._retSnapshot.bank;
-    pl.reserved=window._retSnapshot.reserved;
-    G.board=window._retSnapshot.board; G.decks=window._retSnapshot.decks;
-    if (window._retSnapshot.log) G.log=window._retSnapshot.log;
-    window._retSnapshot=null;
+    const snap = window._retSnapshot;
+    if (isCurrentActionSnapshot(snap)) {
+      pl.gems=snap.gems; G.bank=snap.bank;
+      pl.reserved=snap.reserved;
+      G.board=snap.board; G.decks=snap.decks;
+      if (snap.log) G.log=snap.log;
+    }
+    clearActionSnapshot();
   }
   addLog('skip', label, G.cur);
   toast(`⌛ ${pl.name} ${label}`);
@@ -7129,6 +7421,7 @@ function cardBgStyle(card) {
 }
 
 function render() {
+  reconcileGemBank('render');
   rMissions(); rBank(); rCards(); rPlayers(); rActionLog();
   if (onlineMode) applyOpponentCursors();
   updateTenpaiNotifications();
@@ -7562,6 +7855,7 @@ function confRet() {
   if (gemListLog(returned)) addLog('return', `歸還 ${gemListLog(returned)}，符合10顆上限`, G.cur);
   window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
   window._retMode=null;
+  clearActionSnapshot();
   document.getElementById('m-ret').style.display='none';
   if (mode==='skill') { render(); return; }
   if (mode==='musk') { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); return; }
@@ -7571,6 +7865,12 @@ function confRet() {
 function cancelRet() {
   const snap=window._retSnapshot;
   if (!snap) return;
+  if (!isCurrentActionSnapshot(snap)) {
+    clearActionSnapshot();
+    document.getElementById('m-ret').style.display='none';
+    render();
+    return;
+  }
   const pl=G.players[G.cur];
   pl.gems=snap.gems; G.bank=snap.bank;
   pl.reserved=snap.reserved;
@@ -7579,7 +7879,7 @@ function cancelRet() {
   G.ui.pending=snap.pending; G.ui.acted=false;
   G.ui.pendCard=null; G.ui.pendGold=false;
   if (G.ui.muskActive) G.ui.muskCardDone=false;
-  window._retSnapshot=null;
+  clearActionSnapshot();
   window._retMode=null;
   window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
   document.getElementById('m-ret').style.display='none';
