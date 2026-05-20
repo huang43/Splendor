@@ -1342,7 +1342,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
 }
 .wait-team-seat.selectable { cursor:pointer; color:#ffe08a; border-color:rgba(255,224,138,.35); }
 .wait-team-seat.filled { color:#fff; background:rgba(255,255,255,.075); }
-.wait-team-seat.host { border-color:rgba(255,204,68,.46); }
+.wait-team-seat.host { padding-left:36px; border-color:rgba(255,204,68,.46); overflow:visible; }
 .over-restart {
   width:100%; margin-top:16px; padding:12px;
   background:linear-gradient(135deg,#cc6600,#ffaa22);
@@ -1858,6 +1858,11 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   background:rgba(255,200,50,.1); border:2px solid rgba(255,200,50,.35);
   border-radius:14px; padding:14px 32px;
 }
+.title-crown {
+  width:36px; height:32px; margin-right:8px; vertical-align:-5px;
+  background:url('splendor-card-art/host-crown.svg?v=1') center / contain no-repeat;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.42)) drop-shadow(0 0 6px rgba(255,204,68,.3));
+}
 .wait-list { display:flex; flex-direction:column; gap:7px; width:260px; }
 .wait-slot {
   position:relative; overflow:visible;
@@ -1887,7 +1892,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   background:linear-gradient(90deg,rgba(52,42,22,.94),rgba(18,20,24,.9));
 }
 .wait-slot.host {
-  padding-left:25px;
+  padding-left:36px;
   border-color:rgba(255,218,93,.72);
   box-shadow:0 8px 22px rgba(0,0,0,.28), 0 0 18px rgba(255,200,50,.18), inset 0 1px 0 rgba(255,255,255,.1);
 }
@@ -1916,14 +1921,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 .wait-spectator-head.selectable { cursor:pointer; color:#ffe08a; }
 .wait-spectator-head.selectable:hover { color:#fff6c7; }
 .host-crown {
-  position:absolute; left:-10px; top:-13px; z-index:2;
-  width:28px; height:28px; display:flex; align-items:center; justify-content:center;
-  border-radius:50%;
-  background:radial-gradient(circle at 35% 25%,#fff0a8,#e3a720 62%,#7a3d00);
-  border:1.5px solid rgba(255,236,154,.95);
-  box-shadow:0 6px 14px rgba(0,0,0,.42), 0 0 16px rgba(255,205,70,.38);
-  font-size:16px; line-height:1;
-  transform:rotate(-12deg);
+  position:absolute; left:-18px; top:50%; z-index:2;
+  width:42px; height:38px; display:block;
+  background:url('splendor-card-art/host-crown.svg?v=1') center / contain no-repeat;
+  transform:translateY(-50%) rotate(-8deg);
+  filter:drop-shadow(0 5px 7px rgba(0,0,0,.55)) drop-shadow(0 0 6px rgba(255,204,68,.32));
+  pointer-events:none;
 }
 .lb-sep { font-size:.78em; opacity:.38; letter-spacing:2px; }
 
@@ -2798,7 +2801,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Wait room -->
 <div id="screen-wait">
-  <div class="setup-title" style="font-size:1.8em"><span id="wait-crown" style="display:none">👑 </span>等待玩家加入</div>
+  <div class="setup-title" style="font-size:1.8em"><span id="wait-crown" class="title-crown" aria-hidden="true" style="display:none"></span>等待玩家加入</div>
   <div class="setup-sub">把這個房號傳給朋友</div>
   <div class="code-display" id="wait-code" onclick="copyCode()" title="點擊複製" style="cursor:pointer;display:flex;align-items:center;gap:12px">
     <span id="wait-code-text">------</span>
@@ -3829,7 +3832,7 @@ async function createRoom() {
   showOnly('screen-wait');
   warmPregameAssets();
   document.getElementById('wait-code-text').textContent = code;
-  document.getElementById('wait-crown').style.display = 'inline';
+  document.getElementById('wait-crown').style.display = 'inline-block';
   document.getElementById('wait-ready').style.display = 'none';
   document.getElementById('wait-start').style.display = 'inline-block';
   listenWait(code);
@@ -4344,7 +4347,7 @@ function listenWait(code) {
         if (nm) {
           const isPlayerHost = (i===0);
           const isReady = isPlayerHost || ready[i];
-          const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
+          const hostCrown = isPlayerHost ? '<span class="host-crown" aria-hidden="true"></span>' : '';
           const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
           const kick = isHost && !isPlayerHost ? `<button class="wait-kick" title="踢出玩家" onclick="kickWaitingPlayer(${i},event)">×</button>` : '';
           html+=`<div class="wait-slot filled ${isPlayerHost?'host':''} ${kick?'kickable':''}">${hostCrown}${PC_NAME[i]} ${htmlEsc(nm)}${badge}${kick}</div>`;
@@ -4469,7 +4472,7 @@ function renderCoopWaitPlayers(room, players, ready) {
       if (nm) {
         const isPlayerHost = slot === 0;
         const isReady = isPlayerHost || ready[slot];
-        const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
+        const hostCrown = isPlayerHost ? '<span class="host-crown" aria-hidden="true"></span>' : '';
         const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
         const kick = isHost && !isPlayerHost ? `<button class="wait-kick" title="踢出玩家" onclick="kickWaitingPlayer(${slot},event)">×</button>` : '';
         html += `<div class="wait-team-seat filled ${isPlayerHost?'host':''} ${kick?'kickable':''}">${hostCrown}${pos === 0 ? '上位' : '下位'} ${htmlEsc(nm)}${badge}${kick}</div>`;
