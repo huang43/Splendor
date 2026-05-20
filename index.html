@@ -2666,6 +2666,10 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   will-change:transform,opacity;
   pointer-events:none;
 }
+.hero-showcase-block.no-cutout {
+  left:50%;
+  width:68%;
+}
 @keyframes showcaseIn {
   from { transform:translate(-50%,-50%) scale(.78); opacity:0; }
   to   { transform:translate(-50%,-50%) scale(1);   opacity:1; }
@@ -3163,8 +3167,8 @@ async function backToLobby() {
         roomRef.off();
         await cancelPresenceCleanup();
         if (leavingAsHost) {
-          await roomRef.remove();
           await cancelHostRoomCleanup();
+          await roomRef.remove();
         } else {
           await roomRef.update({
             [`players/${idx}`]: null,
@@ -3232,12 +3236,13 @@ async function loginWithSerial() {
     if (err) err.textContent = '帳號不在允許名單內';
     return;
   }
+  const cleanupCutoff = Date.now();
   setCurrentSerial(serial);
   const checkId = ++_loginReconnectCheckId;
   showOnly('screen-lobby');
   warmPregameAssets();
   await claimAccountSession(serial);
-  await cleanupWaitingRoomsForSerial(serial);
+  await cleanupWaitingRoomsForSerial(serial, cleanupCutoff);
   checkReconnectAfterLogin(serial, checkId);
 }
 
@@ -3266,7 +3271,7 @@ async function claimAccountSession(serial) {
   _accountSessionRef.on('value', _accountSessionHandler);
 }
 
-async function cleanupWaitingRoomsForSerial(serial) {
+async function cleanupWaitingRoomsForSerial(serial, createdBefore=Date.now()) {
   fbInit();
   const wanted = normaliseSerial(serial);
   const snap = await db.ref('rooms').once('value');
@@ -3274,6 +3279,8 @@ async function cleanupWaitingRoomsForSerial(serial) {
   const updates = {};
   Object.entries(rooms).forEach(([code, room]) => {
     if (!room) return;
+    const createdAt = Number(room.createdAt) || 0;
+    if (!room.state && createdAt > createdBefore) return;
     let touchedRoom = false;
     Object.entries(room.spectators || {}).forEach(([id, spec]) => {
       if (normaliseSerial(spec && (spec.serial || spec.name)) !== wanted) return;
@@ -3511,6 +3518,46 @@ function spectatorRecordId(room, serial=currentSerial) {
   return found ? found[0] : '';
 }
 
+function gameSeatIdsFromState(state, room=null) {
+  const players = toArr(state && state.players);
+  if (!players.length) return [];
+  if (roomIsCoop(room || state) || state.coop) {
+    return players
+      .flatMap(team => toArr(team && team.members).map(member => Number(member && member.seat)))
+      .filter(Number.isFinite);
+  }
+  return players.map((p, idx) => p ? idx : -1).filter(idx => idx >= 0);
+}
+
+function waitingRoomSeatIds(room) {
+  const seats = new Set();
+  const addSeats = obj => Object.entries(obj || {}).forEach(([idx, value]) => {
+    if (value !== null && value !== undefined && String(value).trim() !== '') seats.add(Number(idx));
+  });
+  addSeats(room && room.players);
+  addSeats(room && room.playerIds);
+  return Array.from(seats).filter(Number.isFinite);
+}
+
+function roomSeatIds(room) {
+  if (!room) return [];
+  return room.state ? gameSeatIdsFromState(room.state, room) : waitingRoomSeatIds(room);
+}
+
+function seatsAllOffline(seats, presence) {
+  if (!seats.length) return false;
+  return seats.every(seat => presence && presence[seat] === false);
+}
+
+async function closeRoomIfEveryoneOffline(code, room, reason='offline') {
+  if (!db || !code || !room || (room.state && room.state.over)) return false;
+  const seats = roomSeatIds(room);
+  if (!seatsAllOffline(seats, room.presence || {})) return false;
+  await db.ref(`rooms/${code}`).remove().catch(() => {});
+  console.info('room closed because everyone left', {code, reason});
+  return true;
+}
+
 function activeViewIdx() {
   if (!G || !G.players || !G.players.length) return -1;
   if (isSpectator()) {
@@ -3643,7 +3690,8 @@ function renderLadder(data) {
     serial,
     points:Number((data && data[serial] && data[serial].points) || 0),
     games:Number((data && data[serial] && data[serial].games) || 0),
-  })).sort((a,b) => b.points - a.points || a.serial.localeCompare(b.serial)).slice(0,30);
+  })).filter(row => row.points > 0)
+    .sort((a,b) => b.points - a.points || a.serial.localeCompare(b.serial)).slice(0,30);
   if (!rows.length) {
     list.innerHTML = '<div class="ladder-empty">目前沒有寶石天梯榜資料</div>';
     return;
@@ -3687,6 +3735,9 @@ function getRoomCount(room) {
 function renderRoomList(rooms) {
   const list = document.getElementById('room-list');
   if (!list) return;
+  Object.entries(rooms || {}).forEach(([code, room]) => {
+    closeRoomIfEveryoneOffline(String(code || '').toUpperCase(), room, 'room-list').catch(() => {});
+  });
   const entries = Object.entries(rooms || {})
     .map(([code, room]) => {
       const count = getRoomCount(room);
@@ -3857,10 +3908,14 @@ async function setupHostRoomCleanup(code) {
   await cancelHostRoomCleanup();
   _hostRoomRef = db.ref(`rooms/${code}`);
   window.addEventListener('beforeunload', removeHostedWaitingRoom);
-  return _hostRoomRef.onDisconnect().remove();
+  return _hostRoomRef.onDisconnect().update({
+    [`presence/${Math.max(0, Number(myIdx) || 0)}`]: false,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  });
 }
 
 function cancelHostRoomCleanup() {
+  window.removeEventListener('beforeunload', removeHostedWaitingRoom);
   if (!_hostRoomRef) return Promise.resolve();
   const ref = _hostRoomRef;
   _hostRoomRef = null;
@@ -3869,7 +3924,10 @@ function cancelHostRoomCleanup() {
 
 function removeHostedWaitingRoom() {
   if (db && _hostRoomRef && isHost && onlineMode && roomCode) {
-    _hostRoomRef.remove();
+    _hostRoomRef.update({
+      [`presence/${Math.max(0, Number(myIdx) || 0)}`]: false,
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    });
   }
 }
 
@@ -4317,7 +4375,11 @@ async function markPlayerLeftRoom(code, idx) {
       updates[`state/players/${teamIdx}/disconnected`] = teamGone;
       updates[`state/players/${teamIdx}/offline`] = false;
     }
-    if (activeTeams.length <= 1) {
+    if (activeTeams.length === 0) {
+      await roomRef.remove();
+      return;
+    }
+    if (activeTeams.length === 1) {
       updates['state/over'] = true;
       updates['state/normalEnd'] = false;
       updates['state/winnerIndices'] = activeTeams;
@@ -4351,7 +4413,11 @@ async function markPlayerLeftRoom(code, idx) {
     [`state/players/${idx}/offline`]: false,
     updatedAt:firebase.database.ServerValue.TIMESTAMP
   };
-  if (activeIdxs.length <= 1) {
+  if (activeIdxs.length === 0) {
+    await roomRef.remove();
+    return;
+  }
+  if (activeIdxs.length === 1) {
     updates['state/over'] = true;
     updates['state/normalEnd'] = false;
     updates['state/winnerIndices'] = activeIdxs;
@@ -4381,6 +4447,7 @@ function listenWait(code) {
       }
       return;
     }
+    if (await closeRoomIfEveryoneOffline(code, room, 'wait-listener')) return;
     if (room.state) {
       db.ref(`rooms/${code}`).off();
       if (isRoomGuest()) {
@@ -5261,11 +5328,21 @@ function listenGame(code) {
   db.ref(`rooms/${code}/state`).on('value', async snap => {
     const data = snap.val();
     if (!data) {
+      const roomSnap = await db.ref(`rooms/${code}`).once('value').catch(() => null);
+      const room = roomSnap && roomSnap.val();
+      if (!room) {
+        db.ref(`rooms/${code}`).off();
+        stopTimer();
+        stopChat(false);
+        _turnNotifCallback = null;
+        document.getElementById('turn-notif')?.classList.remove('on');
+        roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
+        showOnly('screen-lobby');
+        return;
+      }
       if (onlineMode && roomCode === code && G && G.over && !_postGameRoomReturnInProgress) {
         _postGameRoomReturnInProgress = true;
         try {
-          const roomSnap = await db.ref(`rooms/${code}`).once('value');
-          const room = roomSnap.val();
           if (room && !room.state) {
             document.getElementById('m-over').style.display = 'none';
             stopTimer();
@@ -5491,6 +5568,12 @@ function listenPresence(code) {
   db.ref(`rooms/${code}/presence`).on('value', snap => {
     if (!G || !G.players || G.over) return;
     const presence = snap.val() || {};
+    if (onlineMode && roomCode === code && seatsAllOffline(gameSeatIdsFromState(G, G), presence)) {
+      db.ref(`rooms/${code}`).once('value')
+        .then(roomSnap => closeRoomIfEveryoneOffline(code, roomSnap.val(), 'presence'))
+        .catch(() => {});
+      return;
+    }
     if (isCoopGame()) {
       let changed = false;
       G.players.forEach((team, teamIdx) => {
@@ -6940,14 +7023,15 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
   const avatarSrc   = heroImgSrc(hero.key);
   const showcaseFile = options.showcaseFile || HERO_SHOWCASE[hero.key];
   const showcaseSrc  = showcaseFile ? imgAsset(`heros/skill_showcases/${showcaseFile}`) : '';
-  const cutoutFile   = options.cutoutFile || HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
-  const cutoutSrc    = imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`);
+  const showCutout   = options.hideCutout !== true && !options.cutoutFile;
+  const cutoutFile   = showCutout ? (HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`) : '';
+  const cutoutSrc    = cutoutFile ? imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`) : '';
   warmAssetUrls([showcaseSrc, cutoutSrc, avatarSrc], {priority:'high', decode:true});
 
   overlay.innerHTML = `
     <div class="hero-overlay-bg"></div>
     <div class="hero-radial-lines"></div>
-    <div class="hero-showcase-block">
+    <div class="hero-showcase-block ${showCutout ? '' : 'no-cutout'}">
       ${showcaseSrc
         ? `<img class="hero-showcase-img" src="${showcaseSrc}" alt="${htmlEsc(hero.skill)}">`
         : `<div class="hero-effect-fallback-title">${htmlEsc(hero.skill)}</div>`}
@@ -6956,8 +7040,8 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
       </div>
     </div>
     <div class="hero-speed-lines"></div>
-    <img class="hero-cutout-img" src="${cutoutSrc}" alt="${hero.name}"
-      onerror="this.className='hero-full-img';this.src='${fullSrc}';this.onerror=function(){this.src='${avatarSrc}'}">
+    ${showCutout ? `<img class="hero-cutout-img" src="${cutoutSrc}" alt="${htmlEsc(hero.name)}"
+      onerror="this.className='hero-full-img';this.src='${fullSrc}';this.onerror=function(){this.src='${avatarSrc}'}">` : ''}
   `;
   overlay.classList.add('show');
 
