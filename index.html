@@ -14,14 +14,14 @@
   --deck-icon-w:120px;
   --deck-icon-h:148px;
   --board-gap:7px;
-  --table-surface-image:url('splendor-card-art/table-surface-frame.png');
-  --mission-parchment-image:url('splendor-card-art/mission-parchment.png');
+  --table-surface-image:url('splendor-card-art/table-surface-frame.webp');
+  --mission-parchment-image:url('splendor-card-art/mission-parchment.webp');
 }
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background:
     linear-gradient(180deg,rgba(16,20,26,.42),rgba(27,18,12,.72)),
-    url('splendor-card-art/game-bg-cellar-02.png') center/cover fixed,
+    url('splendor-card-art/game-bg-cellar-02.webp') center/cover fixed,
     #3b2b1d;
   color: #e8e8f0; min-height: 100vh; user-select: none;
 }
@@ -720,7 +720,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   --deck-back-a:#050504; --deck-back-b:#21180b; --deck-line:#dfb34c; --deck-line-soft:rgba(223,179,76,.48);
   --deck-mark-bg:#0c0a07; --deck-mark-fg:#ffe993;
 }
-.deck-tier-3 .deck-card-icon { background-image:url('splendor-card-art/deck-tier3-hearthlike.png'); }
+.deck-tier-3 .deck-card-icon { background-image:url('splendor-card-art/deck-tier3-hearthlike.webp'); }
 .deck-tier-3 .deck-sigil::before { content:"✦"; }
 .deck-tier-2 {
   --deck-edge-hi:#8fc8ff; --deck-edge-mid:#2f78ad; --deck-edge-lo:#0d355d;
@@ -728,7 +728,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   --deck-back-a:#061a32; --deck-back-b:#15558d; --deck-line:#9bd2ff; --deck-line-soft:rgba(155,210,255,.5);
   --deck-mark-bg:#072746; --deck-mark-fg:#e3f3ff;
 }
-.deck-tier-2 .deck-card-icon { background-image:url('splendor-card-art/deck-tier2-hearthlike.png'); }
+.deck-tier-2 .deck-card-icon { background-image:url('splendor-card-art/deck-tier2-hearthlike.webp'); }
 .deck-tier-2 .deck-sigil::before { content:"✦"; }
 .deck-tier-1 {
   --deck-edge-hi:#9fd596; --deck-edge-mid:#3f8a4d; --deck-edge-lo:#173f22;
@@ -736,7 +736,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   --deck-back-a:#092416; --deck-back-b:#24693a; --deck-line:#a5df95; --deck-line-soft:rgba(165,223,149,.48);
   --deck-mark-bg:#0c321d; --deck-mark-fg:#e4ffd6;
 }
-.deck-tier-1 .deck-card-icon { background-image:url('splendor-card-art/deck-tier1-hearthlike.png'); }
+.deck-tier-1 .deck-card-icon { background-image:url('splendor-card-art/deck-tier1-hearthlike.webp'); }
 .deck-tier-1 .deck-sigil::before { content:"✦"; }
 .deck-rank {
   position:absolute; left:0; right:0; top:4px; z-index:2;
@@ -1007,7 +1007,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   min-width:190px;
   padding:17px 24px 13px;
   font-size:1.02em;
-  background:url('splendor-card-art/button-treasure-03-clean.png') center / 100% 100% no-repeat;
+  background:url('splendor-card-art/button-treasure-03-clean.webp') center / 100% 100% no-repeat;
   color:#160b02;
 }
 .auth-error {
@@ -1510,7 +1510,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   padding:17px 38px 19px;
   border:0;
   border-radius:24px;
-  background:url('splendor-card-art/button-gem-clean.png') center / 100% 100% no-repeat;
+  background:url('splendor-card-art/button-gem-clean.webp') center / 100% 100% no-repeat;
   color:#160b02;
   cursor:pointer;
   font-family:'Belwe Bd BT','Belwe','Bookman Old Style','Georgia','Noto Serif TC','PMingLiU','MingLiU',serif;
@@ -2455,7 +2455,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Login -->
 <div id="screen-login" style="display:flex">
-  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="login-card">
     <input id="login-code" class="lb-input" placeholder="請輸入帳號..." maxlength="16" style="text-transform:lowercase;letter-spacing:2px" onkeydown="if(event.key==='Enter'){event.preventDefault();loginWithSerial();}">
     <button class="btn-online primary" onclick="loginWithSerial()">登　入</button>
@@ -2465,7 +2465,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Lobby -->
 <div id="screen-lobby" style="display:none">
-  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="session-pill" id="lobby-user">帳號：-</div>
   <div class="online-btns" style="margin-top:10px">
     <button class="btn-online primary" onclick="showOnlineJoin()">加入對戰</button>
@@ -2538,7 +2538,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Setup -->
 <div id="screen-setup">
-  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="setup-sub">練習模式 ── AI 對戰</div>
   <div class="num-row" id="num-row">
     <button class="btn-num active" onclick="setN(2)">2人</button>
@@ -2554,7 +2554,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Game -->
 <div id="screen-game">
-  <div id="g-hdr"><img class="hdr-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.png" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div id="g-hdr"><img class="hdr-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div id="g-main">
     <div id="g-left">
       <div id="g-players"></div>
@@ -3602,13 +3602,16 @@ const CN  = {w:'白',u:'藍',g:'綠',r:'紅',k:'紫',gold:'金'};
 const GCC = {w:'gc-w',u:'gc-u',g:'gc-g',r:'gc-r',k:'gc-k',gold:'gc-gold'};
 const GEM_FILL = {w:'#c8ecff',u:'#3a7fff',g:'#22cc66',r:'#ff2244',k:'#8d4dff'};
 const GEM_NAME = {w:'鑽石',u:'藍寶石',g:'綠寶石',r:'紅寶石',k:'紫水晶'};
+function imgAsset(path) {
+  return String(path || '').replace(/\.(png|jpe?g)(\?[^?#]*)?$/i, '.webp$2');
+}
 const GEM_ICON_SRC = {
-  w:'splendor-card-art/gem-icons/gem-w.png?v=clean6',
-  u:'splendor-card-art/gem-icons/gem-u.png?v=clean5',
-  g:'splendor-card-art/gem-icons/gem-g.png?v=clean5',
-  r:'splendor-card-art/gem-icons/gem-r.png?v=clean5',
-  k:'splendor-card-art/gem-icons/gem-k.png?v=clean5',
-  gold:'splendor-card-art/gem-icons/gem-gold.png?v=clean5'
+  w:'splendor-card-art/gem-icons/gem-w.webp?v=clean6',
+  u:'splendor-card-art/gem-icons/gem-u.webp?v=clean5',
+  g:'splendor-card-art/gem-icons/gem-g.webp?v=clean5',
+  r:'splendor-card-art/gem-icons/gem-r.webp?v=clean5',
+  k:'splendor-card-art/gem-icons/gem-k.webp?v=clean5',
+  gold:'splendor-card-art/gem-icons/gem-gold.webp?v=clean5'
 };
 const GEM_SIZE_SCALE = 0.8;
 const GEM_COLOR_SIZE_SCALE = {w:0.81,u:0.93,r:0.81,gold:0.81};
@@ -3799,8 +3802,8 @@ const HERO_SHOWCASE = {
 const HERO_CUTOUT = {DV:'dv_phase2_cutout.png', shiyuan:'shiyuan_stall_cutout.png'};
 
 function heroImgSrc(key) {
-  if (key === 'DV') return 'heros/DVPF_avatar.jpg';
-  return `heros/${key}.jpg`;
+  if (key === 'DV') return imgAsset('heros/DVPF_avatar.jpg');
+  return imgAsset(`heros/${key}.jpg`);
 }
 
 function heroAvatarHTML(hero, cls='hero-avatar-img', style='') {
@@ -3956,29 +3959,29 @@ function loadWarmImage(item) {
 
 function coreGameAssetUrls() {
   return [
-    'splendor-card-art/game-bg-cellar-02.png',
-    'splendor-card-art/title-treasure-brawl-v3-cutout.png',
-    'splendor-card-art/button-treasure-03-clean.png',
-    'splendor-card-art/button-gem-clean.png',
-    'splendor-card-art/table-surface-frame.png',
-    'splendor-card-art/mission-parchment.png',
-    'splendor-card-art/deck-tier1-hearthlike.png',
-    'splendor-card-art/deck-tier2-hearthlike.png',
-    'splendor-card-art/deck-tier3-hearthlike.png',
-    `splendor-card-art/card-tier1-single.png?v=${CARD_ART_VERSION}`,
-    `splendor-card-art/card-tier2-single.png?v=${CARD_ART_VERSION}`,
-    `splendor-card-art/card-tier3-single.png?v=${CARD_ART_VERSION}`,
+    imgAsset('splendor-card-art/game-bg-cellar-02.png'),
+    imgAsset('splendor-card-art/title-treasure-brawl-v3-cutout.png'),
+    imgAsset('splendor-card-art/button-treasure-03-clean.png'),
+    imgAsset('splendor-card-art/button-gem-clean.png'),
+    imgAsset('splendor-card-art/table-surface-frame.png'),
+    imgAsset('splendor-card-art/mission-parchment.png'),
+    imgAsset('splendor-card-art/deck-tier1-hearthlike.png'),
+    imgAsset('splendor-card-art/deck-tier2-hearthlike.png'),
+    imgAsset('splendor-card-art/deck-tier3-hearthlike.png'),
+    `${imgAsset('splendor-card-art/card-tier1-single.png')}?v=${CARD_ART_VERSION}`,
+    `${imgAsset('splendor-card-art/card-tier2-single.png')}?v=${CARD_ART_VERSION}`,
+    `${imgAsset('splendor-card-art/card-tier3-single.png')}?v=${CARD_ART_VERSION}`,
     ...Object.values(GEM_ICON_SRC)
   ];
 }
 
 function cardArtUrl(card) {
   const name = card ? cardArtName(card) : '';
-  return name ? `splendor-card-art/${name}?v=${CARD_ART_VERSION}` : '';
+  return name ? `${imgAsset(`splendor-card-art/${name}`)}?v=${CARD_ART_VERSION}` : '';
 }
 
 function allCardArtUrls() {
-  return Array.from(new Set(Object.values(CARD_ART_BY_ID).map(name => `splendor-card-art/${name}?v=${CARD_ART_VERSION}`)));
+  return Array.from(new Set(Object.values(CARD_ART_BY_ID).map(name => `${imgAsset(`splendor-card-art/${name}`)}?v=${CARD_ART_VERSION}`)));
 }
 
 function heroAssetUrls(hero, includeSkill=false) {
@@ -3987,12 +3990,12 @@ function heroAssetUrls(hero, includeSkill=false) {
   if (!includeSkill) return urls;
   const showcaseFile = HERO_SHOWCASE[hero.key];
   const cutoutFile = HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
-  if (showcaseFile) urls.push(`heros/skill_showcases/${showcaseFile}`);
-  urls.push(`heros/skill_showcases/_cutouts/${cutoutFile}`);
+  if (showcaseFile) urls.push(imgAsset(`heros/skill_showcases/${showcaseFile}`));
+  urls.push(imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`));
   const special = HERO_SPECIAL_SKILL_ASSETS[hero.key];
   if (special) {
-    (special.showcase || []).forEach(name => urls.push(`heros/skill_showcases/${name}`));
-    (special.cutout || []).forEach(name => urls.push(`heros/skill_showcases/_cutouts/${name}`));
+    (special.showcase || []).forEach(name => urls.push(imgAsset(`heros/skill_showcases/${name}`)));
+    (special.cutout || []).forEach(name => urls.push(imgAsset(`heros/skill_showcases/_cutouts/${name}`)));
   }
   return urls;
 }
@@ -4008,7 +4011,6 @@ function warmEntryAssets() {
 
 function warmPregameAssets() {
   warmEntryAssets();
-  warmAssetUrls(HEROES.flatMap(h => heroAssetUrls(h, true)), {priority:'normal'});
 }
 
 function warmHeroPoolAssets(playerPools, options={}) {
@@ -4039,7 +4041,6 @@ function warmKnownOpeningBoardAssets(options={}) {
 function prepareOpeningBoardWarmup(options={}) {
   if (!G) return Promise.resolve([]);
   if (!G.openingDealt) ensureOpeningBoardDealt();
-  warmAssetUrls(allCardArtUrls(), {priority:'normal'});
   return warmKnownOpeningBoardAssets(options);
 }
 
@@ -4476,12 +4477,12 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
   const overlay = document.getElementById('hero-activate-overlay');
   if (!overlay) { onDone(); return; }
 
-  const fullSrc     = `heros/${hero.key}_full.jpg`;
+  const fullSrc     = imgAsset(`heros/${hero.key}_full.jpg`);
   const avatarSrc   = heroImgSrc(hero.key);
   const showcaseFile = options.showcaseFile || HERO_SHOWCASE[hero.key];
-  const showcaseSrc  = showcaseFile ? `heros/skill_showcases/${showcaseFile}` : '';
+  const showcaseSrc  = showcaseFile ? imgAsset(`heros/skill_showcases/${showcaseFile}`) : '';
   const cutoutFile   = options.cutoutFile || HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
-  const cutoutSrc    = `heros/skill_showcases/_cutouts/${cutoutFile}`;
+  const cutoutSrc    = imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`);
   warmAssetUrls([showcaseSrc, cutoutSrc, avatarSrc], {priority:'high', decode:true});
 
   overlay.innerHTML = `
@@ -5176,8 +5177,8 @@ function doSorosShortGem(playerIdx, targetIdx) {
 
 function peekCardHtml(card) {
   const tierBg = {1:'linear-gradient(160deg,#6e5230,#42300e)',2:'linear-gradient(160deg,#2a4e78,#162848)',3:'linear-gradient(160deg,#481a68,#260e3c)'}[card.tier]||'#222';
-  const artName = cardArtName(card);
-  const artStyle = artName ? `background-image:url('splendor-card-art/${artName}?v=${CARD_ART_VERSION}');background-size:cover;background-position:center;` : '';
+  const artUrl = cardArtUrl(card);
+  const artStyle = artUrl ? `background-image:url('${artUrl}');background-size:cover;background-position:center;` : '';
   const costHtml = CI.filter(c=>(card.cost[c]||0)>0).map(c=>
     `<div class="cost-ln">${costBadgeHtml(c, card.cost[c])}</div>`
   ).join('');
@@ -5827,17 +5828,17 @@ function boardCardFace(card, pl) {
 
 function deckBackStyle(tier) {
   return {
-    3:"background:url('splendor-card-art/deck-tier3-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
-    2:"background:url('splendor-card-art/deck-tier2-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
-    1:"background:url('splendor-card-art/deck-tier1-hearthlike.png') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));"
+    3:"background:url('splendor-card-art/deck-tier3-hearthlike.webp') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
+    2:"background:url('splendor-card-art/deck-tier2-hearthlike.webp') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));",
+    1:"background:url('splendor-card-art/deck-tier1-hearthlike.webp') center / 100% 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));"
   }[tier] || '';
 }
 
 function refillDeckCardStyle(tier) {
   return {
-    3:`background:url('splendor-card-art/card-tier3-single.png?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`,
-    2:`background:url('splendor-card-art/card-tier2-single.png?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`,
-    1:`background:url('splendor-card-art/card-tier1-single.png?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`
+    3:`background:url('splendor-card-art/card-tier3-single.webp?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`,
+    2:`background:url('splendor-card-art/card-tier2-single.webp?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`,
+    1:`background:url('splendor-card-art/card-tier1-single.webp?v=${CARD_ART_VERSION}') center / auto 100% no-repeat;border:0;background-color:transparent;filter:drop-shadow(0 10px 10px rgba(0,0,0,.58));`
   }[tier] || '';
 }
 
@@ -7416,7 +7417,7 @@ function cardArtClass(card) {
 }
 
 function cardBgStyle(card) {
-  const url = `url('splendor-card-art/${cardArtName(card)}?v=${CARD_ART_VERSION}')`;
+  const url = `url('${cardArtUrl(card)}')`;
   return `--card-art:${url};background-image:${url};background-size:cover;background-position:center;background-repeat:no-repeat;`;
 }
 
