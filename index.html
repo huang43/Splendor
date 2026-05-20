@@ -1914,6 +1914,11 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   border-color:rgba(255,224,138,.32);
   background:linear-gradient(90deg,rgba(68,48,18,.86),rgba(24,18,10,.88));
 }
+.wait-slot.spectator.offline {
+  opacity:.68;
+  border-color:rgba(255,224,138,.18);
+  filter:grayscale(.2);
+}
 .wait-spectator-head {
   margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,224,138,.14);
   font-size:.72em; color:rgba(255,232,176,.72); font-weight:900; letter-spacing:1px;
@@ -3272,6 +3277,7 @@ async function cleanupWaitingRoomsForSerial(serial) {
     let touchedRoom = false;
     Object.entries(room.spectators || {}).forEach(([id, spec]) => {
       if (normaliseSerial(spec && (spec.serial || spec.name)) !== wanted) return;
+      if (room.state && !room.state.over) return;
       updates[`rooms/${code}/spectators/${id}`] = null;
       updates[`rooms/${code}/spectatorPresence/${id}`] = null;
       touchedRoom = true;
@@ -3334,7 +3340,19 @@ async function releaseRoomForAccountTakeover() {
     return;
   }
   if (isSpectator()) {
-    await leaveSpectatorRoom(code);
+    const sid = spectatorId || spectatorKey(currentSerial);
+    const snap = await db.ref(`rooms/${code}`).once('value').catch(() => null);
+    const room = snap && snap.val();
+    if (room && room.state && !room.state.over) {
+      await cancelPresenceCleanup();
+      await db.ref(`rooms/${code}`).update({
+        [`spectatorPresence/${sid}`]: false,
+        [`spectators/${sid}/offlineAt`]: firebase.database.ServerValue.TIMESTAMP,
+        updatedAt:firebase.database.ServerValue.TIMESTAMP
+      }).catch(() => {});
+    } else {
+      await leaveSpectatorRoom(code);
+    }
     return;
   }
   if (myIdx < 0) return;
@@ -3383,6 +3401,18 @@ async function checkReconnectAfterLogin(serial, checkId) {
         return;
       }
       await markPlayerLeftRoom(active.code, active.idx);
+      return;
+    }
+    const spectatorActive = await findSpectatorReconnectRoom(serial);
+    if (checkId !== _loginReconnectCheckId || currentSerial !== serial || onlineMode || roomCode) return;
+    if (spectatorActive) {
+      const ok = confirm(`偵測到 ${serial} 正在觀戰房間 ${spectatorActive.code}。\n\n要連回觀戰嗎？`);
+      if (checkId !== _loginReconnectCheckId || currentSerial !== serial) return;
+      if (ok) {
+        await joinSpectator(spectatorActive.code);
+        return;
+      }
+      await removeSpectatorFromRoom(spectatorActive.code, serial);
     }
   } catch (e) {
     console.warn('reconnect check failed', e);
@@ -3456,14 +3486,29 @@ function getSpectatorInfo(room) {
   const configuredMax = Number(room && room.spectatorLimit) || SPECTATOR_LIMIT;
   const max = Math.max(0, Math.min(configuredMax, SPECTATOR_LIMIT));
   const entries = Object.entries(spectators)
-    .filter(([id, spec]) => spec && presence[id] !== false)
-    .slice(0, max)
+    .filter(([, spec]) => !!spec)
     .map(([id, spec]) => ({
       id,
       name:String(spec.name || spec.serial || '觀戰者').slice(0, 24),
-      serial:normaliseSerial(spec.serial || spec.name || '')
-    }));
-  return {entries, joined:entries.length, max};
+      serial:normaliseSerial(spec.serial || spec.name || ''),
+      online:presence[id] !== false,
+      joinedAt:Number(spec.joinedAt) || 0,
+      offlineAt:Number(spec.offlineAt) || 0
+    }))
+    .sort((a,b) => (a.joinedAt || 0) - (b.joinedAt || 0))
+    .slice(0, max);
+  return {entries, joined:entries.length, online:entries.filter(spec => spec.online).length, max};
+}
+
+function spectatorRecordId(room, serial=currentSerial) {
+  const spectators = room && room.spectators ? room.spectators : {};
+  const direct = spectatorKey(serial);
+  if (spectators[direct]) return direct;
+  const wanted = normaliseSerial(serial);
+  const found = Object.entries(spectators).find(([, spec]) =>
+    spec && normaliseSerial(spec.serial || spec.name) === wanted
+  );
+  return found ? found[0] : '';
 }
 
 function activeViewIdx() {
@@ -3551,6 +3596,28 @@ async function findReconnectRoom(serial) {
       return player && !player.disconnected;
     })
     .sort((a,b) => (Number(b.room.updatedAt)||0) - (Number(a.room.updatedAt)||0))[0] || null;
+}
+
+async function findSpectatorReconnectRoom(serial) {
+  fbInit();
+  const snap = await db.ref('rooms').once('value');
+  const rooms = snap.val() || {};
+  return Object.entries(rooms)
+    .map(([code, room]) => ({code:String(code || '').toUpperCase(), room, sid:spectatorRecordId(room, serial)}))
+    .filter(item => item.sid && item.room && item.room.state && !item.room.state.over)
+    .sort((a,b) => (Number(b.room.updatedAt)||0) - (Number(a.room.updatedAt)||0))[0] || null;
+}
+
+async function removeSpectatorFromRoom(code, serial=currentSerial) {
+  if (!db || !code) return;
+  const snap = await db.ref(`rooms/${code}`).once('value').catch(() => null);
+  const room = snap && snap.val();
+  const sid = spectatorRecordId(room, serial) || spectatorKey(serial);
+  await db.ref(`rooms/${code}`).update({
+    [`spectators/${sid}`]: null,
+    [`spectatorPresence/${sid}`]: null,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  }).catch(() => {});
 }
 
 async function showLadder() {
@@ -3744,9 +3811,9 @@ async function enterRoomLobby(codeOverride='') {
 
 async function enterRoomAsGuest(code, room) {
   const playerIdx = findSerialSlot(room, currentSerial);
-  const sid = spectatorKey(currentSerial);
+  const sid = spectatorRecordId(room, currentSerial) || spectatorKey(currentSerial);
   const spectatorInfo = getSpectatorInfo(room);
-  const alreadySpectator = spectatorInfo.entries.some(spec => spec.id === sid);
+  const alreadySpectator = !!spectatorRecordId(room, currentSerial);
 
   roomCode = String(code || '').toUpperCase();
   isHost = false;
@@ -3864,7 +3931,7 @@ async function joinRoom(codeOverride='') {
   const taken = Object.keys(room.players||{}).map(Number);
   let slot = 0; while (taken.includes(slot)) slot++;
   if (slot >= room.numP) { alert('房間已滿'); return; }
-  const sid = spectatorKey(currentSerial);
+  const sid = spectatorRecordId(room, currentSerial) || spectatorKey(currentSerial);
   roomCode = code; myIdx = slot; isHost = false; spectatorMode = false; spectatorId = ''; roomGuestMode = false; onlineMode = true; numP = room.numP;
   await db.ref(`rooms/${code}`).update({
     [`players/${slot}`]: name,
@@ -3897,8 +3964,7 @@ function canSwitchWaitingSeat(room, players, slot) {
 function canSwitchToSpectator(room, spectatorInfo) {
   if (!room || room.state || isHost || isSpectator()) return false;
   if (findSerialSlot(room, currentSerial) === 0) return false;
-  const sid = spectatorKey(currentSerial);
-  const alreadySpectator = spectatorInfo && spectatorInfo.entries && spectatorInfo.entries.some(spec => spec.id === sid);
+  const alreadySpectator = !!spectatorRecordId(room, currentSerial);
   return alreadySpectator || !spectatorInfo || spectatorInfo.joined < spectatorInfo.max;
 }
 
@@ -3921,7 +3987,7 @@ async function switchWaitingPlayerSlot(slot, ev) {
     return;
   }
   const oldSlot = findSerialSlot(room, currentSerial);
-  const sid = spectatorKey(currentSerial);
+  const sid = spectatorRecordId(room, currentSerial) || spectatorKey(currentSerial);
   const wasInSameRoom = onlineMode && roomCode === code;
   const updates = {
     [`players/${slot}`]: currentSerial,
@@ -3976,7 +4042,7 @@ async function switchWaitingSpectator(ev) {
   if (!room || room.state) return;
   const oldSlot = findSerialSlot(room, currentSerial);
   if (oldSlot === 0) { toast('房主固定在第 1 位玩家'); return; }
-  const sid = spectatorKey(currentSerial);
+  const sid = spectatorRecordId(room, currentSerial) || spectatorKey(currentSerial);
   const spectatorInfo = getSpectatorInfo(room);
   if (!canSwitchToSpectator(room, spectatorInfo)) {
     if (spectatorInfo.joined >= spectatorInfo.max) toast('觀戰席已滿');
@@ -3987,7 +4053,9 @@ async function switchWaitingSpectator(ev) {
     [`spectators/${sid}`]: {
       name:currentSerial,
       serial:currentSerial,
-      joinedAt:firebase.database.ServerValue.TIMESTAMP
+      joinedAt:firebase.database.ServerValue.TIMESTAMP,
+      offlineAt:null,
+      lastSeen:firebase.database.ServerValue.TIMESTAMP
     },
     [`spectatorPresence/${sid}`]: true,
     updatedAt:firebase.database.ServerValue.TIMESTAMP
@@ -4038,9 +4106,9 @@ async function joinSpectator(codeOverride='') {
     else alert('你已經是這個房間的玩家');
     return;
   }
-  const sid = spectatorKey(currentSerial);
+  const sid = spectatorRecordId(room, currentSerial) || spectatorKey(currentSerial);
   const spectatorInfo = getSpectatorInfo(room);
-  const alreadySpectator = spectatorInfo.entries.some(spec => spec.id === sid);
+  const alreadySpectator = !!spectatorRecordId(room, currentSerial);
   if (!alreadySpectator && spectatorInfo.joined >= spectatorInfo.max) {
     alert('觀戰席已滿');
     return;
@@ -4058,7 +4126,9 @@ async function joinSpectator(codeOverride='') {
     [`spectators/${sid}`]: {
       name:currentSerial,
       serial:currentSerial,
-      joinedAt:firebase.database.ServerValue.TIMESTAMP
+      joinedAt:firebase.database.ServerValue.TIMESTAMP,
+      offlineAt:null,
+      lastSeen:firebase.database.ServerValue.TIMESTAMP
     },
     [`spectatorPresence/${sid}`]: true,
     updatedAt:firebase.database.ServerValue.TIMESTAMP
@@ -4370,7 +4440,8 @@ function listenWait(code) {
         const me = isSpectator() && spec.id === spectatorId;
         const safeSpecId = String(spec.id || '').replace(/[^a-zA-Z0-9_-]/g,'');
         const kick = isHost ? `<button class="wait-kick" title="移出觀戰席" onclick="kickWaitingSpectator('${safeSpecId}',event)">×</button>` : '';
-        html+=`<div class="wait-slot spectator ${kick?'kickable':''}">${me?'👁 ':''}觀戰 ${htmlEsc(spec.name)}${kick}</div>`;
+        const offline = spec.online ? '' : '<span style="opacity:.62;font-size:.78em;margin-left:4px">離線</span>';
+        html+=`<div class="wait-slot spectator ${spec.online?'':'offline'} ${kick?'kickable':''}">${me?'👁 ':''}觀戰 ${htmlEsc(spec.name)}${offline}${kick}</div>`;
       } else {
         const emptyText = spectatorInfo.joined === 0 && si === 0 ? '目前沒有觀戰者' : `等待第 ${si + 1} 位觀戰者...`;
         html+=canSpec
@@ -5347,12 +5418,25 @@ async function setupWaitingPresence(code, idx, opts={}) {
 
 async function setupSpectatorPresence(code, id) {
   await cancelPresenceCleanup();
+  const roomRef = db.ref(`rooms/${code}`);
   const ref = db.ref(`rooms/${code}/spectatorPresence/${id}`);
   _presenceRef = ref;
-  _presenceDisconnectRef = ref;
-  await ref.set(true);
-  await ref.onDisconnect().set(false);
-  _presenceUnloadHandler = () => { ref.set(false); };
+  _presenceDisconnectRef = roomRef;
+  await roomRef.update({
+    [`spectatorPresence/${id}`]: true,
+    [`spectators/${id}/name`]: currentSerial,
+    [`spectators/${id}/serial`]: currentSerial,
+    [`spectators/${id}/offlineAt`]: null,
+    [`spectators/${id}/lastSeen`]: firebase.database.ServerValue.TIMESTAMP,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  });
+  const offlineUpdates = {
+    [`spectatorPresence/${id}`]: false,
+    [`spectators/${id}/offlineAt`]: firebase.database.ServerValue.TIMESTAMP,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  };
+  await roomRef.onDisconnect().update(offlineUpdates);
+  _presenceUnloadHandler = () => { roomRef.update(offlineUpdates).catch(() => {}); };
   window.addEventListener('beforeunload', _presenceUnloadHandler);
 }
 
