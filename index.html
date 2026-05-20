@@ -2618,12 +2618,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <button id="btn-sfx" onclick="toggleSfxMute(event)" title="靜音遊戲音效" aria-label="靜音遊戲音效">🔊</button>
 <button id="btn-bgm" onclick="toggleBgmMute(event)" title="靜音背景音樂" aria-label="靜音背景音樂">♫</button>
 <button id="btn-logout" onclick="logoutSerial()" title="登出目前帳號">登出</button>
-<button id="btn-help" onclick="document.getElementById('m-help').style.display='flex'" title="封面圖">?</button>
+<button id="btn-help" onclick="openCoverHelp(event)" title="封面圖">?</button>
 <audio id="bgm-audio" src="the_mountain-love-story-162223.mp3" loop preload="none"></audio>
 
-<div id="m-help" onclick="if(event.target===this)this.style.display='none'">
+<div id="m-help" onclick="if(event.target===this)closeCoverHelp()">
   <img class="cover-help-img" src="coverphoto.png" alt="遊戲封面">
-  <button type="button" class="cover-help-close" onclick="document.getElementById('m-help').style.display='none'" aria-label="關閉">×</button>
+  <button type="button" class="cover-help-close" onclick="closeCoverHelp(event)" aria-label="關閉">×</button>
   <div class="hbox">
     <div class="h-title">📖 璀燦寶石 — 遊戲說明</div>
 
@@ -2670,7 +2670,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     </div>
 
     <div style="text-align:right;margin-top:18px">
-      <button class="btn btn-grey" onclick="document.getElementById('m-help').style.display='none'" style="padding:8px 22px">關閉</button>
+      <button class="btn btn-grey" onclick="closeCoverHelp(event)" style="padding:8px 22px">關閉</button>
     </div>
   </div>
 </div>
@@ -2715,6 +2715,8 @@ let _lastPlayedRemoteAnimId = '';
 let _playedRemoteAnimIds = new Set();
 let _remoteAnimRunId = 0;
 let _pendingSkillChainAnim = null;
+let _turnPause = null;
+let _helpPauseToken = null;
 let practiceMode = false;
 let _aiThinkTimer = null;
 let _aiStartFallbackTimer = null;
@@ -3169,6 +3171,7 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   _knownOffline = new Set();
   listenCursor(roomCode);
   listenPresence(roomCode);
+  listenTurnPause(roomCode);
   const begin = () => {
     listenGame(roomCode);
     listenLiveAnim(roomCode);
@@ -3245,6 +3248,7 @@ function listenWait(code) {
         beginOpeningCeremony(()=>showTurnNotification(G.cur, G.cur===myIdx ? startHumanTurn : startTimerDisplay));
         listenGame(code);
         listenLiveAnim(code);
+        listenTurnPause(code);
       }
       if (G.heroPool && !G.heroes) {
         showOnlineHeroSelect(code, _beginOnlineGame);
@@ -3372,6 +3376,92 @@ function pushG() {
 function pushLiveAnim(anim) {
   if (!onlineMode || !db || !roomCode || !anim) return;
   db.ref(`rooms/${roomCode}/anim`).set(anim);
+}
+
+function pauseTokenMatches(a, b) {
+  return !!(a && b &&
+    Number(a.playerIdx) === Number(b.playerIdx) &&
+    Number(a.turnCount) === Number(b.turnCount) &&
+    String(a.by ?? '') === String(b.by ?? '')
+  );
+}
+
+function listenTurnPause(code) {
+  if (!db || !code) return;
+  db.ref(`rooms/${code}/turnPause`).on('value', snap => {
+    _turnPause = snap.val() || null;
+    refreshPlayerTimers();
+  });
+}
+
+function setHelpTurnPause() {
+  if (!G || !G.players || typeof G.cur !== 'number' || !gameScreenVisible() || !isMyTurn() || G.over) return;
+  const token = {
+    paused:true,
+    by:onlineMode ? myIdx : 'local',
+    playerIdx:G.cur,
+    turnCount:G.turnCount || 0,
+    at:Date.now()
+  };
+  _helpPauseToken = token;
+  _turnPause = token;
+  refreshPlayerTimers();
+  if (onlineMode && db && roomCode) db.ref(`rooms/${roomCode}/turnPause`).set(token);
+}
+
+function releaseHelpTurnPause() {
+  if (!_helpPauseToken) return;
+  const token = _helpPauseToken;
+  _helpPauseToken = null;
+  if (pauseTokenMatches(_turnPause, token)) {
+    _turnPause = null;
+    refreshPlayerTimers();
+  }
+  if (onlineMode && db && roomCode) {
+    db.ref(`rooms/${roomCode}/turnPause`).transaction(cur => pauseTokenMatches(cur, token) ? null : cur);
+  }
+}
+
+function isTurnTimerPaused(turnKey) {
+  return !!(G && _turnPause && _turnPause.paused &&
+    Number(_turnPause.playerIdx) === Number(G.cur) &&
+    Number(_turnPause.turnCount) === Number(turnKey)
+  );
+}
+
+function helpCoverOpen() {
+  const el = document.getElementById('m-help');
+  return !!(el && el.style.display === 'flex');
+}
+
+function openCoverHelp(ev) {
+  if (ev) ev.stopPropagation();
+  const el = document.getElementById('m-help');
+  if (!el) return;
+  el.style.display = 'flex';
+  if (G && gameScreenVisible() && isMyTurn()) setHelpTurnPause();
+}
+
+function closeCoverHelp(ev) {
+  if (ev) ev.stopPropagation();
+  const el = document.getElementById('m-help');
+  if (el) el.style.display = 'none';
+  releaseHelpTurnPause();
+  if (G && gameScreenVisible() && isMyTurn()) window.setTimeout(applyPreGemActionOnTurn, 0);
+}
+
+function toggleCoverHelp(ev) {
+  if (helpCoverOpen()) closeCoverHelp(ev);
+  else openCoverHelp(ev);
+}
+
+function handleCoverHelpShortcut(ev) {
+  if (ev.repeat) return;
+  if (!(ev.key === 'Escape' || ev.key === ' ' || ev.code === 'Space' || ev.key === 'Spacebar')) return;
+  const target = ev.target;
+  if (target && target.closest && target.closest('input,textarea,select,[contenteditable="true"]')) return;
+  ev.preventDefault();
+  toggleCoverHelp(ev);
 }
 
 // ── Opponent cursor broadcast ─────────────────────────────────────────────
@@ -8151,11 +8241,13 @@ window.showSkillBlockReason = function(heroId, playerIdx) {
 
 function startHumanTurn() {
   startTimer();
+  if (helpCoverOpen()) setHelpTurnPause();
   window.setTimeout(applyPreGemActionOnTurn, 80);
 }
 
 function applyPreGemActionOnTurn() {
   if (!hasPreGemAction() || !G || G.over || !isMyTurn() || G.ui.acted) return;
+  if (helpCoverOpen() && isTurnTimerPaused(G.turnCount || 0)) return;
   const status = preGemActionStatus({requireComplete:true});
   if (!status.ok) {
     const reason = status.reason;
@@ -8271,6 +8363,11 @@ function startTimer() {
   refreshPlayerTimers();
   activateZones();
   _timerInterval = setInterval(() => {
+    if (isTurnTimerPaused(turnKey)) {
+      _updateTimerEl();
+      refreshPlayerTimers();
+      return;
+    }
     _timerSec--;
     _updateTimerEl();
     if (_timerSec === 15) refreshPlayerTimers();
@@ -8303,6 +8400,11 @@ function startTimerDisplay() {
   _updateTimerEl();
   refreshPlayerTimers();
   _timerInterval = setInterval(() => {
+    if (isTurnTimerPaused(turnKey)) {
+      _updateTimerEl();
+      refreshPlayerTimers();
+      return;
+    }
     _timerSec--;
     _updateTimerEl();
     if (_timerSec <= 0) {
@@ -8315,6 +8417,7 @@ function startTimerDisplay() {
 }
 function handleTurnTimeout(turnKey) {
   if (!G || G.over || (G.turnCount || 0) !== turnKey) return;
+  if (isTurnTimerPaused(turnKey)) return;
   if (onlineMode && !(isMyTurn() || isLeader())) return;
   skipCurrentTurn('timeout');
 }
@@ -8603,6 +8706,8 @@ function initBgm() {
   });
 }
 initBgm();
+
+document.addEventListener('keydown', handleCoverHelpShortcut);
 
 // 統一攔截所有按鈕 / 寶石庫列點擊
 document.addEventListener('click', e => {
