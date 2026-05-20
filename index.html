@@ -62,6 +62,12 @@ body {
   background:rgba(255,255,255,.07); color:white; cursor:pointer; font-size:1em; transition:all .15s;
 }
 .btn-num:hover,.btn-num.active { background:rgba(255,200,50,.25); border-color:#ffcc44; color:#ffcc44; }
+.mode-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.btn-mode {
+  padding:10px 22px; border:1px solid rgba(255,255,255,.2); border-radius:8px;
+  background:rgba(255,255,255,.06); color:white; cursor:pointer; font-size:.95em; transition:all .15s;
+}
+.btn-mode:hover,.btn-mode.active { background:rgba(85,204,136,.18); border-color:#55cc88; color:#9dffbf; }
 .player-inputs { display:flex; flex-direction:column; gap:12px; width:320px; }
 .p-row { display:flex; align-items:center; gap:10px; }
 .p-row .swatch { width:10px; height:38px; border-radius:4px; flex-shrink:0; }
@@ -140,6 +146,14 @@ body {
   text-shadow:0 1px 2px rgba(0,0,0,.75);
 }
 .chat-hint { font-size:.56em; color:rgba(255,236,190,.5); white-space:nowrap; }
+.chat-channel-tabs { display:none; gap:4px; align-items:center; }
+.chat-channel-tabs.on { display:flex; }
+.chat-channel-btn {
+  border:1px solid rgba(255,220,140,.2); border-radius:6px; background:rgba(255,255,255,.055);
+  color:rgba(255,238,200,.72); cursor:pointer; font-size:.62em; font-weight:900;
+  padding:4px 7px; line-height:1; transition:all .12s;
+}
+.chat-channel-btn.active { background:rgba(85,204,136,.16); border-color:rgba(85,204,136,.58); color:#9dffbf; }
 .chat-list {
   flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
   display:flex; flex-direction:column; gap:9px; padding-right:5px;
@@ -1307,6 +1321,28 @@ body > .dev-card .card-top .gem-img.gem-img-k {
 .over-score {
   min-width:44px; text-align:right; font-size:1.75em; font-weight:950;
 }
+.team-member-list { display:flex; flex-direction:column; gap:2px; margin-top:2px; min-width:0; }
+.team-member-name {
+  font-size:.66em; line-height:1.15; color:rgba(255,255,255,.74);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.team-member-name.active { color:#9dffbf; font-weight:900; }
+.team-member-name.off { opacity:.45; }
+.wait-team-grid { display:flex; flex-direction:column; gap:8px; width:min(560px,100%); }
+.wait-team-row {
+  display:grid; grid-template-columns:70px 1fr 1fr; gap:7px; align-items:stretch;
+  border:1px solid rgba(255,255,255,.12); border-radius:10px;
+  background:rgba(255,255,255,.035); padding:7px;
+}
+.wait-team-label { display:flex; align-items:center; justify-content:center; font-weight:950; letter-spacing:1px; }
+.wait-team-seat {
+  min-height:38px; display:flex; align-items:center; justify-content:center; gap:5px;
+  border-radius:8px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04);
+  font-size:.86em; color:rgba(255,255,255,.72); position:relative; padding:6px 28px 6px 8px;
+}
+.wait-team-seat.selectable { cursor:pointer; color:#ffe08a; border-color:rgba(255,224,138,.35); }
+.wait-team-seat.filled { color:#fff; background:rgba(255,255,255,.075); }
+.wait-team-seat.host { border-color:rgba(255,204,68,.46); }
 .over-restart {
   width:100%; margin-top:16px; padding:12px;
   background:linear-gradient(135deg,#cc6600,#ffaa22);
@@ -2727,7 +2763,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <div id="screen-create" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:40px">
   <div class="setup-title">建立房間</div>
   <input id="cr-name" class="lb-input" placeholder="登入帳號" maxlength="16" readonly>
-  <div class="setup-sub" style="margin-top:4px">玩家人數</div>
+  <div class="setup-sub" style="margin-top:4px">模式</div>
+  <div class="mode-row">
+    <button id="cr-mode-normal" class="btn-mode active" onclick="crSetMode('normal',this)">一般模式</button>
+    <button id="cr-mode-coop" class="btn-mode" onclick="crSetMode('coop',this)">合作模式</button>
+  </div>
+  <div class="setup-sub" id="cr-count-label" style="margin-top:4px">玩家人數</div>
   <div class="num-row">
     <button class="btn-num active" onclick="crSetN(2,this)">2人</button>
     <button class="btn-num" onclick="crSetN(3,this)">3人</button>
@@ -2797,6 +2838,10 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     <div id="g-chat" ondragenter="chatDragEnter(event)" ondragover="chatDragOver(event)" ondragleave="chatDragLeave(event)" ondrop="dropChatCard(event)">
       <div class="chat-head">
         <div class="chat-title">聊天室</div>
+        <div class="chat-channel-tabs" id="chat-channel-tabs">
+          <button id="chat-tab-all" class="chat-channel-btn active" onclick="setChatChannel('all')">全頻</button>
+          <button id="chat-tab-team" class="chat-channel-btn" onclick="setChatChannel('team')">組隊</button>
+        </div>
         <div class="chat-hint">拖卡貼圖</div>
       </div>
       <div id="chat-list" class="chat-list"></div>
@@ -2926,6 +2971,7 @@ let spectatorMode = false;
 let spectatorId = '';
 let roomGuestMode = false;
 let _crNumP = 2;
+let _crMode = 'normal';
 let _opponentCursors = {};  // { playerIdx: { pending:{}, hover:{tier,slot}|null } }
 let _hoverThrottle = null;
 let _roomListRef = null;
@@ -2944,6 +2990,7 @@ let _chatRef = null;
 let _chatQuery = null;
 let _chatHandler = null;
 let _chatMessages = [];
+let _chatChannel = 'all';
 let _chatLocalSeq = 0;
 let _lastChatSendText = '';
 let _lastChatSendAt = 0;
@@ -2953,7 +3000,12 @@ let _accountSessionHandler = null;
 let _accountTakeoverHandling = false;
 let _finishedGameExitCleanupKey = '';
 let _postGameRoomReturnInProgress = false;
+let _manualRoomLeaveInProgress = false;
 let _waitingSeatSwitching = false;
+let _devCardRepairPushPending = false;
+let _coopSkillApprovalRef = null;
+let _coopSkillApprovalHandler = null;
+let _coopSkillApprovalSeenKey = '';
 let practiceMode = false;
 let _aiThinkTimer = null;
 let _aiStartFallbackTimer = null;
@@ -2979,9 +3031,69 @@ function isPracticeAi(idx = G?.cur) {
   const p = G && G.players && G.players[Number(idx)];
   return !!(!roomCode && Number(idx) > 0 && p && (practiceMode || p.ai || /^AI\b/i.test(String(p.name || ''))));
 }
+function roomIsCoop(room) { return String(room && room.mode || '').toLowerCase() === 'coop'; }
+function isCoopGame() { return !!(G && G.coop); }
+function coopTeamCount(roomOrGame = G) {
+  return Math.max(0, Number(roomOrGame && (roomOrGame.numTeams || roomOrGame.numP)) || 0);
+}
+function coopSeatTeam(seat, teamCount = coopTeamCount()) {
+  seat = Number(seat);
+  if (G && G.coop && G.seatTeamMap && G.seatTeamMap[seat] != null) return Number(G.seatTeamMap[seat]);
+  teamCount = Number(teamCount) || 0;
+  if (!Number.isFinite(seat) || seat < 0 || teamCount <= 0) return -1;
+  return seat % teamCount;
+}
+function coopSeatMemberPos(seat, teamCount = coopTeamCount()) {
+  seat = Number(seat);
+  teamCount = Number(teamCount) || 0;
+  if (!Number.isFinite(seat) || seat < 0 || teamCount <= 0) return -1;
+  return Math.floor(seat / teamCount);
+}
+function coopMembers(teamIdx) {
+  const p = G && G.players && G.players[Number(teamIdx)];
+  return p && Array.isArray(p.members) ? p.members : [];
+}
+function myTeamIdx() {
+  if (isSpectator() || myIdx < 0) return -1;
+  return isCoopGame() ? coopSeatTeam(myIdx) : myIdx;
+}
+function isSameTeamIdx(playerIdx) {
+  return Number(playerIdx) === Number(myTeamIdx());
+}
+function activeCoopSeat() {
+  if (!isCoopGame()) return myIdx;
+  const seat = Number(G.activeSeat);
+  if (Number.isFinite(seat) && seat >= 0) return seat;
+  const cur = Number(G.cur) || 0;
+  const members = coopMembers(cur).filter(m => m && !m.disconnected && !m.offline);
+  return members.length ? Number(members[0].seat) : cur;
+}
+function isActiveCoopSeat() {
+  return !isCoopGame() || Number(activeCoopSeat()) === Number(myIdx);
+}
+function canControlPlayerIdx(playerIdx) {
+  if (isSpectator() || isRoomGuest()) return false;
+  if (!onlineMode) return true;
+  if (isCoopGame()) return isSameTeamIdx(playerIdx) && isActiveCoopSeat();
+  return Number(playerIdx) === Number(myIdx);
+}
+function canViewOwnPlayerIdx(playerIdx) {
+  if (isSpectator()) return false;
+  if (!onlineMode) return Number(playerIdx) === Number(G && G.cur);
+  return isCoopGame() ? isSameTeamIdx(playerIdx) : Number(playerIdx) === Number(myIdx);
+}
+function activeTeamMemberName(teamIdx = G?.cur) {
+  if (!isCoopGame()) return G && G.players && G.players[teamIdx] ? G.players[teamIdx].name : '';
+  const seat = activeCoopSeat();
+  const member = coopMembers(teamIdx).find(m => Number(m.seat) === Number(seat));
+  return member ? member.name : (G.players[teamIdx] && G.players[teamIdx].name) || '';
+}
 function isMyTurn() {
   if (isSpectator()) return false;
-  if (onlineMode && roomCode) return G.cur === myIdx;
+  if (onlineMode && roomCode) {
+    if (isCoopGame()) return Number(G.cur) === Number(myTeamIdx()) && isActiveCoopSeat();
+    return G.cur === myIdx;
+  }
   if (practiceMode || hasPracticeAiPlayers()) return !isPracticeAi(G?.cur);
   return true;
 }
@@ -3025,47 +3137,69 @@ function showOnly(id) {
   if (id !== 'screen-join') stopRoomList();
 }
 async function backToLobby() {
-  if (db && roomCode) {
-    if (isRoomGuest()) {
-      await cancelPresenceCleanup();
-    } else if (isSpectator()) {
-      await leaveSpectatorRoom(roomCode);
-    } else {
-    const code = roomCode, idx = myIdx, leavingAsHost = isHost;
-    try {
-      const roomRef = db.ref(`rooms/${code}`);
-      roomRef.off();
-      await cancelPresenceCleanup();
-      if (leavingAsHost) {
-        await roomRef.remove();
-        await cancelHostRoomCleanup();
-      } else {
-        await roomRef.update({
-          [`players/${idx}`]: null,
-          [`playerIds/${idx}`]: null,
-          [`ready/${idx}`]: null,
-          [`presence/${idx}`]: null,
-          updatedAt:firebase.database.ServerValue.TIMESTAMP
-        });
-      }
-    } catch (err) {
-      console.error('leave room failed', err);
-      alert('離開房間失敗，請再試一次');
-      return;
-    }
-    }
+  const leavingRoomCode = db && roomCode ? roomCode : '';
+  if (leavingRoomCode) {
+    _manualRoomLeaveInProgress = true;
+    db.ref(`rooms/${leavingRoomCode}`).off();
   }
-  clearPracticeAiWatcher();
-  clearAiThinkTimer();
-  stopChat();
-  roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false; practiceMode=false;
-  updateAuthUi();
-  showOnly('screen-lobby');
-  warmEntryAssets();
+  try {
+    if (db && roomCode) {
+      if (isRoomGuest()) {
+        await cancelPresenceCleanup();
+      } else if (isSpectator()) {
+        await leaveSpectatorRoom(roomCode);
+      } else {
+      const code = roomCode, idx = myIdx, leavingAsHost = isHost;
+      try {
+        const roomRef = db.ref(`rooms/${code}`);
+        roomRef.off();
+        await cancelPresenceCleanup();
+        if (leavingAsHost) {
+          await roomRef.remove();
+          await cancelHostRoomCleanup();
+        } else {
+          await roomRef.update({
+            [`players/${idx}`]: null,
+            [`playerIds/${idx}`]: null,
+            [`ready/${idx}`]: null,
+            [`presence/${idx}`]: null,
+            updatedAt:firebase.database.ServerValue.TIMESTAMP
+          });
+        }
+      } catch (err) {
+        console.error('leave room failed', err);
+        alert('離開房間失敗，請再試一次');
+        return;
+      }
+      }
+    }
+    clearPracticeAiWatcher();
+    clearAiThinkTimer();
+    stopCoopSkillApprovals();
+    stopChat();
+    roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false; practiceMode=false;
+    updateAuthUi();
+    showOnly('screen-lobby');
+    warmEntryAssets();
+  } finally {
+    _manualRoomLeaveInProgress = false;
+  }
 }
 function startLocal()       { if (!requireLogin()) return; clearPracticeAiWatcher(); clearAiThinkTimer(); roomCode=''; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; practiceMode=true; onlineMode=false; myIdx=0; buildInputs(); showOnly('screen-setup'); warmPregameAssets(); }
-function showOnlineCreate() { if (!requireLogin()) return; practiceMode=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-create'); warmPregameAssets(); }
+function showOnlineCreate() { if (!requireLogin()) return; practiceMode=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; clearPracticeAiWatcher(); updateAuthUi(); showOnly('screen-create'); crSetMode(_crMode, document.getElementById(_crMode === 'coop' ? 'cr-mode-coop' : 'cr-mode-normal')); warmPregameAssets(); }
 function showOnlineJoin()   { if (!requireLogin()) return; practiceMode=false; clearPracticeAiWatcher(); updateAuthUi(); resetJoinChoice(); showOnly('screen-join'); warmPregameAssets(); startRoomList(); }
+function crSetMode(mode, btn) {
+  _crMode = mode === 'coop' ? 'coop' : 'normal';
+  document.querySelectorAll('#screen-create .btn-mode').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const label = document.getElementById('cr-count-label');
+  if (label) label.textContent = _crMode === 'coop' ? '隊伍數（每隊最多2人）' : '玩家人數';
+  document.querySelectorAll('#screen-create .btn-num').forEach((b,i)=>{
+    const n = i + 2;
+    b.textContent = _crMode === 'coop' ? `${n}隊` : `${n}人`;
+    b.classList.toggle('active', n === _crNumP);
+  });
+}
 function crSetN(n, btn) {
   _crNumP = n;
   document.querySelectorAll('#screen-create .btn-num').forEach(b=>b.classList.remove('active'));
@@ -3207,12 +3341,15 @@ async function releaseRoomForAccountTakeover() {
   if (!room) return;
   if (room.state) {
     await new Promise(resolve => setTimeout(resolve, 800));
-    const sessionSnap = await db.ref(`rooms/${code}/state/players/${myIdx}/sessionId`).once('value').catch(() => null);
+    const teamIdx = roomIsCoop(room)
+      ? Number((room.state.seatTeamMap || {})[Number(myIdx)] ?? coopSeatTeam(myIdx, Number(room.state.numP || room.numTeams || 0)))
+      : myIdx;
+    const sessionSnap = await db.ref(`rooms/${code}/state/players/${teamIdx}/sessionId`).once('value').catch(() => null);
     const activeSessionId = sessionSnap && sessionSnap.val();
     if (activeSessionId && activeSessionId !== _accountSessionId) return;
     await db.ref(`rooms/${code}`).update({
       [`presence/${myIdx}`]: false,
-      [`state/players/${myIdx}/offline`]: true,
+      [`state/players/${teamIdx}/offline`]: true,
       updatedAt:firebase.database.ServerValue.TIMESTAMP
     }).catch(() => {});
     return;
@@ -3279,6 +3416,7 @@ async function logoutSerial() {
   try { localStorage.removeItem(LOGIN_STORAGE_KEY); } catch(e) {}
   clearPracticeAiWatcher();
   clearAiThinkTimer();
+  stopCoopSkillApprovals();
   roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false; practiceMode=false;
   const input = document.getElementById('login-code');
   if (input) input.value = '';
@@ -3298,6 +3436,13 @@ function findSerialSlot(room, serial) {
     if (normaliseSerial(id) === wanted) return Number(idx);
   }
   const players = room && room.state && room.state.players ? toArr(room.state.players) : [];
+  if (roomIsCoop(room)) {
+    for (const team of players) {
+      for (const member of toArr(team && team.members)) {
+        if (normaliseSerial(member && (member.serial || member.name)) === wanted) return Number(member.seat);
+      }
+    }
+  }
   const fallback = players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === wanted);
   return fallback >= 0 ? fallback : -1;
 }
@@ -3324,6 +3469,10 @@ function activeViewIdx() {
     const cur = Number(G.cur);
     return Number.isFinite(cur) && cur >= 0 && cur < G.players.length ? cur : 0;
   }
+  if (isCoopGame() && onlineMode && myIdx >= 0) {
+    const team = myTeamIdx();
+    return team >= 0 && team < G.players.length ? team : 0;
+  }
   if (onlineMode && myIdx >= 0 && myIdx < G.players.length) return myIdx;
   if (practiceMode || hasPracticeAiPlayers()) return G.players[0] ? 0 : -1;
   const cur = Number(G.cur);
@@ -3337,6 +3486,9 @@ function activeViewPlayer() {
 
 function turnCallbackFor(playerIdx) {
   if (isSpectator()) return startSpectatorTimerDisplay;
+  if (isCoopGame() && onlineMode) return Number(activeCoopSeat()) === Number(myIdx)
+    ? startHumanTurn
+    : startTimerDisplay;
   return onlineMode && Number(playerIdx) === Number(myIdx)
     ? startHumanTurn
     : startTimerDisplay;
@@ -3345,6 +3497,21 @@ function turnCallbackFor(playerIdx) {
 function syncMyIdxFromStatePlayers() {
   if (isSpectator()) return false;
   if (!onlineMode || !G || !G.players || !currentSerial) return false;
+  if (isCoopGame()) {
+    let nextIdx = -1;
+    G.players.forEach(p => {
+      (p.members || []).forEach(m => {
+        if (normaliseSerial(m && (m.serial || m.name)) === normaliseSerial(currentSerial)) nextIdx = Number(m.seat);
+      });
+    });
+    if (nextIdx < 0 || nextIdx === myIdx) return false;
+    const prevIdx = myIdx;
+    myIdx = nextIdx;
+    isHost = myIdx === 0;
+    console.info('synced online coop seat', {from:prevIdx, to:myIdx});
+    if (db && roomCode) setupPresence(roomCode, myIdx).catch(err => console.warn('seat presence sync failed', err));
+    return true;
+  }
   const nextIdx = G.players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === normaliseSerial(currentSerial));
   if (nextIdx < 0 || nextIdx === myIdx) return false;
   const prevIdx = myIdx;
@@ -3374,7 +3541,10 @@ async function findReconnectRoom(serial) {
     .map(([code, room]) => ({code:String(code || '').toUpperCase(), room, idx:findSerialSlot(room, serial)}))
     .filter(item => {
       if (!(item.idx >= 0 && item.room && item.room.state && !item.room.state.over)) return false;
-      const player = toArr(item.room.state.players)[item.idx];
+      const statePlayers = toArr(item.room.state.players);
+      const player = roomIsCoop(item.room)
+        ? statePlayers[Number((item.room.state.seatTeamMap || {})[Number(item.idx)] ?? coopSeatTeam(item.idx, Number(item.room.state.numP || item.room.numTeams || 0)))]
+        : statePlayers[item.idx];
       return player && !player.disconnected;
     })
     .sort((a,b) => (Number(b.room.updatedAt)||0) - (Number(a.room.updatedAt)||0))[0] || null;
@@ -3434,7 +3604,14 @@ function getRoomCount(room) {
   const joined = Object.values(players).filter(name => String(name || '').trim()).length;
   const max = Number(room && room.numP) || joined || 0;
   const spectators = getSpectatorInfo(room);
-  return { joined, max, spectators: spectators.joined, spectatorMax: spectators.max };
+  return {
+    joined,
+    max,
+    teams:Number(room && room.numTeams) || 0,
+    coop:roomIsCoop(room),
+    spectators: spectators.joined,
+    spectatorMax: spectators.max
+  };
 }
 
 function renderRoomList(rooms) {
@@ -3448,6 +3625,8 @@ function renderRoomList(rooms) {
         room,
         joined:count.joined,
         max:count.max,
+        teams:count.teams,
+        coop:count.coop,
         spectators:count.spectators,
         spectatorMax:count.spectatorMax,
         playing:!!(room && room.state),
@@ -3468,7 +3647,10 @@ function renderRoomList(rooms) {
   list.innerHTML = entries.map(item => {
     const safeCode = item.code.replace(/[^A-Z0-9]/g,'');
     const reconnectIdx = currentSerial ? findSerialSlot(item.room, currentSerial) : -1;
-    const reconnectPlayer = reconnectIdx >= 0 && item.room.state ? toArr(item.room.state.players)[reconnectIdx] : null;
+    const reconnectGameIdx = reconnectIdx >= 0 && item.room.state && roomIsCoop(item.room)
+      ? Number((item.room.state.seatTeamMap || {})[Number(reconnectIdx)] ?? coopSeatTeam(reconnectIdx, Number(item.room.state.numP || item.room.numTeams || 0)))
+      : reconnectIdx;
+    const reconnectPlayer = reconnectIdx >= 0 && item.room.state ? toArr(item.room.state.players)[reconnectGameIdx] : null;
     const canReconnect = item.playing && reconnectIdx >= 0 && !item.room.state?.over && reconnectPlayer && !reconnectPlayer.disconnected;
     const full = item.max > 0 && item.joined >= item.max;
     const alreadySpectator = getSpectatorInfo(item.room).entries.some(spec => spec.serial === normaliseSerial(currentSerial));
@@ -3487,7 +3669,7 @@ function renderRoomList(rooms) {
       <button type="button" class="room-card ${canClick ? '' : 'disabled'}" ${actionAttr}>
         <div class="room-code">${htmlEsc(item.code)}</div>
         <div class="room-status ${item.playing ? 'playing' : 'waiting'}">${status}</div>
-        <div class="room-count">玩家 ${item.joined}/${item.max} · 觀戰 ${item.spectators}/${item.spectatorMax}</div>
+        <div class="room-count">${item.coop ? `合作 ${item.teams}隊 · 玩家 ${item.joined}/${item.max}` : `玩家 ${item.joined}/${item.max}`} · 觀戰 ${item.spectators}/${item.spectatorMax}</div>
         <div class="room-action">${action}</div>
       </button>
     `;
@@ -3539,7 +3721,10 @@ async function enterRoomLobby(codeOverride='') {
     const room = snap.val();
     if (!room) { alert('找不到房間，請確認房號'); return; }
     const playerIdx = findSerialSlot(room, currentSerial);
-    const reconnectPlayer = playerIdx >= 0 && room.state ? toArr(room.state.players)[playerIdx] : null;
+    const reconnectGameIdx = playerIdx >= 0 && room.state && roomIsCoop(room)
+      ? Number((room.state.seatTeamMap || {})[Number(playerIdx)] ?? coopSeatTeam(playerIdx, Number(room.state.numP || room.numTeams || 0)))
+      : playerIdx;
+    const reconnectPlayer = playerIdx >= 0 && room.state ? toArr(room.state.players)[reconnectGameIdx] : null;
     if (room.state) {
       if (playerIdx >= 0 && !room.state.over && reconnectPlayer && !reconnectPlayer.disconnected) {
         await reconnectToRoom(code, playerIdx, room);
@@ -3624,9 +3809,14 @@ async function createRoom() {
   const name = currentSerial;
   fbInit();
   const code = genCode();
-  roomCode = code; myIdx = 0; isHost = true; spectatorMode = false; spectatorId = ''; roomGuestMode = false; onlineMode = true; numP = _crNumP;
+  const coop = _crMode === 'coop';
+  const maxSeats = coop ? _crNumP * 2 : _crNumP;
+  roomCode = code; myIdx = 0; isHost = true; spectatorMode = false; spectatorId = ''; roomGuestMode = false; onlineMode = true; numP = coop ? _crNumP : _crNumP;
   await db.ref(`rooms/${code}`).set({
-    numP:_crNumP,
+    mode:coop ? 'coop' : 'normal',
+    numP:maxSeats,
+    numTeams:coop ? _crNumP : null,
+    teamSize:coop ? 2 : null,
     spectatorLimit:SPECTATOR_LIMIT,
     players:{0:name},
     playerIds:{0:currentSerial},
@@ -3656,7 +3846,10 @@ async function joinRoom(codeOverride='') {
   if (!room)         { alert('找不到房間，請確認房號'); return; }
   if (room.state) {
     const rejoinIdx = findSerialSlot(room, currentSerial);
-    const rejoinPlayer = rejoinIdx >= 0 ? toArr(room.state.players)[rejoinIdx] : null;
+    const rejoinGameIdx = rejoinIdx >= 0 && roomIsCoop(room)
+      ? Number((room.state.seatTeamMap || {})[Number(rejoinIdx)] ?? coopSeatTeam(rejoinIdx, Number(room.state.numP || room.numTeams || 0)))
+      : rejoinIdx;
+    const rejoinPlayer = rejoinIdx >= 0 ? toArr(room.state.players)[rejoinGameIdx] : null;
     if (rejoinIdx >= 0 && !room.state.over && rejoinPlayer && !rejoinPlayer.disconnected) {
       await reconnectToRoom(code, rejoinIdx, room);
       return;
@@ -3897,7 +4090,10 @@ function startOnlineGameRuntime(code, options={}) {
     waitSpectatorHeroSelection(code, begin);
     return;
   }
-  if (G.heroPool && !G.heroes && !isSpectator()) showOnlineHeroSelect(code, begin);
+  if (G.heroPool && !G.heroes && !isSpectator()) {
+    if (isCoopGame()) showCoopOnlineHeroSelect(code, begin);
+    else showOnlineHeroSelect(code, begin);
+  }
   else begin();
 }
 
@@ -3944,6 +4140,7 @@ function enterOnlineGameFromState(code, state, options={}) {
   _knownOffline = new Set();
   listenCursor(code);
   listenPresence(code);
+  listenCoopSkillApprovals(code);
   startOnlineGameRuntime(code, options);
 }
 
@@ -3957,7 +4154,10 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
     showOnly('screen-lobby');
     return;
   }
-  const rejoinPlayer = toArr(room.state.players)[Number(idx)];
+  const rejoinTeamIdx = roomIsCoop(room)
+    ? Number((room.state.seatTeamMap || {})[Number(idx)] ?? coopSeatTeam(idx, Number(room.state.numP || room.numTeams || 0)))
+    : Number(idx);
+  const rejoinPlayer = toArr(room.state.players)[rejoinTeamIdx];
   if (!rejoinPlayer || rejoinPlayer.disconnected) {
     alert('這個帳號已被標記為中離，無法重連此局');
     showOnly('screen-lobby');
@@ -3975,17 +4175,18 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   resetTurnNotifMemory();
   await db.ref(`rooms/${roomCode}`).update({
     [`presence/${myIdx}`]: true,
-    [`state/players/${myIdx}/offline`]: false,
-    [`state/players/${myIdx}/disconnected`]: false,
-    [`state/players/${myIdx}/sessionId`]: _accountSessionId || '',
+    [`state/players/${rejoinTeamIdx}/offline`]: false,
+    [`state/players/${rejoinTeamIdx}/disconnected`]: false,
+    [`state/players/${rejoinTeamIdx}/sessionId`]: _accountSessionId || '',
     updatedAt:firebase.database.ServerValue.TIMESTAMP
   });
   await setupPresence(roomCode, myIdx);
   applyRemoteState(room.state);
   warmKnownGameStateAssets({priority:'high'});
-  if (G.players && G.players[myIdx]) {
-    G.players[myIdx].offline = false;
-    G.players[myIdx].disconnected = false;
+  const myGameIdx = myTeamIdx();
+  if (G.players && G.players[myGameIdx]) {
+    G.players[myGameIdx].offline = false;
+    G.players[myGameIdx].disconnected = false;
   }
   showOnly('screen-game');
   G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
@@ -3996,12 +4197,16 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   listenCursor(roomCode);
   listenPresence(roomCode);
   listenTurnPause(roomCode);
+  listenCoopSkillApprovals(roomCode);
   const begin = () => {
     listenGame(roomCode);
     listenLiveAnim(roomCode);
     notifyTurn(G.cur, turnCallbackFor(G.cur));
   };
-  if (G.heroPool && !G.heroes) showOnlineHeroSelect(roomCode, begin);
+  if (G.heroPool && !G.heroes) {
+    if (isCoopGame()) showCoopOnlineHeroSelect(roomCode, begin);
+    else showOnlineHeroSelect(roomCode, begin);
+  }
   else begin();
 }
 
@@ -4013,6 +4218,52 @@ async function markPlayerLeftRoom(code, idx) {
   if (!room || !room.state) return;
   const state = room.state;
   const players = toArr(state.players);
+  if (roomIsCoop(room)) {
+    const teamIdx = Number((state.seatTeamMap || {})[Number(idx)] ?? coopSeatTeam(idx, Number(state.numP || room.numTeams || 0)));
+    const team = players[teamIdx];
+    const members = toArr(team && team.members);
+    const memberIdx = members.findIndex(m => Number(m && m.seat) === Number(idx));
+    if (memberIdx >= 0) {
+      members[memberIdx].disconnected = true;
+      members[memberIdx].offline = false;
+    }
+    const activeTeams = players
+      .map((p,i)=>({p,i}))
+      .filter(({p}) => p && toArr(p.members).some(m => m && !m.disconnected))
+      .map(({i})=>i);
+    const updates = {
+      [`presence/${idx}`]: false,
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    };
+    if (memberIdx >= 0) {
+      updates[`state/players/${teamIdx}/members/${memberIdx}/disconnected`] = true;
+      updates[`state/players/${teamIdx}/members/${memberIdx}/offline`] = false;
+    }
+    if (team) {
+      const teamGone = members.length > 0 && members.every(m => m.disconnected);
+      updates[`state/players/${teamIdx}/disconnected`] = teamGone;
+      updates[`state/players/${teamIdx}/offline`] = false;
+    }
+    if (activeTeams.length <= 1) {
+      updates['state/over'] = true;
+      updates['state/normalEnd'] = false;
+      updates['state/winnerIndices'] = activeTeams;
+    } else if (Number(state.activeSeat) === Number(idx)) {
+      const seats = [];
+      players.forEach((p,i) => toArr(p.members).forEach(m => {
+        if (m && !m.disconnected && Number(m.seat) !== Number(idx)) seats.push({seat:Number(m.seat), teamIdx:i});
+      }));
+      seats.sort((a,b)=>a.seat-b.seat);
+      const next = seats.find(s => s.seat > Number(idx)) || seats[0];
+      if (next) {
+        updates['state/activeSeat'] = next.seat;
+        updates['state/cur'] = next.teamIdx;
+        updates['state/turnCount'] = (Number(state.turnCount) || 0) + 1;
+      }
+    }
+    await roomRef.update(updates);
+    return;
+  }
   if (players[idx]) {
     players[idx].disconnected = true;
     players[idx].offline = false;
@@ -4052,7 +4303,7 @@ function listenWait(code) {
       if (roomCode === code) {
         const wasHost = isHost;
         roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
-        if (!wasHost) alert('房主已離開，房間已關閉');
+        if (!wasHost && !_manualRoomLeaveInProgress) alert('房主已離開，房間已關閉');
         showOnly('screen-lobby');
       }
       return;
@@ -4069,14 +4320,14 @@ function listenWait(code) {
     const players = room.players||{}, n = room.numP;
     const ready = room.ready||{};
     const spectatorInfo = getSpectatorInfo(room);
-    if (!_waitingSeatSwitching && !_postGameRoomReturnInProgress && !room.starting && onlineMode && roomCode === code && !isSpectator() && !isHost && myIdx >= 0 && !players[myIdx]) {
+    if (!_manualRoomLeaveInProgress && !_waitingSeatSwitching && !_postGameRoomReturnInProgress && !room.starting && onlineMode && roomCode === code && !isSpectator() && !isHost && myIdx >= 0 && !players[myIdx]) {
       cancelPresenceCleanup();
       roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
       alert('你已被市長移出房間');
       showOnly('screen-lobby');
       return;
     }
-    if (!_waitingSeatSwitching && !_postGameRoomReturnInProgress && onlineMode && roomCode === code && isSpectator() && spectatorId && !spectatorInfo.entries.some(spec => spec.id === spectatorId)) {
+    if (!_manualRoomLeaveInProgress && !_waitingSeatSwitching && !_postGameRoomReturnInProgress && onlineMode && roomCode === code && isSpectator() && spectatorId && !spectatorInfo.entries.some(spec => spec.id === spectatorId)) {
       cancelPresenceCleanup();
       roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
       alert('你已被市長移出觀戰席');
@@ -4085,20 +4336,24 @@ function listenWait(code) {
     }
     // Build player list with ready indicators
     let html='';
-    for (let i=0;i<n;i++) {
-      const nm=players[i];
-      if (nm) {
-        const isPlayerHost = (i===0);
-        const isReady = isPlayerHost || ready[i];
-        const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
-        const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
-        const kick = isHost && !isPlayerHost ? `<button class="wait-kick" title="踢出玩家" onclick="kickWaitingPlayer(${i},event)">×</button>` : '';
-        html+=`<div class="wait-slot filled ${isPlayerHost?'host':''} ${kick?'kickable':''}">${hostCrown}${PC_NAME[i]} ${htmlEsc(nm)}${badge}${kick}</div>`;
-      } else {
-        const selectable = canSwitchWaitingSeat(room, players, i);
-        html+=selectable
-          ? `<div class="wait-slot empty selectable" role="button" title="坐到第 ${i+1} 位玩家" onclick="switchWaitingPlayerSlot(${i},event)">等待第 ${i+1} 位玩家...</div>`
-          : `<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
+    if (roomIsCoop(room)) {
+      html += renderCoopWaitPlayers(room, players, ready);
+    } else {
+      for (let i=0;i<n;i++) {
+        const nm=players[i];
+        if (nm) {
+          const isPlayerHost = (i===0);
+          const isReady = isPlayerHost || ready[i];
+          const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
+          const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
+          const kick = isHost && !isPlayerHost ? `<button class="wait-kick" title="踢出玩家" onclick="kickWaitingPlayer(${i},event)">×</button>` : '';
+          html+=`<div class="wait-slot filled ${isPlayerHost?'host':''} ${kick?'kickable':''}">${hostCrown}${PC_NAME[i]} ${htmlEsc(nm)}${badge}${kick}</div>`;
+        } else {
+          const selectable = canSwitchWaitingSeat(room, players, i);
+          html+=selectable
+            ? `<div class="wait-slot empty selectable" role="button" title="坐到第 ${i+1} 位玩家" onclick="switchWaitingPlayerSlot(${i},event)">等待第 ${i+1} 位玩家...</div>`
+            : `<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
+        }
       }
     }
     const canSpec = canSwitchToSpectator(room, spectatorInfo);
@@ -4200,6 +4455,36 @@ function updateWaitChoice(room, players, spectatorInfo) {
   box.classList.add('on');
 }
 const PC_NAME = ['🟠','🔵','🟢','🟣'];
+const TEAM_LABELS = ['A隊','B隊','C隊','D隊'];
+
+function renderCoopWaitPlayers(room, players, ready) {
+  const teams = Number(room.numTeams) || Math.ceil((Number(room.numP) || 0) / 2) || 2;
+  let html = '<div class="wait-team-grid">';
+  for (let team = 0; team < teams; team++) {
+    html += `<div class="wait-team-row">
+      <div class="wait-team-label" style="color:${PC[team] || '#ffe08a'}">${TEAM_LABELS[team] || `第${team+1}隊`}</div>`;
+    for (let pos = 0; pos < 2; pos++) {
+      const slot = team + pos * teams;
+      const nm = players[slot];
+      if (nm) {
+        const isPlayerHost = slot === 0;
+        const isReady = isPlayerHost || ready[slot];
+        const hostCrown = isPlayerHost ? '<span class="host-crown">👑</span>' : '';
+        const badge = isPlayerHost ? '' : (isReady ? ' ✅' : ' ⏳');
+        const kick = isHost && !isPlayerHost ? `<button class="wait-kick" title="踢出玩家" onclick="kickWaitingPlayer(${slot},event)">×</button>` : '';
+        html += `<div class="wait-team-seat filled ${isPlayerHost?'host':''} ${kick?'kickable':''}">${hostCrown}${pos === 0 ? '上位' : '下位'} ${htmlEsc(nm)}${badge}${kick}</div>`;
+      } else {
+        const selectable = canSwitchWaitingSeat(room, players, slot);
+        html += selectable
+          ? `<div class="wait-team-seat selectable" role="button" title="坐到${TEAM_LABELS[team] || `第${team+1}隊`} ${pos === 0 ? '上位' : '下位'}" onclick="switchWaitingPlayerSlot(${slot},event)">${pos === 0 ? '上位' : '下位'} 等待加入...</div>`
+          : `<div class="wait-team-seat">${pos === 0 ? '上位' : '下位'} 等待加入...</div>`;
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
 
 async function kickWaitingPlayer(slot, ev) {
   if (ev) ev.stopPropagation();
@@ -4254,6 +4539,65 @@ async function hostStart() {
   const room = snap.val() || {};
   const players = room.players || {};
   const playerIds = room.playerIds || {};
+  if (roomIsCoop(room)) {
+    const teams = Number(room.numTeams) || 2;
+    const maxSeats = teams * 2;
+    const nextReady = {};
+    const nextPresence = {};
+    Object.keys(players).map(Number).forEach(i => {
+      if (players[i]) {
+        nextReady[i] = true;
+        nextPresence[i] = true;
+      }
+    });
+    const teamDefs = Array.from({length:teams}, (_, teamIdx) => {
+      const members = [0,1].map(pos => {
+        const seat = teamIdx + pos * teams;
+        const name = players[seat];
+        if (!name) return null;
+        return {
+          seat,
+          pos,
+          name,
+          serial:normaliseSerial(playerIds[seat] || name || `team${teamIdx+1}-${pos+1}`)
+        };
+      }).filter(Boolean);
+      return {
+        idx:teamIdx,
+        name:TEAM_LABELS[teamIdx] || `第${teamIdx+1}隊`,
+        color:PC[teamIdx],
+        members
+      };
+    }).filter(t => t.members.length);
+    if (teamDefs.length < 2) {
+      alert('合作模式至少需要 2 隊有人才能開始');
+      return;
+    }
+    await db.ref(`rooms/${roomCode}`).update({
+      ready:nextReady,
+      presence:nextPresence,
+      starting:true,
+      seatOrder:Array.from({length:maxSeats}, (_, seat)=>({
+        seat,
+        team:coopSeatTeam(seat, teams),
+        pos:coopSeatMemberPos(seat, teams),
+        serial:normaliseSerial(playerIds[seat] || players[seat] || '')
+      })),
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    });
+    numP = teamDefs.length;
+    startGameOnline(teamDefs.map(t=>t.name), teamDefs.map(t=>t.members[0]?.serial || t.name), {
+      coop:true,
+      teams:teamDefs,
+      numTeams:teamDefs.length,
+      seatCount:maxSeats,
+      activeSeat:teamDefs[0].members[0].seat,
+      seatTeamMap:Object.fromEntries(teamDefs.flatMap((team, gameTeamIdx) =>
+        team.members.map(member => [member.seat, gameTeamIdx])
+      ))
+    });
+    return;
+  }
   // Only use actually joined players, then draw fixed seats for this game.
   const entries = Object.keys(players).map(Number).sort((a,b)=>a-b).map(i=>({
     waitingSlot:i,
@@ -4287,11 +4631,17 @@ async function hostStart() {
 // ── Game state sync ────────────────────────────────────────────────────────
 function pushG() {
   if (!onlineMode || !db || !roomCode || isSpectator() || isRoomGuest()) return;
+  reconcileDevCards('push');
   reconcileGemBank('push');
   const serial = {
     numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
     lastStarter:G.lastStarter, over:G.over, normalEnd:!!G.normalEnd,
     openingDealt:!!G.openingDealt,
+    coop:!!G.coop,
+    seatCount:Number(G.seatCount || 0),
+    activeSeat:G.activeSeat ?? null,
+    seatTeamMap:G.seatTeamMap || null,
+    teamActiveSeats:G.teamActiveSeats || null,
     players: JSON.parse(JSON.stringify(G.players)),
     bank: {...G.bank},
     decksJson: JSON.stringify(G.decks),
@@ -4433,7 +4783,8 @@ function applyOpponentCursors() {
   document.querySelectorAll('.opp-pick-badge').forEach(el => el.remove());
   Object.entries(_opponentCursors).forEach(([idx, cursor]) => {
     if (!cursor || Number(idx) === myIdx) return;
-    const pl = G.players ? G.players[Number(idx)] : null;
+    const teamIdx = isCoopGame() ? coopSeatTeam(idx) : Number(idx);
+    const pl = G.players ? G.players[teamIdx] : null;
     if (!pl) return;
     // Pending gem badges on bank rows
     if (cursor.pending) {
@@ -4453,7 +4804,7 @@ function applyOpponentCursors() {
       });
     }
     // Card hover highlight — only show when it's that player's turn
-    if (cursor.hover != null && Number(idx) === G.cur) {
+    if (cursor.hover != null && (isCoopGame() ? Number(idx) === Number(activeCoopSeat()) : Number(idx) === G.cur)) {
       const { tier, slot } = cursor.hover;
       const card = document.querySelector(`.dev-card[data-tier="${tier}"][data-slot="${slot}"]`);
       if (card) card.classList.add('opp-hover');
@@ -4477,15 +4828,23 @@ function stopChat(clear=true) {
 function startLocalChat() {
   stopChat(false);
   _chatMessages = [];
+  _chatChannel = 'all';
+  updateChatChannelTabs();
   renderChatMessages();
+}
+
+function chatPathForChannel(code, channel=_chatChannel) {
+  if (channel === 'team' && isCoopGame() && myTeamIdx() >= 0) return `rooms/${code}/teamChat/${myTeamIdx()}`;
+  return `rooms/${code}/chat`;
 }
 
 function listenChat(code) {
   stopChat(false);
   _chatMessages = [];
+  updateChatChannelTabs();
   renderChatMessages();
   if (!onlineMode || !db || !code) return;
-  _chatRef = db.ref(`rooms/${code}/chat`);
+  _chatRef = db.ref(chatPathForChannel(code));
   _chatQuery = _chatRef.limitToLast(CHAT_MAX_MESSAGES);
   _chatHandler = snap => {
     const raw = snap.val() || {};
@@ -4494,6 +4853,26 @@ function listenChat(code) {
     renderChatMessages();
   };
   _chatQuery.on('value', _chatHandler);
+}
+
+function setChatChannel(channel) {
+  _chatChannel = channel === 'team' ? 'team' : 'all';
+  if (_chatChannel === 'team' && (!isCoopGame() || isSpectator() || isRoomGuest())) _chatChannel = 'all';
+  updateChatChannelTabs();
+  if (onlineMode && roomCode) listenChat(roomCode);
+  else renderChatMessages();
+}
+
+function updateChatChannelTabs() {
+  const tabs = document.getElementById('chat-channel-tabs');
+  if (!tabs) return;
+  const showTeam = isCoopGame() && !isSpectator() && !isRoomGuest();
+  tabs.classList.toggle('on', showTeam);
+  if (!showTeam) _chatChannel = 'all';
+  document.getElementById('chat-tab-all')?.classList.toggle('active', _chatChannel === 'all');
+  document.getElementById('chat-tab-team')?.classList.toggle('active', _chatChannel === 'team');
+  const input = document.getElementById('chat-input');
+  if (input) input.placeholder = _chatChannel === 'team' ? '輸入組隊訊息...' : '輸入訊息...';
 }
 
 function normaliseChatMessage(id, msg) {
@@ -4544,11 +4923,11 @@ function chatPlayerInfo() {
       spectator:true
     };
   }
-  const idx = (onlineMode && myIdx >= 0) ? myIdx : 0;
+  const idx = (onlineMode && myIdx >= 0) ? myTeamIdx() : 0;
   const pl = G && G.players && G.players[idx];
   return {
     idx,
-    name:(pl && pl.name) || currentSerial || '玩家',
+    name:isCoopGame() ? (currentSerial || activeTeamMemberName(idx) || '玩家') : ((pl && pl.name) || currentSerial || '玩家'),
     color:safeChatColor((pl && pl.color) || '#ffe08a'),
     spectator:false
   };
@@ -4716,7 +5095,7 @@ function chatCardPreviewHtml(card) {
 function chatMessageHtml(msg) {
   const mine = isSpectator()
     ? !!msg.spectator && normaliseSerial(msg.playerName) === normaliseSerial(currentSerial)
-    : Number(msg.playerIdx) === Number((onlineMode && myIdx >= 0) ? myIdx : 0);
+    : Number(msg.playerIdx) === Number((onlineMode && myIdx >= 0) ? myTeamIdx() : 0);
   const role = msg.spectator ? `<span style="color:rgba(255,224,138,.52);font-size:.88em;margin-left:4px">觀戰</span>` : '';
   const text = msg.text ? `<div class="chat-text">${htmlEsc(msg.text)}</div>` : '';
   const card = msg.card ? `<div class="chat-card-wrap">${chatCardPreviewHtml(msg.card)}</div>` : '';
@@ -4744,6 +5123,7 @@ function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values
 function applyRemoteState(data) {
   const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
   const prevCur = typeof G.cur==='number' ? G.cur : -1;
+  const prevSeat = G.activeSeat ?? null;
   // Firebase can return objects instead of arrays, and empty arrays as null — normalise everything
   const players = toArr(data.players).map((p,idx)=>{
     p = p || {};
@@ -4755,6 +5135,14 @@ function applyRemoteState(data) {
       gems:     p.gems    || {w:0,u:0,g:0,r:0,k:0,gold:0},
       bonuses:  p.bonuses || {w:0,u:0,g:0,r:0,k:0},
       shiyuanChicken: Number(p.shiyuanChicken || 0),
+      members:  toArr(p.members).map(m=>({
+        seat:Number(m && m.seat),
+        pos:Number(m && m.pos) || 0,
+        name:String((m && m.name) || ''),
+        serial:normaliseSerial(m && (m.serial || m.name)),
+        offline:!!(m && m.offline),
+        disconnected:!!(m && m.disconnected),
+      })).filter(m=>Number.isFinite(m.seat)),
       serial: normaliseSerial(p.serial || p.name || `player${idx+1}`),
       offline: !!p.offline,
       disconnected: !!p.disconnected,
@@ -4767,6 +5155,11 @@ function applyRemoteState(data) {
   G = {
     numP:data.numP, cur:data.cur, turnCount:data.turnCount||0, lastRound:data.lastRound,
     lastStarter:data.lastStarter, over:data.over, normalEnd:!!data.normalEnd,
+    coop:!!data.coop,
+    seatCount:Number(data.seatCount || 0),
+    activeSeat:data.activeSeat ?? null,
+    seatTeamMap:data.seatTeamMap || null,
+    teamActiveSeats:data.teamActiveSeats || null,
     players, bank:data.bank,
     decks: JSON.parse(data.decksJson||'{"1":[],"2":[],"3":[]}'),
     board:  JSON.parse(data.boardJson||'{"1":[null,null,null,null],"2":[null,null,null,null],"3":[null,null,null,null]}'),
@@ -4784,8 +5177,10 @@ function applyRemoteState(data) {
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
   G.virtualGemSupply = data.virtualGemSupply || {};
   if (!isSpectator()) syncMyIdxFromStatePlayers();
-  G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
+  G.ui = (G.cur!==prevCur || G.activeSeat !== prevSeat) ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
+  const repairedCards = reconcileDevCards('remote');
   reconcileGemBank('remote');
+  if (repairedCards) scheduleDevCardRepairPush('remote');
 }
 
 function listenGame(code) {
@@ -4830,6 +5225,52 @@ function listenLiveAnim(code) {
   });
 }
 
+function stopCoopSkillApprovals() {
+  if (_coopSkillApprovalRef && _coopSkillApprovalHandler) _coopSkillApprovalRef.off('value', _coopSkillApprovalHandler);
+  _coopSkillApprovalRef = null;
+  _coopSkillApprovalHandler = null;
+  _coopSkillApprovalSeenKey = '';
+}
+
+function listenCoopSkillApprovals(code) {
+  stopCoopSkillApprovals();
+  if (!onlineMode || !db || !code || !isCoopGame() || isSpectator() || isRoomGuest()) return;
+  _coopSkillApprovalRef = db.ref(`rooms/${code}/skillApprovals`);
+  _coopSkillApprovalHandler = snap => {
+    const approvals = snap.val() || {};
+    const pending = Object.values(approvals).find(a =>
+      a && a.status === 'pending' &&
+      Number(a.teamIdx) === Number(myTeamIdx()) &&
+      Number(a.actorSeat) !== Number(myIdx) &&
+      Number(a.turnCount) === Number(G.turnCount || 0)
+    );
+    if (!pending) return;
+    const key = String(pending.id || '');
+    if (!key || _coopSkillApprovalSeenKey === key) return;
+    _coopSkillApprovalSeenKey = key;
+    const hero = HEROES.find(h => h.id === Number(pending.heroId));
+    document.getElementById('hero-skill-confirm')?.remove();
+    const box = document.createElement('div');
+    box.id = 'hero-skill-confirm';
+    box.innerHTML = `<div class="hero-skill-confirm-box">
+      <h3>隊友想發動技能</h3>
+      <p><strong style="color:#ffe08a">${htmlEsc(pending.actorName || '隊友')}</strong> 想發動「${htmlEsc(hero?.skill || pending.heroSkill || '技能')}」。</p>
+      <div class="btn-row">
+        <button class="btn-action" onclick="answerCoopSkillApproval('${key}','approved')">同意</button>
+        <button class="btn-end" onclick="answerCoopSkillApproval('${key}','rejected')">拒絕</button>
+      </div>
+    </div>`;
+    document.body.appendChild(box);
+  };
+  _coopSkillApprovalRef.on('value', _coopSkillApprovalHandler);
+}
+
+window.answerCoopSkillApproval = function(approvalId, status) {
+  if (!onlineMode || !roomCode) return;
+  document.getElementById('hero-skill-confirm')?.remove();
+  db.ref(`rooms/${roomCode}/skillApprovals/${approvalId}/status`).set(status === 'approved' ? 'approved' : 'rejected');
+};
+
 // ── Presence / Disconnect ────────────────────────────────────────────────
 let _knownDisc = new Set();
 let _knownOffline = new Set();
@@ -4861,12 +5302,19 @@ async function setupPresence(code, idx, opts={}) {
 async function setupActiveGamePresence(code) {
   if (!onlineMode || !code || isSpectator() || myIdx < 0) return;
   await setupPresence(code, myIdx);
-  await db.ref(`rooms/${code}`).update({
+  const updates = {
     [`presence/${myIdx}`]: true,
-    [`state/players/${myIdx}/offline`]: false,
-    [`state/players/${myIdx}/sessionId`]: _accountSessionId || '',
     updatedAt:firebase.database.ServerValue.TIMESTAMP
-  }).catch(() => {});
+  };
+  const teamIdx = myTeamIdx();
+  if (isCoopGame() && teamIdx >= 0) {
+    updates[`state/players/${teamIdx}/offline`] = false;
+    updates[`state/players/${teamIdx}/sessionId`] = _accountSessionId || '';
+  } else {
+    updates[`state/players/${myIdx}/offline`] = false;
+    updates[`state/players/${myIdx}/sessionId`] = _accountSessionId || '';
+  }
+  await db.ref(`rooms/${code}`).update(updates).catch(() => {});
 }
 
 async function setupWaitingPresence(code, idx, opts={}) {
@@ -4956,6 +5404,38 @@ function listenPresence(code) {
   db.ref(`rooms/${code}/presence`).on('value', snap => {
     if (!G || !G.players || G.over) return;
     const presence = snap.val() || {};
+    if (isCoopGame()) {
+      let changed = false;
+      G.players.forEach((team, teamIdx) => {
+        const members = team.members || [];
+        members.forEach(member => {
+          const seat = Number(member.seat);
+          if (seat === myIdx) return;
+          if (member.disconnected) return;
+          if (presence[seat] === false && !_knownOffline.has(seat)) {
+            _knownOffline.add(seat);
+            member.offline = true;
+            changed = true;
+            showDisconnectNotif(member.name, 'offline');
+          } else if (presence[seat] === true && _knownOffline.has(seat)) {
+            _knownOffline.delete(seat);
+            member.offline = false;
+            changed = true;
+            showDisconnectNotif(member.name, 'reconnect');
+          }
+        });
+        const offline = members.length > 0 && members.every(m => m.offline || presence[Number(m.seat)] === false);
+        if (team.offline !== offline) { team.offline = offline; changed = true; }
+      });
+      const activeSeatOffline = presence[Number(activeCoopSeat())] === false;
+      if ((G.players[G.cur] && G.players[G.cur].offline || activeSeatOffline) && isLeader()) {
+        skipCurrentTurn('offline');
+      } else if (changed && isLeader()) {
+        pushG();
+        render();
+      }
+      return;
+    }
     G.players.forEach((pl, idx) => {
       if (idx === myIdx) return;
       if (pl.disconnected) return;
@@ -4980,8 +5460,30 @@ function isTurnUnavailable(p) {
 
 function isLeader() {
   if (isSpectator()) return false;
+  if (isCoopGame()) {
+    const seats = [];
+    (G.players || []).forEach(team => (team.members || []).forEach(m => {
+      if (m && !m.disconnected && !m.offline) seats.push(Number(m.seat));
+    }));
+    seats.sort((a,b)=>a-b);
+    return seats.length ? Number(myIdx) === seats[0] : false;
+  }
   const idx = G.players.findIndex(p => !isTurnUnavailable(p));
   return myIdx === idx;
+}
+
+function nextCoopTurnInfo() {
+  if (!isCoopGame()) return null;
+  const seats = [];
+  (G.players || []).forEach((team, teamIdx) => (team.members || []).forEach(m => {
+    if (!m || m.disconnected || m.offline) return;
+    seats.push({seat:Number(m.seat), teamIdx});
+  }));
+  seats.sort((a,b)=>a.seat-b.seat);
+  if (!seats.length) return null;
+  const curSeat = Number(activeCoopSeat());
+  const next = seats.find(item => item.seat > curSeat) || seats[0];
+  return next;
 }
 
 function nextAvailablePlayer(fromIdx) {
@@ -5095,7 +5597,10 @@ function resetPreGemAction() {
 function preActionPlayerIdx() {
   if (!G || !G.players) return -1;
   if (isSpectator()) return -1;
-  if (onlineMode && roomCode) return myIdx>=0 && myIdx<G.players.length ? myIdx : -1;
+  if (onlineMode && roomCode) {
+    const idx = myTeamIdx();
+    return idx>=0 && idx<G.players.length ? idx : -1;
+  }
   if (practiceMode || hasPracticeAiPlayers()) return G.players[0] && !isPracticeAi(0) ? 0 : -1;
   return -1;
 }
@@ -5920,6 +6425,170 @@ function showOnlineHeroSelect(code, onDone) {
   }, 1000);
 }
 
+function showCoopOnlineHeroSelect(code, onDone) {
+  const teamIdx = myTeamIdx();
+  const myPool = (G.heroPool[teamIdx] || []).map(id => HEROES.find(h=>h.id===id)).filter(Boolean);
+  let selectedId = null;
+  let pushedConfirm = false;
+  let finalized = false;
+  let latestSelections = {};
+  const modal = document.createElement('div');
+  modal.id = 'hero-select-modal';
+  document.body.appendChild(modal);
+  warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
+
+  const selectionRef = db.ref(`rooms/${code}/heroSelections`);
+  const stateRef = db.ref(`rooms/${code}/state`);
+  const allSeats = () => (G.players || []).flatMap(p => (p.members || []).map(m => Number(m.seat))).filter(Number.isFinite);
+  const myMember = () => coopMembers(teamIdx).find(m => Number(m.seat) === Number(myIdx));
+
+  function cleanup() {
+    clearInterval(_heroSelectTimer);
+    selectionRef.off();
+    stateRef.off('value', stateHandler);
+    const m = document.getElementById('hero-select-modal');
+    if (m) m.remove();
+  }
+
+  function stateHandler(snap) {
+    const data = snap.val();
+    if (!data || !data.heroes || finalized) return;
+    finalized = true;
+    cleanup();
+    applyRemoteState(data);
+    warmSelectedHeroAssets({priority:'high', decode:true});
+    onDone();
+  }
+  stateRef.on('value', stateHandler);
+
+  function renderModal(waiting=false) {
+    const team = G.players[teamIdx];
+    const teammateRows = (team?.members || []).map(member => {
+      const sel = latestSelections[member.seat] || {};
+      const hero = HEROES.find(h => h.id === (sel.chosen || sel.hover));
+      const me = Number(member.seat) === Number(myIdx);
+      const confirmed = !!sel.confirmed;
+      const activeText = hero ? `：${htmlEsc(hero.name)}${confirmed ? ' ✓' : '（指向中）'}` : '：尚未選擇';
+      return `<div style="font-size:.78em;opacity:${me?'.95':'.75'};color:${confirmed?'#9dffbf':'rgba(255,255,255,.72)'}">
+        ${me?'你':htmlEsc(member.name)}${activeText}
+      </div>`;
+    }).join('');
+    const timerUrgent = _heroSelectSec <= 3 ? ' urgent' : '';
+    const cards = myPool.map(h => {
+      const teammateHover = (team?.members || []).some(m => Number(m.seat) !== Number(myIdx) && Number((latestSelections[m.seat] || {}).hover) === h.id);
+      const teammateChosen = (team?.members || []).some(m => Number(m.seat) !== Number(myIdx) && Number((latestSelections[m.seat] || {}).chosen) === h.id);
+      const sel = selectedId === h.id;
+      const usesLabel = h.passive ? (h.uses===Infinity ? '被動技' : `被動限${h.uses}次`) : h.uses===Infinity ? '無限次' : `限${h.uses}次`;
+      return `<div class="hero-option${sel?' selected':''}${pushedConfirm?' locked':''}" onclick="${pushedConfirm?'':'window._coopHeroSel('+h.id+')'}">
+        <img class="hero-avatar-img" src="${heroImgSrc(h.key)}"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(h.name)}">
+        <span class="hero-avatar-fallback" style="display:none">${HERO_EMOJI[h.key]||'👤'}</span>
+        <div class="hero-option-name">${htmlEsc(h.name)}</div>
+        <div class="hero-option-skill">⚡ ${htmlEsc(h.skill)}</div>
+        <div class="hero-option-desc">${htmlEsc(h.desc)}</div>
+        <div class="hero-option-uses">${usesLabel}${teammateChosen?' · 隊友已確認':teammateHover?' · 隊友指向中':''}</div>
+      </div>`;
+    }).join('');
+    modal.innerHTML = `
+      <h2>選擇小隊英雄</h2>
+      <div id="hero-select-timer" class="${timerUrgent}">${_heroSelectSec}</div>
+      <div class="hero-select-rows">
+        <div class="hero-player-row${waiting?' confirmed':''}">
+          <div class="hero-player-label" style="color:${team?.color || '#ffe08a'}">${htmlEsc(team?.name || '小隊')}</div>
+          <div class="hero-options-row">${cards}</div>
+          <div class="hero-row-foot">
+            <button class="hero-confirm-btn${selectedId!==null?' active':''}${waiting?' done':''}"
+              onclick="window._coopHeroConfirm()"
+              ${waiting?'disabled':''}>${waiting?'✓ 已確認':'確認'}</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:center;margin-top:8px">${teammateRows}</div>
+        </div>
+      </div>
+      <div class="hero-select-footer">同隊兩人都確認後，由隊伍選擇決定唯一英雄；隊友指向中也會即時顯示</div>`;
+  }
+
+  function pushHover(heroId) {
+    if (pushedConfirm || myIdx < 0) return;
+    selectedId = heroId;
+    selectionRef.child(String(myIdx)).update({
+      hover:heroId,
+      teamIdx,
+      name:currentSerial || myMember()?.name || '玩家',
+      confirmed:false,
+      ts:firebase.database.ServerValue.TIMESTAMP
+    });
+    renderModal(false);
+  }
+
+  function pushConfirm() {
+    if (pushedConfirm || myIdx < 0) return;
+    pushedConfirm = true;
+    const chosen = selectedId ?? null;
+    selectionRef.child(String(myIdx)).set({
+      hover:chosen,
+      chosen,
+      teamIdx,
+      name:currentSerial || myMember()?.name || '玩家',
+      confirmed:true,
+      ts:firebase.database.ServerValue.TIMESTAMP
+    });
+    renderModal(true);
+  }
+
+  function chooseTeamHero(pi, sels) {
+    const choices = (G.players[pi]?.members || [])
+      .map(m => sels[m.seat] && Number(sels[m.seat].chosen))
+      .filter(Boolean);
+    const pool = G.heroPool[pi] || [];
+    const poolFallback = pool.length ? pool[(Math.random() * pool.length) | 0] : null;
+    if (!choices.length) return poolFallback;
+    if (choices.every(id => id === choices[0])) return choices[0];
+    return choices[(Math.random() * choices.length) | 0];
+  }
+
+  function finalizeIfLeader(force=false) {
+    if (finalized || !isLeader()) return;
+    const seats = allSeats();
+    const allConfirmed = seats.length && seats.every(seat => latestSelections[seat] && latestSelections[seat].confirmed);
+    if (!force && !allConfirmed) return;
+    finalized = true;
+    G.heroes = Array.from({length:G.numP}, (_, pi) => chooseTeamHero(pi, latestSelections));
+    G.heroUsed = G.heroes.map(hid => {
+      const h = HEROES.find(x=>x.id===hid);
+      return h ? (h.uses===Infinity ? Infinity : h.uses) : 0;
+    });
+    G.heroBuffett = null;
+    G.heroActedThisTurn = Array(G.numP).fill(false);
+    cleanup();
+    warmSelectedHeroAssets({priority:'high', decode:true});
+    pushG();
+    onDone();
+  }
+
+  window._coopHeroSel = function(heroId) { pushHover(heroId); };
+  window._coopHeroConfirm = function() { pushConfirm(); };
+
+  selectionRef.on('value', snap => {
+    latestSelections = snap.val() || {};
+    renderModal(pushedConfirm);
+    finalizeIfLeader(false);
+  });
+
+  _heroSelectSec = 20;
+  renderModal(false);
+  _heroSelectTimer = setInterval(() => {
+    _heroSelectSec = Math.max(0, _heroSelectSec - 1);
+    const el = document.getElementById('hero-select-timer');
+    if (el) { el.textContent = _heroSelectSec; el.className = _heroSelectSec<=3?'urgent':''; }
+    if (_heroSelectSec <= 0) {
+      clearInterval(_heroSelectTimer);
+      _heroSelectTimer = null;
+      pushConfirm();
+      setTimeout(() => finalizeIfLeader(true), 900);
+    }
+  }, 1000);
+}
+
 function getPlayerHero(playerIdx) {
   if (!G.heroes || G.heroes[playerIdx] == null) return null;
   return HEROES.find(h => h.id === G.heroes[playerIdx]) || null;
@@ -5978,7 +6647,7 @@ function showHeroInfo(playerIdx, ev) {
 // ── Hero skill activation ─────────────────────────────────────────────────
 function activateHeroSkill(playerIdx) {
   if (isSpectator()) { toast('觀戰中無法操作'); return; }
-  if (onlineMode && Number(playerIdx) !== Number(myIdx)) return;
+  if (onlineMode && !canControlPlayerIdx(playerIdx)) return;
   if (!isMyTurn()) { toast('還沒輪到你'); return; }
   const hero = getPlayerHero(playerIdx);
   if (!hero || hero.passive) return;
@@ -6082,11 +6751,63 @@ function heroQuoteText(hero) {
   return hero.quote || (hero.skill ? `「${hero.skill}。」` : '');
 }
 
-function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
-  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) return;
+function coopSkillApprovalNeeded(playerIdx) {
+  if (!onlineMode || !isCoopGame() || !canControlPlayerIdx(playerIdx)) return false;
+  const mates = coopMembers(playerIdx).filter(m => Number(m.seat) !== Number(myIdx) && !m.disconnected && !m.offline);
+  return mates.length > 0;
+}
+
+function requestCoopSkillApproval(playerIdx, hero, onApproved) {
+  if (!coopSkillApprovalNeeded(playerIdx)) return false;
+  const approvalId = `${G.turnCount || 0}-${playerIdx}-${myIdx}-${Date.now()}`;
+  const ref = db.ref(`rooms/${roomCode}/skillApprovals/${approvalId}`);
+  const box = document.createElement('div');
+  box.id = 'hero-skill-confirm';
+  box.innerHTML = `<div class="hero-skill-confirm-box">
+    <h3>等待隊友同意</h3>
+    <p>${htmlEsc(hero.skill)} 需要另一位隊友同意後才能發動。</p>
+    <div class="btn-row"><button class="btn-end" onclick="cancelCoopSkillApproval('${approvalId}')">取消</button></div>
+  </div>`;
+  document.body.appendChild(box);
+  ref.set({
+    id:approvalId,
+    status:'pending',
+    playerIdx,
+    heroId:hero.id,
+    heroSkill:hero.skill,
+    actorSeat:myIdx,
+    actorName:currentSerial || activeTeamMemberName(playerIdx),
+    teamIdx:playerIdx,
+    turnCount:G.turnCount || 0,
+    ts:firebase.database.ServerValue.TIMESTAMP
+  });
+  const handler = snap => {
+    const data = snap.val();
+    if (!data) return;
+    if (data.status === 'approved') {
+      ref.off('value', handler);
+      document.getElementById('hero-skill-confirm')?.remove();
+      onApproved();
+      ref.remove().catch(()=>{});
+    } else if (data.status === 'rejected' || data.status === 'cancelled') {
+      ref.off('value', handler);
+      document.getElementById('hero-skill-confirm')?.remove();
+      toast(data.status === 'rejected' ? '隊友拒絕使用技能' : '已取消技能');
+      ref.remove().catch(()=>{});
+    }
+  };
+  ref.on('value', handler);
+  return true;
+}
+
+window.cancelCoopSkillApproval = function(approvalId) {
+  if (!onlineMode || !roomCode) return;
+  db.ref(`rooms/${roomCode}/skillApprovals/${approvalId}/status`).set('cancelled');
+};
+
+function performConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
   const hero = getPlayerHero(playerIdx);
   if (!hero) return;
-
   // Decrement uses & mark turn used
   if (G.heroUsed[playerIdx] !== Infinity) G.heroUsed[playerIdx]--;
   if (!G.heroActedThisTurn) G.heroActedThisTurn = Array(G.numP).fill(false);
@@ -6107,8 +6828,16 @@ function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
   }
 }
 
+function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
+  if (isSpectator() || (onlineMode && !canControlPlayerIdx(playerIdx))) return;
+  const hero = getPlayerHero(playerIdx);
+  if (!hero) return;
+  if (requestCoopSkillApproval(playerIdx, hero, () => performConfirmedHeroSkill(playerIdx, onExecute, animOptions))) return;
+  performConfirmedHeroSkill(playerIdx, onExecute, animOptions);
+}
+
 function confirmHeroSkill(playerIdx) {
-  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
+  if (isSpectator() || (onlineMode && !canControlPlayerIdx(playerIdx))) { toast('觀戰中無法操作'); return; }
   const box = document.getElementById('hero-skill-confirm');
   if (box) box.remove();
   const hero = getPlayerHero(playerIdx);
@@ -6203,7 +6932,7 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
 }
 
 function executeHeroSkill(hero, playerIdx) {
-  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
+  if (isSpectator() || (onlineMode && !canControlPlayerIdx(playerIdx))) { toast('觀戰中無法操作'); return; }
   const pl = G.players[playerIdx];
   switch (hero.id) {
     case 1: // 巴菲特 長期投資
@@ -6262,7 +6991,7 @@ function showGemDepositPicker(playerIdx) {
   document.body.appendChild(box);
 }
 window.confirmBuffettDeposit = function(playerIdx, col) {
-  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
+  if (isSpectator() || (onlineMode && !canControlPlayerIdx(playerIdx))) { toast('觀戰中無法操作'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!CI.includes(col) || !pl || (pl.gems[col]||0) <= 0) {
@@ -6272,7 +7001,7 @@ window.confirmBuffettDeposit = function(playerIdx, col) {
   runConfirmedHeroSkill(playerIdx, () => doBuffettDeposit(playerIdx, col));
 };
 window.doBuffettDeposit = function(playerIdx, col) {
-  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
+  if (isSpectator() || (onlineMode && !canControlPlayerIdx(playerIdx))) { toast('觀戰中無法操作'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!CI.includes(col) || !pl || (pl.gems[col]||0) <= 0) { toast('💰 長期投資只能存入五色寶石代幣，不能存金幣'); return; }
@@ -6305,7 +7034,7 @@ function checkBuffettReturn() {
     G.heroBuffett = null;
     addLog('skill', `「長期投資」結算，憑空獲得 ${gemToken(b.col,give)}`, ownerIdx);
     render();
-    if (!onlineMode || ownerIdx === myIdx) _showBuffettFinalModal(give, name);
+    if (!onlineMode || canViewOwnPlayerIdx(ownerIdx)) _showBuffettFinalModal(give, name);
   }
 }
 
@@ -6608,10 +7337,15 @@ function startDVQuestion(playerIdx, targetIdx, expected) {
   const actor = G.players[playerIdx];
   const target = G.players[targetIdx];
   if (!actor || !target || playerIdx === targetIdx) { toast('找不到詢問對象'); return; }
+  const targetSeatRaw = isCoopGame()
+    ? (G.teamActiveSeats?.[targetIdx] ?? (G.players[targetIdx]?.members || []).find(m => !m.disconnected && !m.offline)?.seat ?? null)
+    : null;
+  const targetSeat = targetSeatRaw == null ? null : Number(targetSeatRaw);
   const prompt = {
     id: makeRemoteAnimId('dvq'),
     actorIdx: playerIdx,
     targetIdx,
+    targetSeat:Number.isFinite(targetSeat) ? targetSeat : null,
     expected: expected === 'yes' ? 'yes' : 'no',
     deadline: Date.now() + 10000,
   };
@@ -6639,7 +7373,11 @@ function clearDVPromptModal() {
 function syncHeroDVPromptModal() {
   const prompt = G && G.heroDVPrompt;
   if (!prompt) { clearDVPromptModal(); return; }
-  const shouldAnswer = onlineMode ? Number(prompt.targetIdx) === myIdx : true;
+  const shouldAnswer = onlineMode
+    ? (isCoopGame()
+      ? Number(prompt.targetIdx) === Number(myTeamIdx()) && Number(prompt.targetSeat ?? activeCoopSeat()) === Number(myIdx)
+      : Number(prompt.targetIdx) === myIdx)
+    : true;
   if (!shouldAnswer) return;
   if (_dvPromptId === prompt.id && document.getElementById('dv-answer-modal')) return;
   showDVAnswerModal(prompt);
@@ -6690,7 +7428,12 @@ function showDVAnswerModal(prompt) {
 window.answerDVQuestion = function(promptId, answer, auto=false) {
   const prompt = G.heroDVPrompt;
   if (!prompt || prompt.id !== promptId) return;
-  if (onlineMode && Number(prompt.targetIdx) !== myIdx) return;
+  if (onlineMode) {
+    const ok = isCoopGame()
+      ? Number(prompt.targetIdx) === Number(myTeamIdx()) && Number(prompt.targetSeat ?? activeCoopSeat()) === Number(myIdx)
+      : Number(prompt.targetIdx) === myIdx;
+    if (!ok) return;
+  }
   clearDVPromptModal();
   resolveDVQuestion(prompt, answer === 'yes' ? 'yes' : 'no', !!auto);
 };
@@ -6880,7 +7623,7 @@ function showDeckPeek(playerIdx) {
 }
 
 window.doMungerReserve = function(playerIdx, tier) {
-  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
+  if (isSpectator() || (onlineMode && !canControlPlayerIdx(playerIdx))) { toast('觀戰中無法操作'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!pl || pl.reserved.length >= 3) { toast('最多預留3張牌'); return; }
@@ -7159,24 +7902,49 @@ function shuffle(a) {
   return a;
 }
 
-function _buildG(names, serials=[]) {
+function _buildG(names, serials=[], opts={}) {
   const decks={1:[],2:[],3:[]};
   ALL_CARDS.forEach(c=>decks[c.tier].push({...c,cost:{...c.cost}}));
   [1,2,3].forEach(t=>shuffle(decks[t]));
   const board={};
   [1,2,3].forEach(t=>{board[t]=[null, null, null, null];});
   const missions=shuffle([...MISSION_DB]).slice(0,3).map(m=>({...m,claimedBy:null}));
-  const gc=GEMCNT[numP];
+  const gameNumP = Number(opts.numTeams || names.length || numP);
+  const coop = !!opts.coop;
+  const gc=GEMCNT[gameNumP];
   const bank={w:gc,u:gc,g:gc,r:gc,k:gc,gold:5};
-  return {
-    numP, players:names.map((name,i)=>({
+  const players = coop
+    ? (opts.teams || []).map((team,i)=>({
+      name:team.name || TEAM_LABELS[i] || `第${i+1}隊`,
+      serial:normaliseSerial((team.members && team.members[0] && team.members[0].serial) || serials[i] || team.name || `team-${i+1}`),
+      color:team.color || PC[i],
+      members:(team.members || []).map(m=>({
+        seat:Number(m.seat),
+        pos:Number(m.pos) || 0,
+        name:m.name,
+        serial:normaliseSerial(m.serial || m.name)
+      })),
+      ai:false,
+      gems:{w:0,u:0,g:0,r:0,k:0,gold:0},
+      bonuses:{w:0,u:0,g:0,r:0,k:0},
+      shiyuanChicken:0,
+      cards:[], reserved:[], points:0,
+    }))
+    : names.map((name,i)=>({
       name, serial:normaliseSerial(serials[i] || name), color:PC[i],
       ai:false,
       gems:{w:0,u:0,g:0,r:0,k:0,gold:0},
       bonuses:{w:0,u:0,g:0,r:0,k:0},
       shiyuanChicken:0,
       cards:[], reserved:[], points:0,
-    })),
+    }));
+  return {
+    numP:gameNumP, players,
+    coop,
+    seatCount:Number(opts.seatCount || 0) || (coop ? gameNumP * 2 : gameNumP),
+    activeSeat:coop ? Number(opts.activeSeat ?? (players[0]?.members?.[0]?.seat ?? 0)) : null,
+    seatTeamMap:opts.seatTeamMap || null,
+    teamActiveSeats:coop ? Object.fromEntries(players.map((p,i)=>[i, Number(p.members?.[0]?.seat ?? i)])) : null,
     bank, decks, board, missions,
     cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false, normalEnd:false,
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
@@ -7212,6 +7980,120 @@ function ensureOpeningBoardDealt() {
     G.openingDealt = true;
     changed = true;
   }
+  return changed;
+}
+
+function cloneDevCardById(id) {
+  const base = ALL_CARDS.find(c => Number(c.id) === Number(id));
+  return base ? {...base, cost:{...base.cost}} : null;
+}
+
+function sameDevCard(a, b) {
+  if (!a || !b) return false;
+  return Number(a.id) === Number(b.id) &&
+    Number(a.tier) === Number(b.tier) &&
+    Number(a.pts || 0) === Number(b.pts || 0) &&
+    a.bonus === b.bonus &&
+    CI.every(c => Number((a.cost && a.cost[c]) || 0) === Number((b.cost && b.cost[c]) || 0));
+}
+
+function scheduleDevCardRepairPush(reason='repair') {
+  if (!onlineMode || !roomCode || isSpectator() || isRoomGuest()) return;
+  if (typeof isLeader !== 'function' || !isLeader()) return;
+  if (_devCardRepairPushPending) return;
+  _devCardRepairPushPending = true;
+  setTimeout(() => {
+    _devCardRepairPushPending = false;
+    if (onlineMode && roomCode && !isSpectator() && !isRoomGuest() && isLeader()) {
+      pushG();
+    }
+  }, 60);
+}
+
+function reconcileDevCards(reason='repair') {
+  if (!G) return false;
+  let changed = false;
+  const used = new Set();
+  const normaliseOne = (card, tier=null) => {
+    if (!card) return null;
+    const clean = cloneDevCardById(card.id);
+    if (!clean || (tier != null && Number(clean.tier) !== Number(tier)) || used.has(clean.id)) {
+      changed = true;
+      return null;
+    }
+    if (!sameDevCard(card, clean)) changed = true;
+    used.add(clean.id);
+    return clean;
+  };
+  const normaliseList = (list, tier=null) => {
+    const arr = toArr(list);
+    const out = [];
+    arr.forEach(card => {
+      const clean = normaliseOne(card, tier);
+      if (clean) out.push(clean);
+    });
+    if (!Array.isArray(list) || out.length !== arr.length) changed = true;
+    return out;
+  };
+
+  (G.players || []).forEach(p => {
+    if (!p) return;
+    const cards = normaliseList(p.cards);
+    const reserved = normaliseList(p.reserved);
+    if (p.cards !== cards) p.cards = cards;
+    if (p.reserved !== reserved) p.reserved = reserved;
+  });
+
+  if (!G.board || typeof G.board !== 'object') {
+    G.board = {};
+    changed = true;
+  }
+  if (!G.decks || typeof G.decks !== 'object') {
+    G.decks = {1:[], 2:[], 3:[]};
+    changed = true;
+  }
+
+  [1,2,3].forEach(t => {
+    const rawBoard = Array.isArray(G.board[t]) ? G.board[t].slice(0, 4) : toArr(G.board[t]).slice(0, 4);
+    if (!Array.isArray(G.board[t]) || G.board[t].length !== 4) changed = true;
+    while (rawBoard.length < 4) {
+      rawBoard.push(null);
+      changed = true;
+    }
+    G.board[t] = rawBoard.map(card => {
+      const clean = normaliseOne(card, t);
+      if (card && !clean) changed = true;
+      return clean;
+    });
+  });
+
+  [1,2,3].forEach(t => {
+    G.decks[t] = normaliseList(G.decks[t], t);
+  });
+
+  [1,2,3].forEach(t => {
+    const missing = ALL_CARDS
+      .filter(card => Number(card.tier) === Number(t) && !used.has(card.id))
+      .sort((a,b) => a.id - b.id)
+      .map(card => cloneDevCardById(card.id))
+      .filter(Boolean);
+    if (missing.length) {
+      missing.forEach(card => used.add(card.id));
+      G.decks[t].push(...missing);
+      changed = true;
+    }
+  });
+
+  [1,2,3].forEach(t => {
+    for (let slot = 0; slot < 4; slot++) {
+      if (!G.board[t][slot] && G.decks[t].length) {
+        G.board[t][slot] = G.decks[t].pop() || null;
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) console.warn('dev card table repaired', reason);
   return changed;
 }
 
@@ -7252,14 +8134,15 @@ function startGame() {
   });
 }
 
-function startGameOnline(names, serials=[]) {
+function startGameOnline(names, serials=[], opts={}) {
   // Host only — build G and push to Firebase
   _finishedGameExitCleanupKey = '';
   resetTurnNotifMemory();
-  G = _buildG(names, serials);
+  G = _buildG(names, serials, opts);
   syncMyIdxFromStatePlayers();
-  if (onlineMode && myIdx >= 0 && G.players && G.players[myIdx]) G.players[myIdx].sessionId = _accountSessionId || '';
-  G.heroPool = drawHeroPool(names.length);
+  const myGameIdx = myTeamIdx();
+  if (onlineMode && myGameIdx >= 0 && G.players && G.players[myGameIdx]) G.players[myGameIdx].sessionId = _accountSessionId || '';
+  G.heroPool = drawHeroPool(G.numP);
   prepareOpeningBoardWarmup({priority:'high', decode:true, deadlineMs:2600});
   warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
   _knownDisc = new Set();
@@ -8356,13 +9239,13 @@ function playSyncedRemoteAnim(anim) {
       }
       if (anim.type === 'gems-to-player') {
         const playerIdx = Number(anim.playerIdx);
-        if (!Number.isFinite(playerIdx) || playerIdx === myIdx) { resolve(false); return; }
+        if (!Number.isFinite(playerIdx) || (!isCoopGame() && playerIdx === myIdx)) { resolve(false); return; }
         animateGemsToPlayer(cleanGemSelection(anim.selection), playerIdx, () => resolve(true));
         return;
       }
       if (anim.type === 'gem-return-to-bank') {
         const targetIdx = Number(anim.targetIdx);
-        if (anim.modal && anim.modal.kind === 'soros-returned' && targetIdx === myIdx) {
+        if (anim.modal && anim.modal.kind === 'soros-returned' && canViewOwnPlayerIdx(targetIdx)) {
           showSorosReturnedModal(anim.modal.col, anim.actorIdx);
         }
         animateGemsToBank(cleanGemSelection(anim.selection), targetIdx, () => resolve(true));
@@ -8456,7 +9339,8 @@ function checkMissions() {
 function advanceTurn() {
   const pl=G.players[G.cur];
   if (!G.lastRound && pl.points>=15){ G.lastRound=true; G.lastStarter=G.cur; }
-  const next = nextAvailablePlayer(G.cur);
+  const coopNext = isCoopGame() ? nextCoopTurnInfo() : null;
+  const next = isCoopGame() ? (coopNext ? coopNext.teamIdx : -1) : nextAvailablePlayer(G.cur);
   if (next < 0) {
     G.over = true;
     G.normalEnd = false;
@@ -8465,9 +9349,14 @@ function advanceTurn() {
     showOverMod();
     return;
   }
-  if (G.lastRound && next===0){ endGame(); return; }
+  if (G.lastRound && (isCoopGame() ? Number(coopNext.seat) === Number((G.players[0]?.members?.[0]?.seat) ?? 0) : next===0)){ endGame(); return; }
   G.turnCount=(G.turnCount||0)+1;
   G.heroActedThisTurn = Array(G.numP).fill(false);
+  if (coopNext) {
+    G.activeSeat = coopNext.seat;
+    G.teamActiveSeats = G.teamActiveSeats || {};
+    G.teamActiveSeats[next] = coopNext.seat;
+  }
   G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false; G.ui.muskActive=false; G.ui.muskCardDone=false;
   checkBuffettReturn();
   stopTimer(); render();
@@ -8519,18 +9408,23 @@ async function awardLadderPointsOnce() {
   gate.transaction(cur => cur || {by:currentSerial || 'unknown', at:Date.now()}, async (err, committed) => {
     if (err || !committed) return;
     const rows = rankedRows();
-    await Promise.all(rows.map(({p}, position) => {
-      const serial = serialKey(p.serial || p.name);
-      if (!serial) return Promise.resolve();
+    const jobs = [];
+    rows.forEach(({p}, position) => {
       const reward = rankRewardFor(position, rows.length);
-      return db.ref(`ladder/${serial}`).transaction(cur => {
-        const row = cur || {};
-        row.points = (Number(row.points) || 0) + reward;
-        row.games = (Number(row.games) || 0) + 1;
-        row.updatedAt = Date.now();
-        return row;
+      const serials = isCoopGame()
+        ? (p.members || []).map(m => serialKey(m.serial || m.name)).filter(Boolean)
+        : [serialKey(p.serial || p.name)].filter(Boolean);
+      serials.forEach(serial => {
+        jobs.push(db.ref(`ladder/${serial}`).transaction(cur => {
+          const row = cur || {};
+          row.points = (Number(row.points) || 0) + reward;
+          row.games = (Number(row.games) || 0) + 1;
+          row.updatedAt = Date.now();
+          return row;
+        }));
       });
-    }));
+    });
+    await Promise.all(jobs);
   });
 }
 
@@ -9328,6 +10222,7 @@ function clickGold() {
 }
 
 function rCards() {
+  if (reconcileDevCards('render')) scheduleDevCardRepairPush('render');
   // In online mode always highlight based on your own wallet, not the current player's
   const pl = activeViewPlayer() || G.players[G.cur];
   let h='';
@@ -9425,7 +10320,7 @@ function rPlayers() {
       (hero.id === 14 && !canUseDVSkill(i)) ||
       (hero.id === 15 && !canUseShiyuanSkill(i))
     );
-    const canControlThisPlayer = !isSpectator() && (!onlineMode || Number(i) === Number(myIdx));
+    const canControlThisPlayer = !isSpectator() && (!onlineMode || canControlPlayerIdx(i));
     const canUseSkill = canControlThisPlayer && hero && !hero.passive && cur && usesLeft > 0 && !alreadyActedHero && !skillBlocked;
     const skillUsed = hero && !hero.passive && cur && (usesLeft <= 0 || alreadyActedHero);
     const avatarExtraClass = canUseSkill ? ' skill-ready' : skillBlocked ? ' skill-blocked' : skillUsed ? ' skill-used' : '';
@@ -9437,6 +10332,13 @@ function rPlayers() {
       <span class="pi-hero-avatar-fallback${avatarExtraClass}" style="display:none;" ${avatarOnclick}>${HERO_EMOJI[hero.key]||'👤'}</span>
       <div class="pi-hero-tooltip">${heroSkillDetailHtml(hero, usesLeft)}</div>
     ` : '';
+    const memberH = isCoopGame() ? `<div class="team-member-list">${
+      (p.members || []).map(member => {
+        const active = Number(member.seat) === Number(activeCoopSeat());
+        const off = member.disconnected || member.offline;
+        return `<div class="team-member-name ${active?'active':''} ${off?'off':''}">${active?'▶ ':''}${member.pos === 0 ? '上' : '下'}：${htmlEsc(member.name || '')}</div>`;
+      }).join('')
+    }</div>` : '';
     const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426;':''}${p.disconnected?'opacity:.45;':p.offline?'opacity:.72;':''}position:relative;">
       ${timerBadge}
       <div style="display:flex;align-items:center;gap:6px">
@@ -9444,6 +10346,7 @@ function rPlayers() {
         <div class="pi-name" style="color:${p.color};flex-shrink:0">${p.name}</div>
         ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:p.offline?`<span style="font-size:.6em;color:#ffaa55;margin-left:2px">● 離線</span>`:''}
       </div>
+      ${memberH}
       <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
       <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
       <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:5px;margin-bottom:1px">寶石代幣</div>
@@ -9488,7 +10391,7 @@ function viewResCard(pi, ri) {
   const card=p&&p.reserved[ri];
   if (!card) return;
   // If it's my own card and it's my turn → allow buy
-  const isMine = !isSpectator() && (onlineMode ? pi===myIdx : pi===G.cur);
+  const isMine = !isSpectator() && (onlineMode ? canViewOwnPlayerIdx(pi) : pi===G.cur);
   if (isMine && isMyTurn() && !G.ui.acted) { openResCard(ri); return; }
   // Read-only view
   const tierN={1:'初級卡',2:'中級卡',3:'高級卡'}[card.tier];
@@ -9668,6 +10571,32 @@ function restoredWaitingRoomFromGameRoom(room) {
   const statePlayers = toArr(state.players);
   const seatOrder = toArr(room && room.seatOrder);
   const presence = room && room.presence ? room.presence : {};
+  if (roomIsCoop(room)) {
+    const players = {};
+    const playerIds = {};
+    const ready = {};
+    const nextPresence = {};
+    statePlayers.forEach(team => {
+      toArr(team && team.members).forEach(member => {
+        if (!member || member.disconnected || member.offline || presence[member.seat] === false) return;
+        const seat = Number(member.seat);
+        if (!Number.isFinite(seat)) return;
+        players[seat] = member.name || `玩家${seat+1}`;
+        playerIds[seat] = normaliseSerial(member.serial || member.name || `player${seat+1}`);
+        ready[seat] = seat === 0;
+        nextPresence[seat] = true;
+      });
+    });
+    return {
+      players,
+      playerIds,
+      ready,
+      presence:nextPresence,
+      entries:Object.keys(players).map(Number).sort((a,b)=>a-b),
+      numP:Number(room.numP || state.seatCount || 0) || (Number(room.numTeams || state.numP || 2) * 2),
+      numTeams:Number(room.numTeams || state.numP || 2)
+    };
+  }
   const max = Number(room?.numP || state.numP || statePlayers.length || 0);
   const used = new Set();
   const nextFreeSlot = () => {
@@ -9731,6 +10660,7 @@ async function returnToRoomAfterGame() {
         state:null,
         anim:null,
         heroSelections:null,
+        skillApprovals:null,
         turnPause:null,
         ladderAwarded:null,
         starting:false,
@@ -9739,6 +10669,9 @@ async function returnToRoomAfterGame() {
         ready:restored.ready,
         presence:restored.presence,
         numP:restored.numP,
+        numTeams:restored.numTeams || room.numTeams || null,
+        teamSize:room.teamSize || null,
+        mode:room.mode || 'normal',
         seatOrder:null,
         updatedAt:firebase.database.ServerValue.TIMESTAMP
       };
@@ -9772,6 +10705,9 @@ function showOverMod() {
     const heroId=G.heroes&&G.heroes[idx];
     const hero=heroId?HEROES.find(h=>h.id===heroId):null;
     const claimed = G.missions.filter(m=>m.claimedBy===idx).length;
+    const memberNames = isCoopGame()
+      ? `<div class="over-meta">${(p.members || []).map(m=>`<span>${htmlEsc(m.name)}</span>`).join('')}</div>`
+      : '';
     const heroEmoji = hero ? (HERO_EMOJI[hero.key] || '👤') : '👤';
     const avatarHtml = hero
       ? `<div class="over-avatar-wrap" style="color:${htmlEsc(p.color)}">
@@ -9787,6 +10723,7 @@ function showOverMod() {
       ${avatarHtml}
       <div class="over-info">
         <div class="over-player" style="color:${htmlEsc(p.color)}">${isW?'🏆 ':''}${htmlEsc(p.name)}</div>
+        ${memberNames}
         <div class="over-hero">${hero?htmlEsc(hero.name):'未選角色'}</div>
         <div class="over-meta">
           <span>牌 ${p.cards.length} 張</span>
@@ -9909,9 +10846,10 @@ function showTurnNotification(playerIdx, callback) {
   }
   playClick('turn');
   const pl = G.players[playerIdx];
+  const turnName = isCoopGame() ? `${pl.name}｜${activeTeamMemberName(playerIdx) || '隊員'}` : pl.name;
   const el = document.getElementById('turn-notif');
   document.getElementById('tn-sub').style.color = pl.color;
-  document.getElementById('tn-name').textContent = pl.name;
+  document.getElementById('tn-name').textContent = turnName;
   document.getElementById('tn-name').style.color = pl.color;
   _turnNotifCallback = callback;
   clearTimeout(window._tndTimer);
