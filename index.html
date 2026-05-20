@@ -2455,7 +2455,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Login -->
 <div id="screen-login" style="display:flex">
-  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp?v=fast2" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="login-card">
     <input id="login-code" class="lb-input" placeholder="請輸入帳號..." maxlength="16" style="text-transform:lowercase;letter-spacing:2px" onkeydown="if(event.key==='Enter'){event.preventDefault();loginWithSerial();}">
     <button class="btn-online primary" onclick="loginWithSerial()">登　入</button>
@@ -2465,7 +2465,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Lobby -->
 <div id="screen-lobby" style="display:none">
-  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp?v=fast2" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="session-pill" id="lobby-user">帳號：-</div>
   <div class="online-btns" style="margin-top:10px">
     <button class="btn-online primary" onclick="showOnlineJoin()">加入對戰</button>
@@ -2538,7 +2538,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Setup -->
 <div id="screen-setup">
-  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div class="setup-title logo-title"><img class="title-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp?v=fast2" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div class="setup-sub">練習模式 ── AI 對戰</div>
   <div class="num-row" id="num-row">
     <button class="btn-num active" onclick="setN(2)">2人</button>
@@ -2554,7 +2554,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 <!-- Game -->
 <div id="screen-game">
-  <div id="g-hdr"><img class="hdr-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp" alt="祕寶大亂鬥 Treasure Brawl"></div>
+  <div id="g-hdr"><img class="hdr-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp?v=fast2" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div id="g-main">
     <div id="g-left">
       <div id="g-players"></div>
@@ -3690,7 +3690,7 @@ const MISSION_DB = [
 // ── Parse data ───────────────────────────────────────────────────────────
 let _cid = 0;
 const ALL_CARDS  = RAW.map(r => ({id:_cid++, tier:r[0], pts:r[1], bonus:CI[r[2]], cost:{w:r[3],u:r[4],g:r[5],r:r[6],k:r[7]}}));
-const CARD_ART_VERSION = 'gem-90-v5-bar-aligned';
+const CARD_ART_VERSION = 'gem-webp-fast-v2';
 const GEM_CARD_ART = {};
 const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
 CI.forEach(c => {
