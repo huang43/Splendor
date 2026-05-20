@@ -1042,6 +1042,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
 .bonus-chip span,
 .pending-chip span,
 .pi-pts,
+.pi-hero-order-badge,
 .pi-gem-item span,
 .pi-mini,
 .timer-badge,
@@ -1078,6 +1079,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
 }
 #g-players .pi-pts,
 #g-players .score-unit,
+#g-players .pi-hero-order-badge,
 #g-players .bonus-chip span,
 #g-players .pi-gem-item span,
 #g-players .pi-mini {
@@ -1248,6 +1250,13 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   text-shadow:none;
   box-shadow:0 0 12px rgba(255,216,56,.72);
   animation:pulse .8s ease-in-out infinite;
+}
+.time-up-alert.pause-alert {
+  color:#fff7d7;
+  background:linear-gradient(135deg,#3a2a11,#8d6020);
+  border:1px solid rgba(255,214,118,.68);
+  box-shadow:0 0 10px rgba(255,190,74,.42);
+  animation:none;
 }
 @keyframes time-up-flash {
   0%,100% { opacity:1; filter:brightness(1.25); }
@@ -2443,6 +2452,20 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 }
 .pi-hero-avatar-fallback.skill-used    { border-color:#555; }
 .pi-hero-avatar-fallback.skill-blocked { border-color:#664; filter:grayscale(.55) brightness(.7); cursor:pointer; }
+.pi-hero-order-badge {
+  position:absolute; right:4px; bottom:4px; z-index:12;
+  min-width:18px; height:20px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.05em; line-height:1;
+  border:0;
+  background:none;
+  box-shadow:none;
+  pointer-events:none;
+}
+.pi-hero-order-badge.order-1 { color:#b36bff; }
+.pi-hero-order-badge.order-2 { color:#46d26c; }
+.pi-hero-order-badge.order-3 { color:#4aa3ff; }
+.pi-hero-order-badge.order-4 { color:#ff9955; }
 .pi-hero-tooltip {
   position:absolute; bottom:70px; right:0;
   background:#1a1428; border:1px solid rgba(255,215,50,.35);
@@ -2478,6 +2501,13 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     border-width:2px;
   }
   .pi-hero-avatar-fallback { font-size:1.08em; }
+  .pi-hero-order-badge {
+    right:3px;
+    bottom:3px;
+    min-width:15px;
+    height:17px;
+    font-size:.88em;
+  }
   .pi-hero-tooltip { display:none; }
   .pi-skill-btn {
     left:auto;
@@ -4861,6 +4891,27 @@ function isTurnTimerPaused(turnKey) {
   );
 }
 
+const COVER_HELP_DEFAULT_SRC = 'coverphoto.png';
+const COVER_HELP_TURN_SRC = 'bg.png';
+
+function coverHelpImageEl() {
+  return document.querySelector('#m-help .cover-help-img');
+}
+
+function setCoverHelpImage(src) {
+  const img = coverHelpImageEl();
+  if (img && img.getAttribute('src') !== src) img.setAttribute('src', src);
+}
+
+function coverHelpActionImageActive() {
+  return !!(G && !G.over && gameScreenVisible() && !isSpectator() && !isRoomGuest() && isMyTurn());
+}
+
+function updateCoverHelpImageForTurn() {
+  if (!helpCoverOpen()) return;
+  setCoverHelpImage(coverHelpActionImageActive() ? COVER_HELP_TURN_SRC : COVER_HELP_DEFAULT_SRC);
+}
+
 function helpCoverOpen() {
   const el = document.getElementById('m-help');
   return !!(el && el.style.display === 'flex');
@@ -4871,6 +4922,7 @@ function openCoverHelp(ev) {
   const el = document.getElementById('m-help');
   if (!el) return;
   el.style.display = 'flex';
+  updateCoverHelpImageForTurn();
   if (G && gameScreenVisible() && isMyTurn()) setHelpTurnPause();
 }
 
@@ -4878,6 +4930,7 @@ function closeCoverHelp(ev) {
   if (ev) ev.stopPropagation();
   const el = document.getElementById('m-help');
   if (el) el.style.display = 'none';
+  setCoverHelpImage(COVER_HELP_DEFAULT_SRC);
   releaseHelpTurnPause();
   if (G && gameScreenVisible() && isMyTurn()) window.setTimeout(applyPreGemActionOnTurn, 0);
 }
@@ -10235,6 +10288,7 @@ function render() {
   validatePreGemActionOrCancel();
   rMissions(); rBank(); rCards(); rPlayers(); rActionLog();
   if (onlineMode) applyOpponentCursors();
+  updateCoverHelpImageForTurn();
   updateTenpaiNotifications();
 }
 
@@ -10471,7 +10525,10 @@ function rPlayers() {
       resH+=`</div>`;
     }
     const tenpai = isPlayerTenpai(i);
-    const timerBadge = tenpai
+    const paused = cur && isTurnTimerPaused(G.turnCount || 0);
+    const timerBadge = paused
+      ? '<span class="time-up-alert pause-alert">暫離中</span>'
+      : tenpai
       ? '<span class="time-up-alert tenpai-alert">聽牌!</span>'
       : cur&&_timerExpired
         ? '<span class="time-up-alert">時間到!</span>'
@@ -10497,10 +10554,15 @@ function rPlayers() {
     const avatarExtraClass = canUseSkill ? ' skill-ready' : skillBlocked ? ' skill-blocked' : skillUsed ? ' skill-used' : '';
     const heroInfoOnclick = hero ? `onclick="showHeroInfo(${i},event)"` : '';
     const avatarOnclick = canUseSkill ? `onclick="activateHeroSkill(${i})"` : (canControlThisPlayer && skillBlocked) ? `onclick="showSkillBlockReason(${hero.id},${i})"` : heroInfoOnclick;
+    const actionOrder = i + 1;
+    const orderBadge = actionOrder >= 1 && actionOrder <= 4
+      ? `<span class="pi-hero-order-badge order-${actionOrder}" title="行動順序 ${actionOrder}">${actionOrder}</span>`
+      : '';
     const heroAvatarEl = hero ? `
       <img class="pi-hero-avatar${avatarExtraClass}" src="${heroImgSrc(hero.key)}" ${avatarOnclick}
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(hero.name)}">
       <span class="pi-hero-avatar-fallback${avatarExtraClass}" style="display:none;" ${avatarOnclick}>${HERO_EMOJI[hero.key]||'👤'}</span>
+      ${orderBadge}
       <div class="pi-hero-tooltip">${heroSkillDetailHtml(hero, usesLeft)}</div>
     ` : '';
     const memberH = isCoopGame() ? `<div class="team-member-list">${
@@ -10510,7 +10572,14 @@ function rPlayers() {
         return `<div class="team-member-name ${active?'active':''} ${off?'off':''}">${active?'▶ ':''}${member.pos === 0 ? '上' : '下'}：${htmlEsc(member.name || '')}</div>`;
       }).join('')
     }</div>` : '';
-    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426;':''}${p.disconnected?'opacity:.45;':p.offline?'opacity:.72;':''}position:relative;">
+    const ownScoreCard = canViewOwnPlayerIdx(i);
+    const activeEnemyScoreCard = cur && !ownScoreCard && !isMyTurn();
+    const cardBaseStyle = ownScoreCard
+      ? 'border:none;background:#141426;'
+      : activeEnemyScoreCard
+        ? 'border:none;background:#2B241D;box-shadow:inset 0 0 0 1px rgba(255,214,128,.18);'
+        : (cur ? 'border:none;background:#141426;' : '');
+    const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cardBaseStyle}${p.disconnected?'opacity:.45;':p.offline?'opacity:.72;':''}position:relative;">
       ${timerBadge}
       <div style="display:flex;align-items:center;gap:6px">
         <div class="pi-pts" style="color:${p.color};flex-shrink:0">${p.points}<span class="score-unit">分</span></div>
@@ -10944,6 +11013,7 @@ window.showSkillBlockReason = function(heroId, playerIdx) {
 };
 
 function startHumanTurn() {
+  updateCoverHelpImageForTurn();
   startTimer();
   if (helpCoverOpen()) setHelpTurnPause();
   window.setTimeout(applyPreGemActionOnTurn, 80);
@@ -11007,6 +11077,7 @@ function notifyTurn(playerIdx = G?.cur, callback = turnCallbackFor(playerIdx), o
   if (!opts.force && key && _lastTurnNotifKey === key) return false;
   _lastTurnNotifKey = key;
   stopTimer();
+  updateCoverHelpImageForTurn();
   showTurnNotification(idx, callback);
   return true;
 }
