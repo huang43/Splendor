@@ -2966,7 +2966,7 @@ const AUTHORIZED_SERIALS = [
 const LOGIN_STORAGE_KEY = 'splendor-login-serial';
 const TURN_LIMIT_SECONDS = 45;
 const AI_THINK_MAX_SECONDS = 10;
-const SPECTATOR_LIMIT = 6;
+const SPECTATOR_LIMIT = 4;
 let currentSerial = '';
 let _loginReconnectCheckId = 0;
 
@@ -3305,9 +3305,11 @@ function findSerialSlot(room, serial) {
 function getSpectatorInfo(room) {
   const spectators = room && room.spectators ? room.spectators : {};
   const presence = room && room.spectatorPresence ? room.spectatorPresence : {};
-  const max = Number(room && room.spectatorLimit) || SPECTATOR_LIMIT;
+  const configuredMax = Number(room && room.spectatorLimit) || SPECTATOR_LIMIT;
+  const max = Math.max(0, Math.min(configuredMax, SPECTATOR_LIMIT));
   const entries = Object.entries(spectators)
     .filter(([id, spec]) => spec && presence[id] !== false)
+    .slice(0, max)
     .map(([id, spec]) => ({
       id,
       name:String(spec.name || spec.serial || '觀戰者').slice(0, 24),
@@ -4067,14 +4069,14 @@ function listenWait(code) {
     const players = room.players||{}, n = room.numP;
     const ready = room.ready||{};
     const spectatorInfo = getSpectatorInfo(room);
-    if (!_waitingSeatSwitching && !room.starting && onlineMode && roomCode === code && !isSpectator() && !isHost && myIdx >= 0 && !players[myIdx]) {
+    if (!_waitingSeatSwitching && !_postGameRoomReturnInProgress && !room.starting && onlineMode && roomCode === code && !isSpectator() && !isHost && myIdx >= 0 && !players[myIdx]) {
       cancelPresenceCleanup();
       roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
       alert('你已被市長移出房間');
       showOnly('screen-lobby');
       return;
     }
-    if (!_waitingSeatSwitching && onlineMode && roomCode === code && isSpectator() && spectatorId && !spectatorInfo.entries.some(spec => spec.id === spectatorId)) {
+    if (!_waitingSeatSwitching && !_postGameRoomReturnInProgress && onlineMode && roomCode === code && isSpectator() && spectatorId && !spectatorInfo.entries.some(spec => spec.id === spectatorId)) {
       cancelPresenceCleanup();
       roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
       alert('你已被市長移出觀戰席');
@@ -4102,18 +4104,21 @@ function listenWait(code) {
     const canSpec = canSwitchToSpectator(room, spectatorInfo);
     const specHeadAttrs = canSpec ? ' class="wait-spectator-head selectable" role="button" title="加入觀戰席" onclick="switchWaitingSpectator(event)"' : ' class="wait-spectator-head"';
     html+=`<div${specHeadAttrs}>觀戰席 ${spectatorInfo.joined}/${spectatorInfo.max}</div>`;
-    if (spectatorInfo.entries.length) {
-      if (canSpec) html+=`<div class="wait-slot spectator selectable" role="button" title="加入觀戰席" onclick="switchWaitingSpectator(event)">加入觀戰席</div>`;
-      spectatorInfo.entries.forEach(spec => {
+    const spectatorRows = spectatorInfo.entries.slice(0, spectatorInfo.max);
+    const spectatorRowMax = Math.max(0, Number(spectatorInfo.max) || SPECTATOR_LIMIT);
+    for (let si = 0; si < spectatorRowMax; si++) {
+      const spec = spectatorRows[si];
+      if (spec) {
         const me = isSpectator() && spec.id === spectatorId;
         const safeSpecId = String(spec.id || '').replace(/[^a-zA-Z0-9_-]/g,'');
         const kick = isHost ? `<button class="wait-kick" title="移出觀戰席" onclick="kickWaitingSpectator('${safeSpecId}',event)">×</button>` : '';
         html+=`<div class="wait-slot spectator ${kick?'kickable':''}">${me?'👁 ':''}觀戰 ${htmlEsc(spec.name)}${kick}</div>`;
-      });
-    } else {
-      html+=canSpec
-        ? '<div class="wait-slot empty selectable" role="button" title="加入觀戰席" onclick="switchWaitingSpectator(event)">目前沒有觀戰者</div>'
-        : '<div class="wait-slot empty">目前沒有觀戰者</div>';
+      } else {
+        const emptyText = spectatorInfo.joined === 0 && si === 0 ? '目前沒有觀戰者' : `等待第 ${si + 1} 位觀戰者...`;
+        html+=canSpec
+          ? `<div class="wait-slot empty selectable" role="button" title="加入觀戰席" onclick="switchWaitingSpectator(event)">${emptyText}</div>`
+          : `<div class="wait-slot empty">${emptyText}</div>`;
+      }
     }
     document.getElementById('wait-list').innerHTML = html;
     updateWaitChoice(room, players, spectatorInfo);
