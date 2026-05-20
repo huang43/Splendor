@@ -102,13 +102,111 @@ body {
 
 /* Main */
 #g-main {
-  display:flex; gap:8px; padding:10px 12px 10px 2px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center;
+  display:flex; gap:8px; padding:10px 12px; flex:1; align-items:flex-start; overflow-x:auto; justify-content:center;
   background:linear-gradient(90deg,rgba(11,12,20,.48),rgba(18,14,10,.18),rgba(11,12,20,.48));
 }
 
 /* Left panel */
-#g-left { display:flex; flex-direction:column; gap:10px; width:178px; margin-left:-8px; flex-shrink:0; }
+#g-left { display:flex; flex-direction:column; gap:10px; width:178px; flex-shrink:0; }
 .panel-label { font-size:.68em; text-transform:uppercase; letter-spacing:2px; opacity:.45; margin-bottom:4px; }
+
+/* Table chat */
+#g-chat {
+  width:240px; min-width:220px; max-width:280px; flex:0 0 240px;
+  height:calc(100vh - 78px);
+  height:calc(100dvh - 78px);
+  max-height:calc(100vh - 78px);
+  max-height:calc(100dvh - 78px);
+  min-height:0;
+  display:flex; flex-direction:column; gap:7px;
+  padding:10px 10px 9px; border-radius:12px;
+  border:1px solid rgba(255,220,140,.24);
+  background:
+    linear-gradient(180deg,rgba(45,28,15,.9),rgba(13,9,7,.92)),
+    rgba(18,12,8,.92);
+  box-shadow:0 12px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,230,150,.1);
+  overflow:hidden;
+}
+#g-chat.drag-over {
+  border-color:rgba(95,190,255,.78);
+  box-shadow:0 0 0 2px rgba(95,190,255,.22), 0 14px 34px rgba(0,0,0,.48), inset 0 0 22px rgba(95,190,255,.14);
+}
+.chat-head {
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  padding-bottom:6px; border-bottom:1px solid rgba(255,220,140,.14);
+}
+.chat-title {
+  font-size:.72em; font-weight:950; letter-spacing:2px; color:#ffe08a;
+  text-shadow:0 1px 2px rgba(0,0,0,.75);
+}
+.chat-hint { font-size:.56em; color:rgba(255,236,190,.5); white-space:nowrap; }
+.chat-list {
+  flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  display:flex; flex-direction:column; gap:9px; padding-right:2px;
+}
+.chat-empty {
+  margin:auto 0; padding:12px 7px;
+  color:rgba(255,238,200,.38); font-size:.72em; line-height:1.45; text-align:center;
+  border:1px dashed rgba(255,220,140,.16); border-radius:9px;
+  background:rgba(255,255,255,.025);
+}
+.chat-entry {
+  padding:1px 1px 5px; border-radius:0;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+.chat-entry.mine {
+  border:0;
+  background:transparent;
+}
+.chat-meta {
+  display:flex; align-items:center; justify-content:space-between; gap:5px;
+  margin-bottom:4px; font-size:.62em; font-weight:900;
+}
+.chat-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-time { color:rgba(255,236,190,.35); flex-shrink:0; font-weight:700; }
+.chat-text {
+  color:#f5e6c7; font-size:.72em; line-height:1.42; word-break:break-word;
+  user-select:text;
+}
+.chat-card-wrap { margin-top:6px; display:flex; justify-content:flex-start; }
+.chat-card-preview {
+  --card-w:70px; --card-h:103px; --card-bar-h:21px; --card-cost-badge:15px;
+  width:var(--card-w) !important; height:var(--card-h) !important; min-height:var(--card-h) !important;
+  border-radius:7px; cursor:default; pointer-events:none;
+  box-shadow:0 6px 13px rgba(0,0,0,.5), 0 0 0 1px rgba(255,230,150,.12);
+  animation:none !important; transform:none !important;
+}
+.chat-card-preview:hover { transform:none !important; box-shadow:0 6px 13px rgba(0,0,0,.5), 0 0 0 1px rgba(255,230,150,.12); }
+.chat-card-preview .card-top { padding:3px 5px; min-height:var(--card-bar-h); }
+.chat-card-preview .card-pts { font-size:.88em; max-width:42px; overflow:hidden; }
+.chat-card-preview .card-body { padding:23px 4px 4px; }
+.chat-card-preview .cost-stack {
+  left:4px; bottom:5px; transform:scale(.66); transform-origin:left bottom;
+}
+.chat-card-preview .cost-ln { min-height:21px; }
+.chat-card-preview .card-top .gem-img {
+  width:15px !important; height:15px !important; right:4px !important; top:3px !important; transform:none !important;
+}
+.chat-form { display:flex; align-items:center; gap:5px; }
+.chat-form input {
+  width:100%; min-width:0; height:30px; padding:0 8px;
+  border-radius:8px; border:1px solid rgba(255,220,140,.18);
+  background:rgba(0,0,0,.28); color:#fff0cc;
+  font-size:.72em; outline:none;
+}
+.chat-form input:focus {
+  border-color:rgba(255,220,140,.45);
+  box-shadow:0 0 0 2px rgba(255,210,100,.08);
+}
+.chat-send {
+  width:32px; height:30px; border-radius:8px; flex-shrink:0; cursor:pointer;
+  border:1px solid rgba(255,220,140,.25);
+  background:linear-gradient(180deg,rgba(175,113,35,.7),rgba(86,49,17,.82));
+  color:#ffe4a0; font-weight:950;
+}
+.chat-send:hover { filter:brightness(1.12); }
 
 /* Right utility column */
 #g-side {
@@ -1784,10 +1882,15 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   .log-entry { padding:7px 8px; }
   .log-text { font-size:.72em; }
   #g-left {
-    order:3; width:100%;
+    order:4; width:100%;
     display:block;
     gap:8px; align-items:start;
   }
+  #g-chat {
+    order:3; width:100%; min-width:0; max-width:none; flex:0 0 auto;
+    height:auto; min-height:190px; max-height:230px;
+  }
+  .chat-list { min-height:86px; }
   #g-bank {
     order:2; width:100%;
     display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px;
@@ -1950,6 +2053,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   #g-main { padding:6px 4px 10px; gap:6px; }
   #g-right { padding:8px 4px 10px; border-radius:12px; }
   #g-left { display:block; }
+  #g-chat { min-height:180px; max-height:220px; }
   #g-players {
     display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
     max-height:none; min-height:0; overflow:visible; gap:6px;
@@ -1980,11 +2084,15 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --card-cost-badge:17px;
   }
   #g-main { flex-direction:row; }
-  #g-left { order:1; width:170px; display:flex; flex-direction:column; flex-shrink:0; }
-  #g-right { order:2; min-width:0; }
+  #g-chat {
+    order:1; width:220px; min-width:200px; max-width:240px; flex:0 0 220px;
+    height:calc(100dvh - 76px); max-height:calc(100dvh - 76px); min-height:0;
+  }
+  #g-left { order:2; width:170px; display:flex; flex-direction:column; flex-shrink:0; }
+  #g-right { order:3; min-width:0; }
   #g-side {
     display:grid;
-    order:3; width:190px; min-width:180px; flex:0 0 190px;
+    order:4; width:190px; min-width:180px; flex:0 0 190px;
     grid-template-rows:auto minmax(0,1fr);
     height:calc(100dvh - 76px); max-height:calc(100dvh - 76px); gap:6px;
   }
@@ -2587,6 +2695,17 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <div id="screen-game">
   <div id="g-hdr"><img class="hdr-logo-img" src="splendor-card-art/title-treasure-brawl-v3-cutout.webp?v=fast2" alt="祕寶大亂鬥 Treasure Brawl"></div>
   <div id="g-main">
+    <div id="g-chat" ondragenter="chatDragEnter(event)" ondragover="chatDragOver(event)" ondragleave="chatDragLeave(event)" ondrop="dropChatCard(event)">
+      <div class="chat-head">
+        <div class="chat-title">聊天室</div>
+        <div class="chat-hint">拖卡貼圖</div>
+      </div>
+      <div id="chat-list" class="chat-list"></div>
+      <div class="chat-form">
+        <input id="chat-input" maxlength="120" placeholder="輸入訊息..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatText();}">
+        <button class="chat-send" onclick="sendChatText()">→</button>
+      </div>
+    </div>
     <div id="g-left">
       <div id="g-players"></div>
     </div>
@@ -2717,6 +2836,11 @@ let _remoteAnimRunId = 0;
 let _pendingSkillChainAnim = null;
 let _turnPause = null;
 let _helpPauseToken = null;
+let _chatRef = null;
+let _chatQuery = null;
+let _chatHandler = null;
+let _chatMessages = [];
+let _chatLocalSeq = 0;
 let practiceMode = false;
 let _aiThinkTimer = null;
 let _aiStartFallbackTimer = null;
@@ -2806,6 +2930,7 @@ async function backToLobby() {
   }
   clearPracticeAiWatcher();
   clearAiThinkTimer();
+  stopChat();
   roomCode=''; myIdx=-1; isHost=false; onlineMode=false; practiceMode=false;
   updateAuthUi();
   showOnly('screen-lobby');
@@ -2905,6 +3030,29 @@ function findSerialSlot(room, serial) {
   const players = room && room.state && room.state.players ? toArr(room.state.players) : [];
   const fallback = players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === wanted);
   return fallback >= 0 ? fallback : -1;
+}
+
+function syncMyIdxFromStatePlayers() {
+  if (!onlineMode || !G || !G.players || !currentSerial) return false;
+  const nextIdx = G.players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === normaliseSerial(currentSerial));
+  if (nextIdx < 0 || nextIdx === myIdx) return false;
+  const prevIdx = myIdx;
+  myIdx = nextIdx;
+  console.info('synced online player index', {from:prevIdx, to:myIdx});
+  if (db && roomCode) setupPresence(roomCode, myIdx).catch(err => console.warn('seat presence sync failed', err));
+  return true;
+}
+
+function addVirtualGemSupply(col, delta) {
+  if (!CI.includes(col) || !Number(delta)) return;
+  if (!G.virtualGemSupply) G.virtualGemSupply = {};
+  G.virtualGemSupply[col] = Number(G.virtualGemSupply[col] || 0) + Number(delta);
+  if (!G.virtualGemSupply[col]) delete G.virtualGemSupply[col];
+}
+
+function offBankGemHold(col) {
+  if (!G || !G.heroBuffett || G.heroBuffett.col !== col) return 0;
+  return 1;
 }
 
 async function findReconnectRoom(serial) {
@@ -3167,6 +3315,7 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   showOnly('screen-game');
   G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
   render();
+  listenChat(roomCode);
   _knownDisc = new Set();
   _knownOffline = new Set();
   listenCursor(roomCode);
@@ -3240,6 +3389,7 @@ function listenWait(code) {
       showOnly('screen-game');
       G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
       render();
+      listenChat(code);
       _knownDisc = new Set();
       _knownOffline = new Set();
       listenCursor(code);
@@ -3331,17 +3481,37 @@ async function hostStart() {
   if (!isHost) return;
   await cancelHostRoomCleanup();
   await setupPresence(roomCode, myIdx);
-  db.ref(`rooms/${roomCode}`).once('value', snap => {
-    const room = snap.val() || {};
-    const players = room.players || {};
-    const playerIds = room.playerIds || {};
-    // Only use actually joined players, in slot order
-    const joined = Object.keys(players).map(Number).sort((a,b)=>a-b);
-    const nameList = joined.map(i=>players[i]||`玩家${i+1}`);
-    const serialList = joined.map(i=>normaliseSerial(playerIds[i] || players[i] || `玩家${i+1}`));
-    numP = nameList.length;
-    startGameOnline(nameList, serialList);
+  const snap = await db.ref(`rooms/${roomCode}`).once('value');
+  const room = snap.val() || {};
+  const players = room.players || {};
+  const playerIds = room.playerIds || {};
+  // Only use actually joined players, then draw fixed seats for this game.
+  const entries = Object.keys(players).map(Number).sort((a,b)=>a-b).map(i=>({
+    waitingSlot:i,
+    name:players[i] || `玩家${i+1}`,
+    serial:normaliseSerial(playerIds[i] || players[i] || `玩家${i+1}`)
+  }));
+  shuffle(entries);
+  const nextPlayers = {};
+  const nextPlayerIds = {};
+  const nextReady = {};
+  const nextPresence = {};
+  entries.forEach((entry, i) => {
+    nextPlayers[i] = entry.name;
+    nextPlayerIds[i] = entry.serial;
+    nextReady[i] = true;
+    nextPresence[i] = true;
   });
+  await db.ref(`rooms/${roomCode}`).update({
+    players:nextPlayers,
+    playerIds:nextPlayerIds,
+    ready:nextReady,
+    presence:nextPresence,
+    seatOrder:entries.map((entry, i)=>({seat:i, waitingSlot:entry.waitingSlot, serial:entry.serial})),
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  });
+  numP = entries.length;
+  startGameOnline(entries.map(e=>e.name), entries.map(e=>e.serial));
 }
 
 // ── Game state sync ────────────────────────────────────────────────────────
@@ -3369,6 +3539,7 @@ function pushG() {
   if (G.heroUsed)         serial.heroUsed         = G.heroUsed.map(v => v===Infinity ? 'Inf' : v);
   if (G.heroBuffett)      serial.heroBuffett      = G.heroBuffett;
   if (G.heroDVPrompt)     serial.heroDVPrompt     = G.heroDVPrompt;
+  if (G.virtualGemSupply) serial.virtualGemSupply = G.virtualGemSupply;
   if (G.heroActedThisTurn) serial.heroActedThisTurn = G.heroActedThisTurn;
   db.ref(`rooms/${roomCode}/state`).set(serial);
 }
@@ -3520,6 +3691,243 @@ function applyOpponentCursors() {
   });
 }
 
+const CHAT_MAX_MESSAGES = 80;
+
+function stopChat(clear=true) {
+  if (_chatQuery && _chatHandler) _chatQuery.off('value', _chatHandler);
+  _chatRef = null;
+  _chatQuery = null;
+  _chatHandler = null;
+  if (clear) {
+    _chatMessages = [];
+    renderChatMessages();
+  }
+}
+
+function startLocalChat() {
+  stopChat(false);
+  _chatMessages = [];
+  renderChatMessages();
+}
+
+function listenChat(code) {
+  stopChat(false);
+  _chatMessages = [];
+  renderChatMessages();
+  if (!onlineMode || !db || !code) return;
+  _chatRef = db.ref(`rooms/${code}/chat`);
+  _chatQuery = _chatRef.limitToLast(CHAT_MAX_MESSAGES);
+  _chatHandler = snap => {
+    const raw = snap.val() || {};
+    _chatMessages = Object.entries(raw).map(([id, msg]) => normaliseChatMessage(id, msg)).filter(Boolean);
+    _chatMessages.sort((a,b) => (Number(a.ts)||0) - (Number(b.ts)||0));
+    renderChatMessages();
+  };
+  _chatQuery.on('value', _chatHandler);
+}
+
+function normaliseChatMessage(id, msg) {
+  if (!msg || typeof msg !== 'object') return null;
+  const out = {
+    id,
+    type:String(msg.type || (msg.card ? 'card' : 'text')),
+    text:String(msg.text || '').slice(0, 120),
+    playerIdx:Number.isFinite(Number(msg.playerIdx)) ? Number(msg.playerIdx) : -1,
+    playerName:String(msg.playerName || '玩家').slice(0, 24),
+    color:safeChatColor(msg.color || '#ffe08a'),
+    ts:Number(msg.ts) || Date.now(),
+  };
+  if (msg.card && typeof msg.card === 'object') out.card = normaliseChatCard(msg.card);
+  return out;
+}
+
+function normaliseChatCard(card) {
+  const cost = {};
+  CI.forEach(c => cost[c] = Math.max(0, Number(card.cost && card.cost[c]) || 0));
+  const bonus = CI.includes(card.bonus) ? card.bonus : 'w';
+  return {
+    id:Number(card.id) || 0,
+    tier:Math.max(1, Math.min(3, Number(card.tier) || 1)),
+    pts:Math.max(0, Number(card.pts) || 0),
+    bonus,
+    cost,
+    art:safeChatAssetName(card.art || '')
+  };
+}
+
+function safeChatAssetName(v) {
+  return String(v || '').replace(/[^a-zA-Z0-9_./-]/g, '').replace(/^\/+/, '').slice(0, 120);
+}
+
+function safeChatColor(v) {
+  const s = String(v || '').trim();
+  return /^#[0-9a-f]{3,8}$/i.test(s) ? s : '#ffe08a';
+}
+
+function chatPlayerInfo() {
+  const idx = (onlineMode && myIdx >= 0) ? myIdx : 0;
+  const pl = G && G.players && G.players[idx];
+  return {
+    idx,
+    name:(pl && pl.name) || currentSerial || '玩家',
+    color:safeChatColor((pl && pl.color) || '#ffe08a')
+  };
+}
+
+function publishChatMessage(payload) {
+  const who = chatPlayerInfo();
+  const msg = {
+    type:payload.type || 'text',
+    text:String(payload.text || '').trim().slice(0, 120),
+    playerIdx:who.idx,
+    playerName:who.name,
+    color:who.color,
+    ts:Date.now()
+  };
+  if (payload.card) msg.card = payload.card;
+  if (!msg.text && !msg.card) return;
+  if (onlineMode && db && roomCode && _chatRef) {
+    _chatRef.push({...msg, ts:firebase.database.ServerValue.TIMESTAMP});
+    return;
+  }
+  _chatMessages.push({...msg, id:`local-${++_chatLocalSeq}`});
+  _chatMessages = _chatMessages.slice(-CHAT_MAX_MESSAGES);
+  renderChatMessages();
+}
+
+function sendChatText() {
+  const input = document.getElementById('chat-input');
+  const text = String(input && input.value || '').trim();
+  if (!text) return;
+  if (input) input.value = '';
+  publishChatMessage({type:'text', text});
+}
+
+function makeChatCardPayload(card) {
+  const cost = {};
+  CI.forEach(c => cost[c] = Math.max(0, Number(card.cost && card.cost[c]) || 0));
+  return {
+    id:Number(card.id) || 0,
+    tier:Number(card.tier) || 1,
+    pts:Number(card.pts) || 0,
+    bonus:CI.includes(card.bonus) ? card.bonus : 'w',
+    cost,
+    art:safeChatAssetName(cardArtName(card))
+  };
+}
+
+function boardChatCardById(cardId) {
+  const id = Number(cardId);
+  if (!G || !G.board || !Number.isFinite(id)) return null;
+  for (const tier of [3,2,1]) {
+    const found = (G.board[tier] || []).find(card => card && Number(card.id) === id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function dragChatCard(ev, cardId) {
+  const card = boardChatCardById(cardId);
+  if (!card || !ev || !ev.dataTransfer) return;
+  const payload = JSON.stringify({id:card.id});
+  ev.dataTransfer.effectAllowed = 'copy';
+  ev.dataTransfer.setData('application/x-splendor-card', payload);
+  ev.dataTransfer.setData('text/plain', `splendor-card:${card.id}`);
+}
+
+function chatDragEnter(ev) {
+  if (ev) ev.preventDefault();
+  document.getElementById('g-chat')?.classList.add('drag-over');
+}
+
+function chatDragOver(ev) {
+  if (!ev) return;
+  ev.preventDefault();
+  if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
+  document.getElementById('g-chat')?.classList.add('drag-over');
+}
+
+function chatDragLeave(ev) {
+  const panel = document.getElementById('g-chat');
+  if (!panel) return;
+  const next = ev && ev.relatedTarget;
+  if (!next || !panel.contains(next)) panel.classList.remove('drag-over');
+}
+
+function dropChatCard(ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  document.getElementById('g-chat')?.classList.remove('drag-over');
+  const raw = ev && ev.dataTransfer
+    ? (ev.dataTransfer.getData('application/x-splendor-card') || ev.dataTransfer.getData('text/plain'))
+    : '';
+  const match = String(raw || '').match(/(\d+)/);
+  if (!match) return;
+  const card = boardChatCardById(match[1]);
+  if (!card) { toast('這張牌已不在牌桌上'); return; }
+  const input = document.getElementById('chat-input');
+  const text = String(input && input.value || '').trim();
+  if (input && text) input.value = '';
+  publishChatMessage({type:'card', text, card:makeChatCardPayload(card)});
+}
+
+function chatTimeText(ts) {
+  const d = new Date(Number(ts) || Date.now());
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  return `${hh}:${mm}`;
+}
+
+function chatCardBgStyle(card) {
+  const art = safeChatAssetName(card.art || cardArtName(card));
+  const url = `splendor-card-art/${art}?v=${CARD_ART_VERSION}`;
+  return `--card-art:url('${url}');background-image:url('${url}');background-size:cover;background-position:center;background-repeat:no-repeat;`;
+}
+
+function chatCardPreviewHtml(card) {
+  if (!card) return '';
+  const bonus = CI.includes(card.bonus) ? card.bonus : 'w';
+  const cost = card.cost || {};
+  const costH = CI.filter(c => (cost[c]||0) > 0).map(c =>
+    `<div class="cost-ln">${costBadgeHtml(c, cost[c])}</div>`
+  ).join('');
+  const artClass = safeChatAssetName(card.art).includes('gem-') ? 'gem-art' : '';
+  return `<div class="dev-card chat-card-preview t${card.tier || 1} ${artClass}" style="${chatCardBgStyle(card)}">
+    <div class="card-top ${CHC[bonus] || ''}">
+      <span class="card-pts">${card.pts || ''}</span>
+      ${gemSVG(bonus,15)}
+    </div>
+    <div class="card-body">
+      <div class="cost-stack">${costH}</div>
+    </div>
+  </div>`;
+}
+
+function chatMessageHtml(msg) {
+  const mine = Number(msg.playerIdx) === Number((onlineMode && myIdx >= 0) ? myIdx : 0);
+  const text = msg.text ? `<div class="chat-text">${htmlEsc(msg.text)}</div>` : '';
+  const card = msg.card ? `<div class="chat-card-wrap">${chatCardPreviewHtml(msg.card)}</div>` : '';
+  return `<div class="chat-entry ${mine?'mine':''}">
+    <div class="chat-meta">
+      <span class="chat-name" style="color:${htmlEsc(msg.color || '#ffe08a')}">${htmlEsc(msg.playerName || '玩家')}</span>
+      <span class="chat-time">${chatTimeText(msg.ts)}</span>
+    </div>
+    ${text}${card}
+  </div>`;
+}
+
+function renderChatMessages() {
+  const list = document.getElementById('chat-list');
+  if (!list) return;
+  const msgs = _chatMessages.slice(-CHAT_MAX_MESSAGES);
+  list.innerHTML = msgs.length
+    ? msgs.map(chatMessageHtml).join('')
+    : `<div class="chat-empty">還沒有訊息<br>可輸入文字，或把牌桌上的卡拖進來</div>`;
+  requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+}
+
 function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values(v); }
 
 function applyRemoteState(data) {
@@ -3560,9 +3968,11 @@ function applyRemoteState(data) {
   if (data.heroPool)        G.heroPool         = toArr(data.heroPool).map(p=>toArr(p));
   if (data.heroes)          G.heroes           = toArr(data.heroes);
   if (data.heroUsed)        G.heroUsed         = toArr(data.heroUsed).map(v=>v==='Inf'?Infinity:+v);
-  if (data.heroBuffett)     G.heroBuffett      = data.heroBuffett;
+  G.heroBuffett = data.heroBuffett || null;
   if (data.heroDVPrompt)    G.heroDVPrompt     = data.heroDVPrompt;
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
+  G.virtualGemSupply = data.virtualGemSupply || {};
+  syncMyIdxFromStatePlayers();
   G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
   reconcileGemBank('remote');
 }
@@ -4027,7 +4437,7 @@ ALL_CARDS.forEach(card => {
 // ── Game State ───────────────────────────────────────────────────────────
 // ── Hero system data ─────────────────────────────────────────────────────
 const HEROES = [
-  {id:1,  key:'buffett',   name:'沃倫◆巴菲特',  skill:'長期投資',         desc:'存入1顆五色寶石代幣（不可存金幣），下次輪到自己時強制取回3顆同色寶石（每局2次）', uses:2,        passive:false, quote:'「別人恐懼我貪婪。」'},
+  {id:1,  key:'buffett',   name:'沃倫◆巴菲特',  skill:'長期投資',         desc:'存入1顆五色寶石代幣（不可存金幣），下次輪到自己時憑空獲得3顆同色寶石（每局2次）', uses:2,        passive:false, quote:'「別人恐懼我貪婪。」'},
   {id:2,  key:'musk',      name:'埃龍◆馬斯克',  skill:'工作狂',           desc:'本回合可同時進行拿寶石＋買牌兩個動作',                   uses:1,        passive:false, quote:'「如果你努力工作，好事就會發生。」'},
   {id:3,  key:'lehman',    name:'雷曼兄弟',      skill:'槓桿套利',         desc:'自選2顆寶石或金幣代幣歸還銀行，換取3分',                uses:1,        passive:false, quote:'「我永遠不會滿足，我對現狀從不感到快樂。」'},
   {id:4,  key:'jensen',    name:'黃仁勳',        skill:'你相信光嗎?',      desc:'購買白色鑽石卡片時額外加1分（每局最多2次）',              uses:2,        passive:true,  passiveBonus:'w', quote:'「你相信光嗎？」'},
@@ -4865,7 +5275,7 @@ function showGemDepositPicker(playerIdx) {
   box.id = 'hero-skill-confirm';
   box.innerHTML = `<div class="hero-skill-confirm-box">
     <h3>💰 長期投資</h3>
-    <p>選一顆五色寶石代幣存入（金幣不可），下次輪到自己時強制取回3顆同色寶石</p>
+    <p>選一顆五色寶石代幣存入（金幣不可），下次輪到自己時憑空獲得3顆同色寶石，不影響寶石庫</p>
     <div class="btn-row" style="flex-wrap:wrap">
       ${opts.map(c=>`<button class="btn-action" onclick="confirmBuffettDeposit(${playerIdx},'${c}')">${gemSVG(c,18)} ×${pl.gems[c]}</button>`).join('')}
       <button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button>
@@ -4886,10 +5296,10 @@ window.doBuffettDeposit = function(playerIdx, col) {
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!CI.includes(col) || !pl || (pl.gems[col]||0) <= 0) { toast('💰 長期投資只能存入五色寶石代幣，不能存金幣'); return; }
-  pl.gems[col]--; G.bank[col]++;
-  G.heroBuffett = {playerIdx, col, round: G.turnCount||0};
+  pl.gems[col]--;
+  G.heroBuffett = {playerIdx, serial:pl.serial || pl.name, col, round: G.turnCount||0};
   addLog('skill', `發動「長期投資」，存入 ${gemToken(col,1)}`, playerIdx);
-  toast('💰 寶石代幣已存入虛擬銀行！');
+  toast('💰 寶石代幣已存入長期投資！');
   render();
 };
 
@@ -4901,19 +5311,33 @@ function checkBuffettReturn() {
   if (!G.heroBuffett) return;
   if (document.getElementById('buffett-return-modal')) return; // dialog already open
   const b = G.heroBuffett;
+  const ownerIdx = buffettOwnerIndex(b);
+  if (ownerIdx < 0) { G.heroBuffett = null; return; }
+  if (G.cur !== ownerIdx) return;
   const elapsed = (G.turnCount||0) - b.round;
-  const pl = G.players[b.playerIdx];
+  const pl = G.players[ownerIdx];
   const name = gemColorName(b.col);
 
   if (elapsed >= G.numP) {
-    const give = Math.min(3, G.bank[b.col]||0);
+    const give = 3;
     pl.gems[b.col] = (pl.gems[b.col]||0) + give;
-    G.bank[b.col] -= give;
+    addVirtualGemSupply(b.col, give - 1);
     G.heroBuffett = null;
-    addLog('skill', give > 0 ? `「長期投資」結算，取回 ${gemToken(b.col,give)}` : `「長期投資」結算，庫存不足，未取回${gemIconToken(b.col)}`, b.playerIdx);
+    addLog('skill', `「長期投資」結算，憑空獲得 ${gemToken(b.col,give)}`, ownerIdx);
     render();
-    _showBuffettFinalModal(give, name);
+    if (!onlineMode || ownerIdx === myIdx) _showBuffettFinalModal(give, name);
   }
+}
+
+function buffettOwnerIndex(b) {
+  if (!b) return -1;
+  const serial = normaliseSerial(b.serial || '');
+  if (serial) {
+    const idx = G.players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === serial);
+    if (idx >= 0) return idx;
+  }
+  const idx = Number(b.playerIdx);
+  return Number.isFinite(idx) && G.players[idx] ? idx : -1;
 }
 
 function _showBuffettFinalModal(give, name) {
@@ -5777,6 +6201,7 @@ function _buildG(names, serials=[]) {
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
     log:[],
     heroes:null, heroUsed:null, heroBuffett:null, heroDVPrompt:null, heroActedThisTurn:null,
+    virtualGemSupply:{},
     openingDealt:false,
   };
 }
@@ -5838,6 +6263,7 @@ function startGame() {
   warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
   showOnly('screen-game');
   render();
+  startLocalChat();
   _mySelectIdx = 0;
   showHeroSelect(G.heroPool, () => {
     beginOpeningCeremony(()=>showTurnNotification(0, isPracticeAi(0) ? startAiTurn : startHumanTurn));
@@ -5847,6 +6273,7 @@ function startGame() {
 function startGameOnline(names, serials=[]) {
   // Host only — build G and push to Firebase
   G = _buildG(names, serials);
+  syncMyIdxFromStatePlayers();
   G.heroPool = drawHeroPool(names.length);
   prepareOpeningBoardWarmup({priority:'high', decode:true, deadlineMs:2600});
   warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
@@ -5887,7 +6314,9 @@ function reconcileGemBank(reason='') {
   let changed = false;
   [...CI,'gold'].forEach(col => {
     const held = G.players.reduce((sum,p) => sum + Number((p && p.gems && p.gems[col]) || 0), 0);
-    const correctBank = Math.max(0, expected[col] - held);
+    const virtual = col === 'gold' ? 0 : Number((G.virtualGemSupply && G.virtualGemSupply[col]) || 0);
+    const offBank = col === 'gold' ? 0 : offBankGemHold(col);
+    const correctBank = Math.max(0, expected[col] + virtual - held - offBank);
     if (Number(G.bank[col] || 0) !== correctBank) {
       G.bank[col] = correctBank;
       changed = true;
@@ -7051,9 +7480,9 @@ function advanceTurn() {
   }
   if (G.lastRound && next===0){ endGame(); return; }
   G.turnCount=(G.turnCount||0)+1;
-  checkBuffettReturn();
   G.heroActedThisTurn = Array(G.numP).fill(false);
   G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false; G.ui.muskActive=false; G.ui.muskCardDone=false;
+  checkBuffettReturn();
   stopTimer(); render();
   if (onlineMode && roomCode) {
     pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
@@ -7143,6 +7572,69 @@ function skipCurrentTurn(reason='timeout') {
   });
   G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
   advanceTurn();
+}
+
+function resetReturnModalState() {
+  window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
+  window._retMode=null;
+  const ret = document.getElementById('m-ret');
+  if (ret) ret.style.display='none';
+}
+
+function randomReturnExcessGems(playerIdx, reason='timeout') {
+  const pl = G && G.players && G.players[playerIdx];
+  if (!pl || !pl.gems) return null;
+  const excess = Math.max(0, gsum(pl.gems) - 10);
+  if (!excess) return null;
+  const pool = [];
+  [...CI,'gold'].forEach(col => {
+    const n = Math.max(0, Number(pl.gems[col]) || 0);
+    for (let i=0; i<n; i++) pool.push(col);
+  });
+  const returned = {w:0,u:0,g:0,r:0,k:0,gold:0};
+  for (let i=0; i<excess && pool.length; i++) {
+    const pick = (Math.random() * pool.length) | 0;
+    const col = pool.splice(pick, 1)[0];
+    if ((pl.gems[col]||0) <= 0) continue;
+    pl.gems[col]--;
+    G.bank[col] = (G.bank[col]||0) + 1;
+    returned[col] = (returned[col]||0) + 1;
+  }
+  if (gemListLog(returned)) {
+    const prefix = reason === 'timeout' ? '時間到，系統隨機歸還' : '系統隨機歸還';
+    addLog('return', `${prefix} ${gemListLog(returned)}，符合10顆上限`, playerIdx);
+    markSkillGemAnim('gem-return-to-bank', {targetIdx:playerIdx, selection:returned});
+  }
+  return returned;
+}
+
+function autoReturnExcessOnTimeout() {
+  if (!G || G.over || !G.players || !G.players[G.cur] || gsum(G.players[G.cur].gems) <= 10) return false;
+  const mode = window._retMode || 'timeout';
+  const playerIdx = G.cur;
+  const playerName = G.players[playerIdx].name;
+  const returned = randomReturnExcessGems(playerIdx, 'timeout');
+  if (!returned || !gemListLog(returned)) return false;
+  clearActionSnapshot();
+  resetReturnModalState();
+  ['m-card','hero-skill-confirm','buffett-return-modal','soros-return-modal','dv-answer-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'm-card') el.style.display='none';
+    else el.remove();
+  });
+  toast(`⌛ ${playerName} 時間到，系統隨機歸還至10顆`);
+  if (mode === 'action') {
+    afterAct();
+    render();
+    return true;
+  }
+  if (mode === 'musk') {
+    G.ui.muskActive=false;
+    G.ui.muskCardDone=false;
+  }
+  skipCurrentTurn('timeout');
+  return true;
 }
 
 // ── Gem bank clicking ─────────────────────────────────────────────────────
@@ -7857,7 +8349,7 @@ function rCards() {
     G.board[t].forEach((card,bi)=>{
       if (!card){ h+=`<div class="card-empty-slot" data-tier="${t}" data-slot="${bi}"></div>`; return; }
       const face = boardCardFace(card, pl);
-      h+=`<div class="dev-card t${t} ${face.stateClass} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">${face.html}</div>`;
+      h+=`<div class="dev-card t${t} ${face.stateClass} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" draggable="true" ondragstart="dragChatCard(event,${card.id})" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">${face.html}</div>`;
     });
     h+='</div>';
   });
@@ -8419,6 +8911,7 @@ function handleTurnTimeout(turnKey) {
   if (!G || G.over || (G.turnCount || 0) !== turnKey) return;
   if (isTurnTimerPaused(turnKey)) return;
   if (onlineMode && !(isMyTurn() || isLeader())) return;
+  if (autoReturnExcessOnTimeout()) return;
   skipCurrentTurn('timeout');
 }
 function _updateTimerEl() {

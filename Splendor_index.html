@@ -2020,6 +2020,7 @@ async function hostStart() {
 // ── Game state sync ────────────────────────────────────────────────────────
 function pushG() {
   if (!onlineMode || !db || !roomCode) return;
+  reconcileGemBank('push');
   const serial = {
     numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
     lastStarter:G.lastStarter, over:G.over,
@@ -2039,6 +2040,7 @@ function pushG() {
   if (G.heroes)           serial.heroes           = G.heroes;
   if (G.heroUsed)         serial.heroUsed         = G.heroUsed.map(v => v===Infinity ? 'Inf' : v);
   if (G.heroBuffett)      serial.heroBuffett      = G.heroBuffett;
+  if (G.virtualGemSupply) serial.virtualGemSupply = G.virtualGemSupply;
   if (G.heroActedThisTurn) serial.heroActedThisTurn = G.heroActedThisTurn;
   db.ref(`rooms/${roomCode}/state`).set(serial);
 }
@@ -2101,6 +2103,36 @@ function applyOpponentCursors() {
 
 function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values(v); }
 
+function addVirtualGemSupply(col, delta) {
+  if (!CI.includes(col) || !Number(delta)) return;
+  if (!G.virtualGemSupply) G.virtualGemSupply = {};
+  G.virtualGemSupply[col] = Number(G.virtualGemSupply[col] || 0) + Number(delta);
+  if (!G.virtualGemSupply[col]) delete G.virtualGemSupply[col];
+}
+
+function offBankGemHold(col) {
+  if (!G || !G.heroBuffett || G.heroBuffett.col !== col) return 0;
+  return 1;
+}
+
+function reconcileGemBank(reason='') {
+  if (!G || !G.players || !G.bank) return;
+  const expectedColor = GEMCNT[G.numP] || GEMCNT[numP] || 0;
+  const expected = {w:expectedColor,u:expectedColor,g:expectedColor,r:expectedColor,k:expectedColor,gold:5};
+  let changed = false;
+  [...CI,'gold'].forEach(col => {
+    const held = G.players.reduce((sum,p) => sum + Number((p && p.gems && p.gems[col]) || 0), 0);
+    const virtual = col === 'gold' ? 0 : Number((G.virtualGemSupply && G.virtualGemSupply[col]) || 0);
+    const offBank = col === 'gold' ? 0 : offBankGemHold(col);
+    const correctBank = Math.max(0, expected[col] + virtual - held - offBank);
+    if (Number(G.bank[col] || 0) !== correctBank) {
+      G.bank[col] = correctBank;
+      changed = true;
+    }
+  });
+  if (changed) console.warn('gem bank reconciled', reason);
+}
+
 function applyRemoteState(data) {
   const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
   const prevCur = typeof G.cur==='number' ? G.cur : -1;
@@ -2133,9 +2165,11 @@ function applyRemoteState(data) {
   if (data.heroPool)        G.heroPool         = toArr(data.heroPool).map(p=>toArr(p));
   if (data.heroes)          G.heroes           = toArr(data.heroes);
   if (data.heroUsed)        G.heroUsed         = toArr(data.heroUsed).map(v=>v==='Inf'?Infinity:+v);
-  if (data.heroBuffett)     G.heroBuffett      = data.heroBuffett;
+  G.heroBuffett = data.heroBuffett || null;
+  G.virtualGemSupply = data.virtualGemSupply || {};
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
   G.ui = G.cur!==prevCur ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
+  reconcileGemBank('remote');
 }
 
 function listenGame(code) {
@@ -2444,7 +2478,7 @@ ALL_CARDS.forEach(card => {
 // ── Game State ───────────────────────────────────────────────────────────
 // ── Hero system data ─────────────────────────────────────────────────────
 const HEROES = [
-  {id:1,  key:'buffett',   name:'沃倫◆巴菲特',  skill:'長期投資',         desc:'存入1顆五色寶石代幣（不可存金幣），下次輪到自己時強制取回3顆同色寶石（每局2次）', uses:2,        passive:false, quote:'「別人恐懼我貪婪。」'},
+  {id:1,  key:'buffett',   name:'沃倫◆巴菲特',  skill:'長期投資',         desc:'存入1顆五色寶石代幣（不可存金幣），下次輪到自己時憑空獲得3顆同色寶石（每局2次）', uses:2,        passive:false, quote:'「別人恐懼我貪婪。」'},
   {id:2,  key:'musk',      name:'埃龍◆馬斯克',  skill:'工作狂',           desc:'本回合可同時進行拿寶石＋買牌兩個動作',                   uses:1,        passive:false, quote:'「如果你努力工作，好事就會發生。」'},
   {id:3,  key:'lehman',    name:'雷曼兄弟',      skill:'槓桿套利',         desc:'自選2顆寶石或金幣代幣歸還銀行，換取3分',                uses:1,        passive:false, quote:'「我永遠不會滿足，我對現狀從不感到快樂。」'},
   {id:4,  key:'jensen',    name:'黃仁勳',        skill:'你相信光嗎?',      desc:'購買白色鑽石卡片時額外加1分（每局最多2次）',              uses:2,        passive:true,  passiveBonus:'w', quote:'「你相信光嗎？」'},
@@ -2971,7 +3005,7 @@ function showGemDepositPicker(playerIdx) {
   box.id = 'hero-skill-confirm';
   box.innerHTML = `<div class="hero-skill-confirm-box">
     <h3>💰 長期投資</h3>
-    <p>選一顆五色寶石代幣存入（金幣不可），下次輪到自己時強制取回3顆同色寶石</p>
+    <p>選一顆五色寶石代幣存入（金幣不可），下次輪到自己時憑空獲得3顆同色寶石，不影響寶石庫</p>
     <div class="btn-row" style="flex-wrap:wrap">
       ${opts.map(c=>`<button class="btn-action" onclick="confirmBuffettDeposit(${playerIdx},'${c}')">${gemSVG(c,18)} ×${pl.gems[c]}</button>`).join('')}
       <button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button>
@@ -2992,8 +3026,8 @@ window.doBuffettDeposit = function(playerIdx, col) {
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!CI.includes(col) || !pl || (pl.gems[col]||0) <= 0) { toast('💰 長期投資只能存入五色寶石代幣，不能存金幣'); return; }
-  pl.gems[col]--; G.bank[col]++;
-  G.heroBuffett = {playerIdx, col, round: G.turnCount||0};
+  pl.gems[col]--;
+  G.heroBuffett = {playerIdx, serial:pl.serial || pl.name, col, round: G.turnCount||0};
   addLog('skill', `發動「長期投資」，存入 ${gemToken(col,1)}`, playerIdx);
   toast('💰 寶石代幣已存入虛擬銀行！');
   render();
@@ -3007,19 +3041,33 @@ function checkBuffettReturn() {
   if (!G.heroBuffett) return;
   if (document.getElementById('buffett-return-modal')) return; // dialog already open
   const b = G.heroBuffett;
+  const ownerIdx = buffettOwnerIndex(b);
+  if (ownerIdx < 0) { G.heroBuffett = null; return; }
+  if (G.cur !== ownerIdx) return;
   const elapsed = (G.turnCount||0) - b.round;
-  const pl = G.players[b.playerIdx];
+  const pl = G.players[ownerIdx];
   const name = gemColorName(b.col);
 
   if (elapsed >= G.numP) {
-    const give = Math.min(3, G.bank[b.col]||0);
+    const give = 3;
     pl.gems[b.col] = (pl.gems[b.col]||0) + give;
-    G.bank[b.col] -= give;
+    addVirtualGemSupply(b.col, give - 1);
     G.heroBuffett = null;
-    addLog('skill', give > 0 ? `「長期投資」結算，取回 ${gemToken(b.col,give)}` : `「長期投資」結算，庫存不足，未取回${gemIconToken(b.col)}`, b.playerIdx);
+    addLog('skill', `「長期投資」結算，憑空獲得 ${gemToken(b.col,give)}`, ownerIdx);
     render();
-    _showBuffettFinalModal(give, name);
+    if (!onlineMode || ownerIdx === myIdx) _showBuffettFinalModal(give, name);
   }
+}
+
+function buffettOwnerIndex(b) {
+  if (!b) return -1;
+  const serial = normaliseSerial(b.serial || '');
+  if (serial) {
+    const idx = G.players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === serial);
+    if (idx >= 0) return idx;
+  }
+  const idx = Number(b.playerIdx);
+  return Number.isFinite(idx) && G.players[idx] ? idx : -1;
 }
 
 function _showBuffettFinalModal(give, name) {
@@ -3397,6 +3445,7 @@ function _buildG(names) {
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
     log:[],
     heroes:null, heroUsed:null, heroBuffett:null, heroActedThisTurn:null,
+    virtualGemSupply:{},
   };
 }
 
@@ -4020,9 +4069,9 @@ function advanceTurn() {
   while(G.players[next]&&G.players[next].disconnected) next=(next+1)%G.numP;
   if (G.lastRound && next===G.lastStarter){ endGame(); return; }
   G.turnCount=(G.turnCount||0)+1;
-  checkBuffettReturn();
   G.heroActedThisTurn = Array(G.numP).fill(false);
   G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false;
+  checkBuffettReturn();
   stopTimer(); render();
   if (onlineMode) {
     pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
@@ -4130,6 +4179,7 @@ function cardBgStyle(card) {
 }
 
 function render() {
+  reconcileGemBank('render');
   rMissions(); rBank(); rCards(); rPlayers(); rActionLog();
   if (onlineMode) applyOpponentCursors();
 }
