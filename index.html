@@ -220,7 +220,11 @@ body {
   width:100%; min-width:0; height:30px; padding:0 8px;
   border-radius:8px; border:1px solid rgba(255,220,140,.18);
   background:rgba(0,0,0,.28); color:#fff0cc;
-  font-size:.72em; outline:none;
+  font-size:16px; line-height:1; outline:none;
+}
+.chat-form input { touch-action:manipulation; }
+@media (pointer:fine) and (min-width:761px) {
+  .chat-form input { font-size:.72em; }
 }
 .chat-form input:focus {
   border-color:rgba(255,220,140,.45);
@@ -1836,6 +1840,16 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   background:linear-gradient(90deg,rgba(31,38,52,.9),rgba(12,18,30,.88));
   border-color:rgba(170,195,230,.24);
 }
+.wait-slot.selectable {
+  cursor:pointer;
+  border-color:rgba(255,224,138,.42);
+  box-shadow:0 6px 18px rgba(0,0,0,.24), 0 0 0 1px rgba(255,224,138,.08), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.wait-slot.selectable:hover {
+  color:#fff6c7;
+  border-color:rgba(255,224,138,.72);
+  background:linear-gradient(90deg,rgba(52,42,22,.94),rgba(18,20,24,.9));
+}
 .wait-slot.host {
   padding-left:25px;
   border-color:rgba(255,218,93,.72);
@@ -1863,6 +1877,8 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,224,138,.14);
   font-size:.72em; color:rgba(255,232,176,.72); font-weight:900; letter-spacing:1px;
 }
+.wait-spectator-head.selectable { cursor:pointer; color:#ffe08a; }
+.wait-spectator-head.selectable:hover { color:#fff6c7; }
 .host-crown {
   position:absolute; left:-10px; top:-13px; z-index:2;
   width:28px; height:28px; display:flex; align-items:center; justify-content:center;
@@ -2445,6 +2461,24 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 .hero-skill-confirm-box h3 { color:#ffe08a; margin:0 0 6px; }
 .hero-skill-confirm-box p { color:rgba(255,255,255,.75); font-size:.85em; margin:0 0 20px; }
 .hero-skill-confirm-box .btn-row { display:flex; gap:12px; justify-content:center; }
+.hero-info-card { display:flex; gap:13px; align-items:center; text-align:left; margin:2px 0 14px; }
+.hero-info-avatar-wrap {
+  width:72px; height:72px; border-radius:50%; overflow:hidden; flex-shrink:0;
+  border:2px solid rgba(255,215,50,.42); background:#1a1a2e;
+  box-shadow:0 8px 24px rgba(0,0,0,.38);
+}
+.hero-info-avatar { width:100%; height:100%; object-fit:cover; object-position:top center; display:block; }
+.hero-info-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:2rem; }
+.hero-info-copy { min-width:0; }
+.hero-info-copy h3 { margin:0 0 6px; text-align:left; }
+.hero-info-skill { color:#ffe08a; font-size:.9em; font-weight:800; margin-bottom:5px; }
+.hero-info-desc { color:rgba(255,255,255,.76); font-size:.82em; line-height:1.5; }
+.hero-info-uses { color:#b8b8c8; font-size:.74em; margin-top:6px; }
+@media (max-width:760px) {
+  .hero-skill-confirm-box { width:min(340px, calc(100vw - 34px)); padding:22px 20px; }
+  .hero-info-card { gap:11px; }
+  .hero-info-avatar-wrap { width:58px; height:58px; }
+}
 .shiyuan-gem-card {
   min-width:118px; border:1.5px solid rgba(255,255,255,.18); border-radius:12px;
   padding:10px 12px; color:#fff; cursor:pointer;
@@ -2735,14 +2769,6 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     </svg>
   </div>
   <div class="wait-list" id="wait-list"></div>
-  <div id="wait-choice" class="join-choice">
-    <div class="join-choice-head">
-      選擇進入方式
-      <span id="wait-choice-meta" class="join-choice-meta"></span>
-    </div>
-    <button id="wait-join-player" class="btn-online primary" onclick="joinRoom(roomCode)">參加對戰</button>
-    <button id="wait-join-spectator" class="btn-online" onclick="joinSpectator(roomCode)">觀戰</button>
-  </div>
   <button id="wait-ready" class="btn-online" onclick="toggleReady()" style="display:none;margin-top:4px">準備</button>
   <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="display:none;margin-top:4px">開始遊戲 ✦</button>
   <button class="btn-online" onclick="backToLobby()">← 離開房間</button>
@@ -2775,7 +2801,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
       </div>
       <div id="chat-list" class="chat-list"></div>
       <div class="chat-form">
-        <input id="chat-input" maxlength="120" placeholder="輸入訊息..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatText();}">
+        <input id="chat-input" maxlength="120" placeholder="輸入訊息..." onkeydown="handleChatInputKeydown(event)">
         <button class="chat-send" onclick="sendChatText()">→</button>
       </div>
     </div>
@@ -2919,12 +2945,15 @@ let _chatQuery = null;
 let _chatHandler = null;
 let _chatMessages = [];
 let _chatLocalSeq = 0;
+let _lastChatSendText = '';
+let _lastChatSendAt = 0;
 let _accountSessionId = '';
 let _accountSessionRef = null;
 let _accountSessionHandler = null;
 let _accountTakeoverHandling = false;
 let _finishedGameExitCleanupKey = '';
 let _postGameRoomReturnInProgress = false;
+let _waitingSeatSwitching = false;
 let practiceMode = false;
 let _aiThinkTimer = null;
 let _aiStartFallbackTimer = null;
@@ -3656,6 +3685,146 @@ async function joinRoom(codeOverride='') {
   listenWait(code);
 }
 
+function canSwitchWaitingSeat(room, players, slot) {
+  if (!room || room.state || isHost) return false;
+  slot = Number(slot);
+  const n = Number(room.numP) || 0;
+  const currentSlot = findSerialSlot(room, currentSerial);
+  if (!Number.isFinite(slot) || slot <= 0 || slot >= n) return false;
+  if (currentSlot === slot) return false;
+  if (currentSlot === 0) return false;
+  return !players || !players[slot];
+}
+
+function canSwitchToSpectator(room, spectatorInfo) {
+  if (!room || room.state || isHost || isSpectator()) return false;
+  if (findSerialSlot(room, currentSerial) === 0) return false;
+  const sid = spectatorKey(currentSerial);
+  const alreadySpectator = spectatorInfo && spectatorInfo.entries && spectatorInfo.entries.some(spec => spec.id === sid);
+  return alreadySpectator || !spectatorInfo || spectatorInfo.joined < spectatorInfo.max;
+}
+
+async function switchWaitingPlayerSlot(slot, ev) {
+  if (ev) ev.stopPropagation();
+  if (!requireLogin()) return;
+  slot = Number(slot);
+  if (!Number.isFinite(slot)) return;
+  if (isHost) { toast('房主固定在第 1 位玩家'); return; }
+  const code = String(roomCode || document.getElementById('jn-code')?.value || '').trim().toUpperCase();
+  if (!code) return;
+  fbInit();
+  const roomRef = db.ref(`rooms/${code}`);
+  const snap = await roomRef.once('value');
+  const room = snap.val();
+  if (!room || room.state) return;
+  const players = room.players || {};
+  if (!canSwitchWaitingSeat(room, players, slot)) {
+    if (players[slot]) toast('這個位置已經有人了');
+    return;
+  }
+  const oldSlot = findSerialSlot(room, currentSerial);
+  const sid = spectatorKey(currentSerial);
+  const wasInSameRoom = onlineMode && roomCode === code;
+  const updates = {
+    [`players/${slot}`]: currentSerial,
+    [`playerIds/${slot}`]: currentSerial,
+    [`ready/${slot}`]: false,
+    [`presence/${slot}`]: true,
+    [`spectators/${sid}`]: null,
+    [`spectatorPresence/${sid}`]: null,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  };
+  if (oldSlot >= 0 && oldSlot !== slot) {
+    updates[`players/${oldSlot}`] = null;
+    updates[`playerIds/${oldSlot}`] = null;
+    updates[`ready/${oldSlot}`] = null;
+    updates[`presence/${oldSlot}`] = null;
+  }
+  _waitingSeatSwitching = true;
+  roomCode = code;
+  myIdx = slot;
+  isHost = false;
+  spectatorMode = false;
+  spectatorId = '';
+  roomGuestMode = false;
+  onlineMode = true;
+  practiceMode = false;
+  numP = Number(room.numP) || numP;
+  try {
+    await roomRef.update(updates);
+    await setupWaitingPresence(code, slot);
+    showOnly('screen-wait');
+    warmPregameAssets();
+    document.getElementById('wait-code-text').textContent = code;
+    document.getElementById('wait-crown').style.display = 'none';
+    document.getElementById('wait-ready').style.display = 'inline-block';
+    document.getElementById('wait-start').style.display = 'none';
+    if (!wasInSameRoom) listenWait(code);
+  } finally {
+    _waitingSeatSwitching = false;
+  }
+}
+
+async function switchWaitingSpectator(ev) {
+  if (ev) ev.stopPropagation();
+  if (!requireLogin()) return;
+  if (isHost) { toast('房主固定在第 1 位玩家'); return; }
+  const code = String(roomCode || document.getElementById('jn-code')?.value || '').trim().toUpperCase();
+  if (!code) return;
+  fbInit();
+  const roomRef = db.ref(`rooms/${code}`);
+  const snap = await roomRef.once('value');
+  const room = snap.val();
+  if (!room || room.state) return;
+  const oldSlot = findSerialSlot(room, currentSerial);
+  if (oldSlot === 0) { toast('房主固定在第 1 位玩家'); return; }
+  const sid = spectatorKey(currentSerial);
+  const spectatorInfo = getSpectatorInfo(room);
+  if (!canSwitchToSpectator(room, spectatorInfo)) {
+    if (spectatorInfo.joined >= spectatorInfo.max) toast('觀戰席已滿');
+    return;
+  }
+  const wasInSameRoom = onlineMode && roomCode === code;
+  const updates = {
+    [`spectators/${sid}`]: {
+      name:currentSerial,
+      serial:currentSerial,
+      joinedAt:firebase.database.ServerValue.TIMESTAMP
+    },
+    [`spectatorPresence/${sid}`]: true,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  };
+  if (oldSlot >= 0) {
+    updates[`players/${oldSlot}`] = null;
+    updates[`playerIds/${oldSlot}`] = null;
+    updates[`ready/${oldSlot}`] = null;
+    updates[`presence/${oldSlot}`] = null;
+  }
+  _waitingSeatSwitching = true;
+  roomCode = code;
+  myIdx = -1;
+  isHost = false;
+  spectatorMode = true;
+  spectatorId = sid;
+  roomGuestMode = false;
+  onlineMode = true;
+  practiceMode = false;
+  numP = Number(room.numP) || numP;
+  try {
+    await roomRef.update(updates);
+    await setupSpectatorPresence(code, sid);
+    showOnly('screen-wait');
+    warmPregameAssets();
+    document.getElementById('wait-code-text').textContent = code;
+    document.getElementById('wait-crown').style.display = 'none';
+    document.getElementById('wait-ready').style.display = 'none';
+    document.getElementById('wait-start').style.display = 'none';
+    if (!wasInSameRoom) listenWait(code);
+  } finally {
+    _waitingSeatSwitching = false;
+  }
+}
+
 async function joinSpectator(codeOverride='') {
   if (!requireLogin()) return;
   const code = String(codeOverride || document.getElementById('jn-code')?.value || roomCode || '').trim().toUpperCase();
@@ -3898,14 +4067,14 @@ function listenWait(code) {
     const players = room.players||{}, n = room.numP;
     const ready = room.ready||{};
     const spectatorInfo = getSpectatorInfo(room);
-    if (!room.starting && onlineMode && roomCode === code && !isSpectator() && !isHost && myIdx >= 0 && !players[myIdx]) {
+    if (!_waitingSeatSwitching && !room.starting && onlineMode && roomCode === code && !isSpectator() && !isHost && myIdx >= 0 && !players[myIdx]) {
       cancelPresenceCleanup();
       roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
       alert('你已被市長移出房間');
       showOnly('screen-lobby');
       return;
     }
-    if (onlineMode && roomCode === code && isSpectator() && spectatorId && !spectatorInfo.entries.some(spec => spec.id === spectatorId)) {
+    if (!_waitingSeatSwitching && onlineMode && roomCode === code && isSpectator() && spectatorId && !spectatorInfo.entries.some(spec => spec.id === spectatorId)) {
       cancelPresenceCleanup();
       roomCode=''; myIdx=-1; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; onlineMode=false;
       alert('你已被市長移出觀戰席');
@@ -3924,11 +4093,17 @@ function listenWait(code) {
         const kick = isHost && !isPlayerHost ? `<button class="wait-kick" title="踢出玩家" onclick="kickWaitingPlayer(${i},event)">×</button>` : '';
         html+=`<div class="wait-slot filled ${isPlayerHost?'host':''} ${kick?'kickable':''}">${hostCrown}${PC_NAME[i]} ${htmlEsc(nm)}${badge}${kick}</div>`;
       } else {
-        html+=`<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
+        const selectable = canSwitchWaitingSeat(room, players, i);
+        html+=selectable
+          ? `<div class="wait-slot empty selectable" role="button" title="坐到第 ${i+1} 位玩家" onclick="switchWaitingPlayerSlot(${i},event)">等待第 ${i+1} 位玩家...</div>`
+          : `<div class="wait-slot empty">等待第 ${i+1} 位玩家...</div>`;
       }
     }
-    html+=`<div class="wait-spectator-head">觀戰席 ${spectatorInfo.joined}/${spectatorInfo.max}</div>`;
+    const canSpec = canSwitchToSpectator(room, spectatorInfo);
+    const specHeadAttrs = canSpec ? ' class="wait-spectator-head selectable" role="button" title="加入觀戰席" onclick="switchWaitingSpectator(event)"' : ' class="wait-spectator-head"';
+    html+=`<div${specHeadAttrs}>觀戰席 ${spectatorInfo.joined}/${spectatorInfo.max}</div>`;
     if (spectatorInfo.entries.length) {
+      if (canSpec) html+=`<div class="wait-slot spectator selectable" role="button" title="加入觀戰席" onclick="switchWaitingSpectator(event)">加入觀戰席</div>`;
       spectatorInfo.entries.forEach(spec => {
         const me = isSpectator() && spec.id === spectatorId;
         const safeSpecId = String(spec.id || '').replace(/[^a-zA-Z0-9_-]/g,'');
@@ -3936,7 +4111,9 @@ function listenWait(code) {
         html+=`<div class="wait-slot spectator ${kick?'kickable':''}">${me?'👁 ':''}觀戰 ${htmlEsc(spec.name)}${kick}</div>`;
       });
     } else {
-      html+=`<div class="wait-slot empty">目前沒有觀戰者</div>`;
+      html+=canSpec
+        ? '<div class="wait-slot empty selectable" role="button" title="加入觀戰席" onclick="switchWaitingSpectator(event)">目前沒有觀戰者</div>'
+        : '<div class="wait-slot empty">目前沒有觀戰者</div>';
     }
     document.getElementById('wait-list').innerHTML = html;
     updateWaitChoice(room, players, spectatorInfo);
@@ -4382,6 +4559,14 @@ function blockTenpaiChat(who = chatPlayerInfo()) {
   return true;
 }
 
+function handleChatInputKeydown(ev) {
+  if (!ev || ev.key !== 'Enter') return;
+  if (ev.isComposing || ev.keyCode === 229) return;
+  ev.preventDefault();
+  if (ev.repeat) return;
+  sendChatText();
+}
+
 function publishChatMessage(payload, who = chatPlayerInfo()) {
   if (blockTenpaiChat(who)) return false;
   const msg = {
@@ -4411,6 +4596,10 @@ function sendChatText() {
   if (!text) return;
   const who = chatPlayerInfo();
   if (blockTenpaiChat(who)) return;
+  const now = Date.now();
+  if (text === _lastChatSendText && now - _lastChatSendAt < 900) return;
+  _lastChatSendText = text;
+  _lastChatSendAt = now;
   if (input) input.value = '';
   publishChatMessage({type:'text', text}, who);
 }
@@ -5733,6 +5922,52 @@ function getPlayerHero(playerIdx) {
 
 function coloredGemSum(gems) {
   return CI.reduce((s,c)=>s+(gems[c]||0),0);
+}
+
+function heroUsesText(hero, usesLeft) {
+  if (!hero) return '';
+  if (hero.passive) {
+    if (usesLeft === Infinity) return '被動技';
+    return usesLeft > 0 ? `被動剩 ${usesLeft} 次` : '被動已用盡';
+  }
+  if (usesLeft === Infinity) return '無限次';
+  return usesLeft > 0 ? `剩 ${usesLeft} 次` : '已用盡';
+}
+
+function heroSkillDetailHtml(hero, usesLeft) {
+  if (!hero) return '';
+  return `<b>${htmlEsc(hero.name)}</b><br>⚡ ${htmlEsc(hero.skill)}<br><span style="opacity:.7">${htmlEsc(hero.desc)}</span><br><span style="color:#aaa;font-size:.9em">${htmlEsc(heroUsesText(hero, usesLeft))}</span>`;
+}
+
+function showHeroInfo(playerIdx, ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  const idx = Number(playerIdx);
+  const hero = getPlayerHero(idx);
+  if (!hero) return;
+  const usesLeft = (G.heroUsed && hero) ? G.heroUsed[idx] : 0;
+  document.getElementById('hero-skill-confirm')?.remove();
+  const box = document.createElement('div');
+  box.id = 'hero-skill-confirm';
+  box.innerHTML = `<div class="hero-skill-confirm-box" onclick="event.stopPropagation()">
+    <div class="hero-info-card">
+      <div class="hero-info-avatar-wrap">
+        <img class="hero-info-avatar" src="${heroImgSrc(hero.key)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(hero.name)}">
+        <span class="hero-info-fallback" style="display:none">${HERO_EMOJI[hero.key]||'👤'}</span>
+      </div>
+      <div class="hero-info-copy">
+        <h3>${htmlEsc(hero.name)}</h3>
+        <div class="hero-info-skill">⚡ ${htmlEsc(hero.skill)}</div>
+        <div class="hero-info-desc">${htmlEsc(hero.desc)}</div>
+        <div class="hero-info-uses">${htmlEsc(heroUsesText(hero, usesLeft))}</div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">關閉</button></div>
+  </div>`;
+  box.addEventListener('click', () => box.remove(), {once:true});
+  document.body.appendChild(box);
 }
 
 // ── Hero skill activation ─────────────────────────────────────────────────
@@ -9189,12 +9424,13 @@ function rPlayers() {
     const canUseSkill = canControlThisPlayer && hero && !hero.passive && cur && usesLeft > 0 && !alreadyActedHero && !skillBlocked;
     const skillUsed = hero && !hero.passive && cur && (usesLeft <= 0 || alreadyActedHero);
     const avatarExtraClass = canUseSkill ? ' skill-ready' : skillBlocked ? ' skill-blocked' : skillUsed ? ' skill-used' : '';
-    const avatarOnclick = canUseSkill ? `onclick="activateHeroSkill(${i})"` : (canControlThisPlayer && skillBlocked) ? `onclick="showSkillBlockReason(${hero.id},${i})"` : '';
+    const heroInfoOnclick = hero ? `onclick="showHeroInfo(${i},event)"` : '';
+    const avatarOnclick = canUseSkill ? `onclick="activateHeroSkill(${i})"` : (canControlThisPlayer && skillBlocked) ? `onclick="showSkillBlockReason(${hero.id},${i})"` : heroInfoOnclick;
     const heroAvatarEl = hero ? `
       <img class="pi-hero-avatar${avatarExtraClass}" src="${heroImgSrc(hero.key)}" ${avatarOnclick}
-        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${hero.name}">
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(hero.name)}">
       <span class="pi-hero-avatar-fallback${avatarExtraClass}" style="display:none;" ${avatarOnclick}>${HERO_EMOJI[hero.key]||'👤'}</span>
-      <div class="pi-hero-tooltip"><b>${hero.name}</b><br>⚡ ${hero.skill}<br><span style="opacity:.7">${hero.desc}</span><br><span style="color:#aaa;font-size:.9em">${hero.passive?(usesLeft===Infinity?'被動技':usesLeft>0?`被動剩${usesLeft}次`:'被動已用盡'):usesLeft===Infinity?'無限次':usesLeft>0?`剩${usesLeft}次`:'已用盡'}</span></div>
+      <div class="pi-hero-tooltip">${heroSkillDetailHtml(hero, usesLeft)}</div>
     ` : '';
     const inner=`<div class="pi-card ${cur?'cur':'inactive'}" data-player="${i}" style="border-left-color:${p.color};${cur?'border:none;background:#141426;':''}${p.disconnected?'opacity:.45;':p.offline?'opacity:.72;':''}position:relative;">
       ${timerBadge}
@@ -9427,7 +9663,7 @@ function restoredWaitingRoomFromGameRoom(room) {
   const statePlayers = toArr(state.players);
   const seatOrder = toArr(room && room.seatOrder);
   const presence = room && room.presence ? room.presence : {};
-  const max = Number(state.numP || room?.numP || statePlayers.length || 0);
+  const max = Number(room?.numP || state.numP || statePlayers.length || 0);
   const used = new Set();
   const nextFreeSlot = () => {
     for (let i = 0; i < Math.max(max, statePlayers.length, 1); i++) {
