@@ -48,12 +48,11 @@ body.assets-loading > :not(#asset-loader):not(script):not(style) {
 }
 .asset-loader-box {
   position:relative;
-  width:min(740px,calc(100vw - 20px));
-  aspect-ratio:1448 / 1086;
-  padding:clamp(132px,17.5vw,182px) clamp(88px,12vw,128px) clamp(88px,10.5vw,118px);
+  width:min(500px,calc(100vw - 34px));
+  padding:0;
   border:0;
   border-radius:0;
-  background:url('splendor-card-art/loading-panel-signboard-v2.png') center / 100% 100% no-repeat;
+  background:none;
   box-shadow:none;
   display:flex;
   flex-direction:column;
@@ -68,16 +67,16 @@ body.assets-loading > :not(#asset-loader):not(script):not(style) {
   display:none;
 }
 .asset-loader-title {
-  width:min(430px,78%);
+  width:100%;
   margin:0 auto;
-  color:#4b2b12;
+  color:#f9e7ae;
   font-family:Georgia,'Noto Serif TC','Times New Roman',serif;
   font-size:1em;
   font-weight:900;
   letter-spacing:2.4px;
   white-space:nowrap;
   text-align:center;
-  text-shadow:0 1px 0 rgba(255,237,175,.92), 0 0 10px rgba(255,184,68,.28);
+  text-shadow:0 2px 8px rgba(0,0,0,.82), 0 0 14px rgba(255,184,68,.26);
 }
 .asset-loader-dots {
   display:inline-block;
@@ -87,7 +86,7 @@ body.assets-loading > :not(#asset-loader):not(script):not(style) {
 }
 .asset-progress-shell {
   position:relative;
-  width:min(430px,78%);
+  width:100%;
   margin:0 auto;
   padding:12px 15px;
   border-radius:9px;
@@ -176,13 +175,12 @@ body.assets-loading > :not(#asset-loader):not(script):not(style) {
   display:none;
 }
 @media (max-width:760px) {
-  #asset-loader { padding:8px; }
+  #asset-loader { padding:18px; }
   .asset-loader-box {
-    width:min(520px,calc(100vw - 8px));
-    padding:clamp(92px,25vw,132px) clamp(48px,13vw,72px) clamp(58px,15vw,82px);
+    width:min(340px,calc(100vw - 36px));
   }
-  .asset-loader-title { width:min(320px,78%); font-size:.86em; }
-  .asset-progress-shell { width:min(330px,86%); padding:9px 11px; }
+  .asset-loader-title { font-size:.86em; }
+  .asset-progress-shell { padding:9px 11px; }
   .asset-progress-track { height:25px; }
 }
 
@@ -5452,14 +5450,10 @@ function buildImagePreloadList() {
   const assets = new Set();
   [
     'splendor-card-art/game-bg-cellar-02.png',
-    'splendor-card-art/game-bg-castle.jpg',
-    'splendor-card-art/loading-panel-signboard-v2.png',
     'splendor-card-art/title-treasure-brawl-v3-cutout.png',
     'splendor-card-art/button-treasure-03-clean.png',
     'splendor-card-art/button-gem-clean.png',
     'splendor-card-art/table-surface-frame.png',
-    'splendor-card-art/table-surface-wide.png',
-    'splendor-card-art/table-edge-strip.png',
     'splendor-card-art/mission-parchment.png',
     'splendor-card-art/deck-tier1-hearthlike.png',
     'splendor-card-art/deck-tier2-hearthlike.png',
@@ -5470,41 +5464,23 @@ function buildImagePreloadList() {
   ].forEach(url => addPreloadAsset(assets, url));
 
   Object.values(GEM_ICON_SRC).forEach(url => addPreloadAsset(assets, url));
-  Object.values(CARD_ART_BY_ID).forEach(name => {
-    addPreloadAsset(assets, `splendor-card-art/${name}?v=${CARD_ART_VERSION}`);
-  });
-
-  const heroFull = new Set([
-    'altman','buffett','jaychou','jensen','lehman','munger','musk',
-    'satoshi','shiyuan','soros','trump','tzuyu','willsmith'
-  ]);
-  HEROES.forEach(hero => {
-    addPreloadAsset(assets, heroImgSrc(hero.key));
-    if (heroFull.has(hero.key)) addPreloadAsset(assets, `heros/${hero.key}_full.jpg`);
-    const showcase = HERO_SHOWCASE[hero.key];
-    if (showcase) addPreloadAsset(assets, `heros/skill_showcases/${showcase}`);
-    const cutout = HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
-    addPreloadAsset(assets, `heros/skill_showcases/_cutouts/${cutout}`);
-  });
-  [
-    'heros/skill_showcases/lehman_破產宣告_第二段.png',
-    'heros/skill_showcases/_cutouts/lehman_phase2_cutout.png',
-    'heros/skill_showcases/_cutouts/dv_phase2_cutout.png',
-    'heros/skill_showcases/_cutouts/shiyuan_stall_cutout.png'
-  ].forEach(url => addPreloadAsset(assets, url));
 
   return Array.from(assets);
 }
 function loadImageAsset(url) {
   return new Promise(resolve => {
     let done = false;
+    const controller = window.AbortController ? new AbortController() : null;
     const finish = ok => {
       if (done) return;
       done = true;
       window.clearTimeout(timer);
       resolve({url, ok});
     };
-    const timer = window.setTimeout(() => finish(false), 60000);
+    const timer = window.setTimeout(() => {
+      if (controller) controller.abort();
+      finish(false);
+    }, 8000);
     const fallbackImg = () => {
       const img = document.createElement('img');
       img.onload = () => finish(true);
@@ -5513,13 +5489,13 @@ function loadImageAsset(url) {
       if (img.complete) finish(img.naturalWidth > 0);
     };
     if (window.fetch) {
-      fetch(url, {cache:'force-cache'})
+      fetch(url, {cache:'force-cache', signal: controller ? controller.signal : undefined})
         .then(res => {
           if (!res.ok) throw new Error(`asset ${res.status}`);
           return res.blob();
         })
         .then(() => finish(true))
-        .catch(fallbackImg);
+        .catch(() => finish(false));
     } else {
       fallbackImg();
     }
