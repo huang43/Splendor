@@ -7613,10 +7613,17 @@ function rBottom() {
     </div>`;
 }
 
+function playerViewOrder() {
+  const n = G.players.length;
+  const start = (onlineMode && myIdx >= 0 && myIdx < n) ? myIdx : 0;
+  return Array.from({length:n}, (_, offset) => (start + offset) % n);
+}
+
 function rPlayers() {
   const pct=(_timerSec/TURN_LIMIT_SECONDS*100).toFixed(2);
   const timerCol=_timerSec<=20?'#ff4444':'#55cc88';
-  const h=G.players.map((p,i)=>{
+  const h=playerViewOrder().map(i=>{
+    const p=G.players[i];
     const cur=i===G.cur;
     const bonH=CI.map(c=>{
       const b=p.bonuses[c]||0; return b?`<div class="bonus-chip">${gemSVG(c,13)}<span style="margin-left:1px">×${b}</span></div>`:'';
