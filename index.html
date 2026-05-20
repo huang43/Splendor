@@ -2910,6 +2910,7 @@ let _presenceUnloadHandler = null;
 let _lastPlayedRemoteAnimId = '';
 let _playedRemoteAnimIds = new Set();
 let _remoteAnimRunId = 0;
+let _lastTurnNotifKey = '';
 let _pendingSkillChainAnim = null;
 let _turnPause = null;
 let _helpPauseToken = null;
@@ -3304,7 +3305,8 @@ function activeViewPlayer() {
 }
 
 function turnCallbackFor(playerIdx) {
-  return !isSpectator() && onlineMode && Number(playerIdx) === Number(myIdx)
+  if (isSpectator()) return startSpectatorTimerDisplay;
+  return onlineMode && Number(playerIdx) === Number(myIdx)
     ? startHumanTurn
     : startTimerDisplay;
 }
@@ -3712,9 +3714,9 @@ function startOnlineGameRuntime(code, options={}) {
   const opening = options.opening !== false;
   function begin() {
     if (opening) {
-      beginOpeningCeremony(()=>showTurnNotification(G.cur, turnCallbackFor(G.cur)));
+      beginOpeningCeremony(()=>notifyTurn(G.cur, turnCallbackFor(G.cur)));
     } else {
-      showTurnNotification(G.cur, turnCallbackFor(G.cur));
+      notifyTurn(G.cur, turnCallbackFor(G.cur));
     }
     listenGame(code);
     listenLiveAnim(code);
@@ -3759,6 +3761,7 @@ function waitSpectatorHeroSelection(code, onReady) {
 
 function enterOnlineGameFromState(code, state, options={}) {
   _finishedGameExitCleanupKey = '';
+  resetTurnNotifMemory();
   applyRemoteState(state);
   setupActiveGamePresence(code).catch(() => {});
   warmKnownGameStateAssets({priority:'high'});
@@ -3798,6 +3801,7 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   onlineMode = true;
   numP = Number(room.state.numP || room.numP || 2);
   _finishedGameExitCleanupKey = '';
+  resetTurnNotifMemory();
   await db.ref(`rooms/${roomCode}`).update({
     [`presence/${myIdx}`]: true,
     [`state/players/${myIdx}/offline`]: false,
@@ -3824,7 +3828,7 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   const begin = () => {
     listenGame(roomCode);
     listenLiveAnim(roomCode);
-    showTurnNotification(G.cur, turnCallbackFor(G.cur));
+    notifyTurn(G.cur, turnCallbackFor(G.cur));
   };
   if (G.heroPool && !G.heroes) showOnlineHeroSelect(roomCode, begin);
   else begin();
@@ -4100,7 +4104,7 @@ async function hostStart() {
 
 // ── Game state sync ────────────────────────────────────────────────────────
 function pushG() {
-  if (!onlineMode || !db || !roomCode) return;
+  if (!onlineMode || !db || !roomCode || isSpectator() || isRoomGuest()) return;
   reconcileGemBank('push');
   const serial = {
     numP:G.numP, cur:G.cur, turnCount:G.turnCount||0, lastRound:G.lastRound,
@@ -4129,7 +4133,7 @@ function pushG() {
 }
 
 function pushLiveAnim(anim) {
-  if (!onlineMode || !db || !roomCode || !anim) return;
+  if (!onlineMode || !db || !roomCode || !anim || isSpectator() || isRoomGuest()) return;
   db.ref(`rooms/${roomCode}/anim`).set(anim);
 }
 
@@ -4221,12 +4225,12 @@ function handleCoverHelpShortcut(ev) {
 
 // ── Opponent cursor broadcast ─────────────────────────────────────────────
 function pushCursor(data) {
-  if (!onlineMode || !db || !roomCode || myIdx < 0) return;
+  if (!onlineMode || !db || !roomCode || myIdx < 0 || isSpectator() || isRoomGuest()) return;
   db.ref(`rooms/${roomCode}/cursor/${myIdx}`).set(data);
 }
 
 function hoverCard(tier, slot) {
-  if (!onlineMode) return;
+  if (!onlineMode || isSpectator() || isRoomGuest()) return;
   clearTimeout(_hoverThrottle);
   _hoverThrottle = setTimeout(() => {
     pushCursor({ pending: {...G.ui.pending}, hover: tier != null ? {tier, slot} : null });
@@ -4613,7 +4617,6 @@ function listenGame(code) {
       }
       return;
     }
-    const prevCur = typeof G.cur==='number' ? G.cur : -1;
     applyRemoteState(data);
     render();
     syncHeroDVPromptModal();
@@ -4621,10 +4624,7 @@ function listenGame(code) {
     await playSyncedRemoteAnim(G.lastAnim);
     if (runId !== _remoteAnimRunId) return;
     if (G.over) { showOverMod(); return; }
-    if (G.cur !== prevCur) {
-      stopTimer();
-      showTurnNotification(G.cur, turnCallbackFor(G.cur));
-    }
+    notifyTurn(G.cur, turnCallbackFor(G.cur));
   });
 }
 
@@ -4835,7 +4835,7 @@ function handleDisconnect(discIdx) {
     stopTimer();
     if (isLeader()) {
       pushG();
-      showTurnNotification(G.cur, turnCallbackFor(G.cur));
+      notifyTurn(G.cur, turnCallbackFor(G.cur));
     }
   } else {
     // Not their turn, just sync the disconnected flag
@@ -5737,6 +5737,8 @@ function coloredGemSum(gems) {
 
 // ── Hero skill activation ─────────────────────────────────────────────────
 function activateHeroSkill(playerIdx) {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
+  if (onlineMode && Number(playerIdx) !== Number(myIdx)) return;
   if (!isMyTurn()) { toast('還沒輪到你'); return; }
   const hero = getPlayerHero(playerIdx);
   if (!hero || hero.passive) return;
@@ -5841,6 +5843,7 @@ function heroQuoteText(hero) {
 }
 
 function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
+  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) return;
   const hero = getPlayerHero(playerIdx);
   if (!hero) return;
 
@@ -5865,6 +5868,7 @@ function runConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
 }
 
 function confirmHeroSkill(playerIdx) {
+  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
   const box = document.getElementById('hero-skill-confirm');
   if (box) box.remove();
   const hero = getPlayerHero(playerIdx);
@@ -5959,6 +5963,7 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
 }
 
 function executeHeroSkill(hero, playerIdx) {
+  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
   const pl = G.players[playerIdx];
   switch (hero.id) {
     case 1: // 巴菲特 長期投資
@@ -6017,6 +6022,7 @@ function showGemDepositPicker(playerIdx) {
   document.body.appendChild(box);
 }
 window.confirmBuffettDeposit = function(playerIdx, col) {
+  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!CI.includes(col) || !pl || (pl.gems[col]||0) <= 0) {
@@ -6026,6 +6032,7 @@ window.confirmBuffettDeposit = function(playerIdx, col) {
   runConfirmedHeroSkill(playerIdx, () => doBuffettDeposit(playerIdx, col));
 };
 window.doBuffettDeposit = function(playerIdx, col) {
+  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!CI.includes(col) || !pl || (pl.gems[col]||0) <= 0) { toast('💰 長期投資只能存入五色寶石代幣，不能存金幣'); return; }
@@ -6633,6 +6640,7 @@ function showDeckPeek(playerIdx) {
 }
 
 window.doMungerReserve = function(playerIdx, tier) {
+  if (isSpectator() || (onlineMode && Number(playerIdx) !== Number(myIdx))) { toast('觀戰中無法操作'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   const pl = G.players[playerIdx];
   if (!pl || pl.reserved.length >= 3) { toast('最多預留3張牌'); return; }
@@ -6976,6 +6984,7 @@ function beginOpeningCeremony(callback) {
 function startGame() {
   clearPracticeAiWatcher();
   clearAiThinkTimer();
+  resetTurnNotifMemory();
   if (practiceMode) { roomCode=''; onlineMode=false; isHost=false; spectatorMode=false; spectatorId=''; roomGuestMode=false; myIdx=0; }
   const names = Array.from({length:numP},(_,i)=>document.getElementById(`pn${i}`)?.value.trim()||`玩家${i+1}`);
   if (practiceMode) {
@@ -6999,13 +7008,14 @@ function startGame() {
   startLocalChat();
   _mySelectIdx = 0;
   showHeroSelect(G.heroPool, () => {
-    beginOpeningCeremony(()=>showTurnNotification(0, isPracticeAi(0) ? startAiTurn : startHumanTurn));
+    beginOpeningCeremony(()=>notifyTurn(0, isPracticeAi(0) ? startAiTurn : startHumanTurn));
   });
 }
 
 function startGameOnline(names, serials=[]) {
   // Host only — build G and push to Firebase
   _finishedGameExitCleanupKey = '';
+  resetTurnNotifMemory();
   G = _buildG(names, serials);
   syncMyIdxFromStatePlayers();
   if (onlineMode && myIdx >= 0 && G.players && G.players[myIdx]) G.players[myIdx].sessionId = _accountSessionId || '';
@@ -7591,6 +7601,7 @@ function runStartCeremony(callback) {
 
 // ── Buy / Reserve ─────────────────────────────────────────────────────────
 function execBuy(card, fromRes) {
+  if (!isMyTurn()) { if (isSpectator()) toast('觀戰中無法操作'); return false; }
   const pl=G.players[G.cur];
   if (!canBuy(pl,card)) { toast('寶石不足，無法購買'); return false; }
   const animSource = fromRes ? {kind:'reserved'} : (boardCardSlotFor(card) || {kind:'center'});
@@ -7661,6 +7672,7 @@ function execBuy(card, fromRes) {
 }
 
 function execReserve(card, tier, bi) {
+  if (!isMyTurn()) { if (isSpectator()) toast('觀戰中無法操作'); return false; }
   const pl=G.players[G.cur];
   if (pl.reserved.length>=3){ toast('最多預留3張牌'); return false; }
   const animSource = tier!==null && bi!==null ? {kind:'board', tier, slot:bi} : {kind:'deck', tier:card.tier};
@@ -8222,12 +8234,12 @@ function advanceTurn() {
   if (onlineMode && roomCode) {
     pushCursor({pending:{w:0,u:0,g:0,r:0,k:0},hover:null});
     pushG();
-    // listenGame won't fire turn notification for us (G.cur already changed locally), so do it here
-    showTurnNotification(G.cur, turnCallbackFor(G.cur));
+    // Local state already moved before Firebase echoes it back, so trigger this client now.
+    notifyTurn(G.cur, turnCallbackFor(G.cur));
   } else {
     const aiTurn = isPracticeAi(G.cur);
     const turnKey = G.turnCount || 0;
-    showTurnNotification(G.cur, aiTurn ? startAiTurn : startHumanTurn);
+    notifyTurn(G.cur, aiTurn ? startAiTurn : startHumanTurn);
     if (aiTurn) scheduleAiTurnFallback(turnKey);
   }
 }
@@ -8261,6 +8273,7 @@ function rankRewardFor(position, total) {
 }
 
 async function awardLadderPointsOnce() {
+  if (isSpectator() || isRoomGuest()) return;
   if (!onlineMode || !db || !roomCode || !G || !G.over || !G.normalEnd) return;
   const gate = db.ref(`rooms/${roomCode}/ladderAwarded`);
   gate.transaction(cur => cur || {by:currentSerial || 'unknown', at:Date.now()}, async (err, committed) => {
@@ -8282,6 +8295,7 @@ async function awardLadderPointsOnce() {
 }
 
 function skipCurrentTurn(reason='timeout') {
+  if (isSpectator() || isRoomGuest()) return;
   if (!G || G.over) return;
   const pl = G.players[G.cur];
   if (!pl) return;
@@ -8344,6 +8358,7 @@ function randomReturnExcessGems(playerIdx, reason='timeout') {
 }
 
 function autoReturnExcessOnTimeout() {
+  if (isSpectator() || isRoomGuest()) return false;
   if (!G || G.over || !G.players || !G.players[G.cur] || gsum(G.players[G.cur].gems) <= 10) return false;
   const mode = window._retMode || 'timeout';
   const playerIdx = G.cur;
@@ -8374,6 +8389,7 @@ function autoReturnExcessOnTimeout() {
 
 // ── Gem bank clicking ─────────────────────────────────────────────────────
 function clickBank(col) {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()){ clickPreBank(col); return; }
   if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
   if (G.ui.pendGold){ toast('已選金幣，請先確認或取消'); return; }
@@ -8404,11 +8420,13 @@ function pendValid() {
 }
 
 function clearPend(){
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()) { cancelPreGemAction(); return; }
   G.ui.pending=emptyGemPending(); G.ui.pendGold=false; pushCursor({pending:emptyGemPending()}); render(); if(!G.ui.acted) activateZones();
 }
 
 function takeGold() {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()||G.ui.acted||(G.bank.gold||0)<=0) return;
   const pl=G.players[G.cur];
   if (gsum(pl.gems)>=10){ toast('寶石已達上限（10枚）'); return; }
@@ -9059,6 +9077,7 @@ function rBank() {
 }
 
 function clickGold() {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()){ clickPreGold(); return; }
   if (G.ui.acted){ toast('已完成行動'); return; }
   if (CI.some(c=>(G.ui.pending[c]||0)>0)){ toast('請先清除已選的寶石'); return; }
@@ -9166,10 +9185,11 @@ function rPlayers() {
       (hero.id === 14 && !canUseDVSkill(i)) ||
       (hero.id === 15 && !canUseShiyuanSkill(i))
     );
-    const canUseSkill = hero && !hero.passive && cur && usesLeft > 0 && !alreadyActedHero && !skillBlocked;
+    const canControlThisPlayer = !isSpectator() && (!onlineMode || Number(i) === Number(myIdx));
+    const canUseSkill = canControlThisPlayer && hero && !hero.passive && cur && usesLeft > 0 && !alreadyActedHero && !skillBlocked;
     const skillUsed = hero && !hero.passive && cur && (usesLeft <= 0 || alreadyActedHero);
     const avatarExtraClass = canUseSkill ? ' skill-ready' : skillBlocked ? ' skill-blocked' : skillUsed ? ' skill-used' : '';
-    const avatarOnclick = canUseSkill ? `onclick="activateHeroSkill(${i})"` : skillBlocked ? `onclick="showSkillBlockReason(${hero.id},${i})"` : '';
+    const avatarOnclick = canUseSkill ? `onclick="activateHeroSkill(${i})"` : (canControlThisPlayer && skillBlocked) ? `onclick="showSkillBlockReason(${hero.id},${i})"` : '';
     const heroAvatarEl = hero ? `
       <img class="pi-hero-avatar${avatarExtraClass}" src="${heroImgSrc(hero.key)}" ${avatarOnclick}
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${hero.name}">
@@ -9201,6 +9221,7 @@ function rPlayers() {
 
 // ── Card modals ───────────────────────────────────────────────────────────
 function openBoardCard(cardId, t, bi) {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
   if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
   if (G.ui.muskCardDone){ toast('🚀 工作狂：已動作過，請選取寶石以結束回合'); return; }
@@ -9211,6 +9232,7 @@ function openBoardCard(cardId, t, bi) {
 }
 
 function openResCard(ri) {
+  if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
   if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
   if (G.ui.muskCardDone){ toast('🚀 工作狂：已動作過，請選取寶石以結束回合'); return; }
@@ -9298,6 +9320,7 @@ function closeM(id)   { document.getElementById(id).style.display='none'; G.ui.p
 
 // ── Return gems modal ─────────────────────────────────────────────────────
 function showRetMod(opts={}) {
+  if (isSpectator() || isRoomGuest()) return;
   const mode = opts.mode || 'action';
   window._retMode = mode;
   window._retPend = {w:0,u:0,g:0,r:0,k:0,gold:0};
@@ -9337,6 +9360,7 @@ function showRetMod(opts={}) {
 }
 
 function retGemStage(col) {
+  if (isSpectator() || isRoomGuest()) return;
   const pl=G.players[G.cur];
   if ((pl.gems[col]||0)-(window._retPend[col]||0)<=0) return;
   window._retPend[col]=(window._retPend[col]||0)+1;
@@ -9344,12 +9368,14 @@ function retGemStage(col) {
 }
 
 function retGemUndo(col) {
+  if (isSpectator() || isRoomGuest()) return;
   if (!(window._retPend[col]||0)) return;
   window._retPend[col]--;
   window._retDraw();
 }
 
 function confRet() {
+  if (isSpectator() || isRoomGuest()) return;
   const pl=G.players[G.cur];
   const mode=window._retMode||'action';
   const pend=window._retPend||{};
@@ -9371,6 +9397,7 @@ function confRet() {
 }
 
 function cancelRet() {
+  if (isSpectator() || isRoomGuest()) return;
   const snap=window._retSnapshot;
   if (!snap) return;
   if (!isCurrentActionSnapshot(snap)) {
@@ -9439,6 +9466,7 @@ function restoredWaitingRoomFromGameRoom(room) {
 }
 
 async function returnToRoomAfterGame() {
+  if (isSpectator() || isRoomGuest()) return;
   if (!onlineMode || !roomCode) {
     location.reload();
     return;
@@ -9532,6 +9560,12 @@ function showOverMod() {
     ? (G.normalEnd ? '本局為正常結算，寶石天梯榜積分會自動登錄。' : '本局不是正常結算，寶石天梯榜不計分。')
     : ((practiceMode || hasPracticeAiPlayers()) ? '練習模式不計入寶石天梯榜。' : '本機遊戲不計入寶石天梯榜。');
   const over = document.getElementById('m-over');
+  const overButtonAction = isSpectator()
+    ? 'backToLobby()'
+    : (onlineMode && roomCode ? 'returnToRoomAfterGame()' : 'location.reload()');
+  const overButtonText = isSpectator()
+    ? '離開觀戰'
+    : (onlineMode && roomCode ? '回到房間' : '再玩一次');
   over.className = 'm-overlay game-over-overlay';
   over.style.display = 'grid';
   over.innerHTML=`<section class="over-box" onclick="event.stopPropagation()">
@@ -9541,7 +9575,7 @@ function showOverMod() {
     <div class="over-rows">
     ${rows}
     </div>
-    <button class="over-restart" onclick="${onlineMode && roomCode ? 'returnToRoomAfterGame()' : 'location.reload()'}">${onlineMode && roomCode ? '回到房間' : '再玩一次'}</button>
+    <button class="over-restart" onclick="${overButtonAction}">${overButtonText}</button>
   </section>`;
   awardLadderPointsOnce();
 }
@@ -9608,8 +9642,27 @@ function applyPreGemActionOnTurn() {
 
 // ── Turn Notification ─────────────────────────────────────────────────────
 let _turnNotifCallback = null;
+function turnNotifKey(playerIdx = G?.cur) {
+  if (!G) return '';
+  const scope = onlineMode && roomCode ? roomCode : (practiceMode ? 'practice' : 'local');
+  return `${scope}:${G.turnCount || 0}:${Number(playerIdx)}`;
+}
+function resetTurnNotifMemory() {
+  _lastTurnNotifKey = '';
+}
+function notifyTurn(playerIdx = G?.cur, callback = turnCallbackFor(playerIdx), opts={}) {
+  if (!G || !G.players) return false;
+  const idx = Number(playerIdx);
+  if (!Number.isFinite(idx) || !G.players[idx]) return false;
+  const key = opts.key || turnNotifKey(idx);
+  if (!opts.force && key && _lastTurnNotifKey === key) return false;
+  _lastTurnNotifKey = key;
+  stopTimer();
+  showTurnNotification(idx, callback);
+  return true;
+}
 function showTurnNotification(playerIdx, callback) {
-  if (G.players && isTurnUnavailable(G.players[playerIdx]) && isLeader()) {
+  if (!isSpectator() && G.players && isTurnUnavailable(G.players[playerIdx]) && isLeader()) {
     skipCurrentTurn(G.players[playerIdx]?.offline ? 'offline' : 'timeout');
     return;
   }
@@ -9674,6 +9727,7 @@ function refreshPlayerTimers() {
 }
 
 function startTimer() {
+  if (isSpectator() || isRoomGuest()) return;
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
@@ -9713,6 +9767,7 @@ function stopTimer() {
 
 // Passive countdown for non-active players (display only, no game effects)
 function startTimerDisplay() {
+  if (isSpectator() || isRoomGuest()) { startSpectatorTimerDisplay(); return; }
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
@@ -9736,7 +9791,38 @@ function startTimerDisplay() {
     }
   }, 1000);
 }
+function startSpectatorTimerDisplay() {
+  clearAiThinkTimer();
+  clearInterval(_timerInterval);
+  _timerSec = TURN_LIMIT_SECONDS;
+  _timerExpired = false;
+  const turnKey = G.turnCount || 0;
+  _updateTimerEl();
+  refreshPlayerTimers();
+  _timerInterval = setInterval(() => {
+    if (!G || G.over || (G.turnCount || 0) !== turnKey) {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      return;
+    }
+    if (isTurnTimerPaused(turnKey)) {
+      _updateTimerEl();
+      refreshPlayerTimers();
+      return;
+    }
+    _timerSec = Math.max(0, _timerSec - 1);
+    _updateTimerEl();
+    refreshPlayerTimers();
+    if (_timerSec <= 0) {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      _timerExpired = true;
+      refreshPlayerTimers();
+    }
+  }, 1000);
+}
 function handleTurnTimeout(turnKey) {
+  if (isSpectator() || isRoomGuest()) return;
   if (!G || G.over || (G.turnCount || 0) !== turnKey) return;
   if (isTurnTimerPaused(turnKey)) return;
   if (onlineMode && !(isMyTurn() || isLeader())) return;
