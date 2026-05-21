@@ -1313,6 +1313,13 @@ body > .dev-card .card-top .gem-img.gem-img-k {
 .over-rows {
   display:flex; flex-direction:column; gap:8px;
 }
+.over-ai-learn {
+  margin:10px 0 4px; padding:10px 12px; border-radius:10px;
+  border:1px solid rgba(157,255,191,.22); background:rgba(85,204,136,.075);
+  color:rgba(255,255,255,.78); font-size:.78em; line-height:1.45;
+}
+.over-ai-learn-title { color:#9dffbf; font-weight:950; margin-bottom:4px; }
+.over-ai-learn small { display:block; margin-top:4px; color:rgba(255,255,255,.52); }
 .over-row {
   display:grid; grid-template-columns:34px 50px minmax(0,1fr) auto;
   align-items:center; gap:10px; padding:10px 12px;
@@ -3079,6 +3086,7 @@ const AUTHORIZED_SERIALS = [
   'keving','davidg','suweig','arong','henryg','victorg'
 ];
 const LOGIN_STORAGE_KEY = 'splendor-login-serial';
+const AI_LEARN_STORAGE_KEY = 'splendor-ai-learning-v1';
 const TURN_LIMIT_SECONDS = 45;
 const AI_THINK_MAX_SECONDS = 10;
 const SPECTATOR_LIMIT = 4;
@@ -8305,6 +8313,7 @@ function _buildG(names, serials=[], opts={}) {
     cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false, normalEnd:false,
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false},
     log:[],
+    aiTelemetry:[],
     heroes:null, heroUsed:null, heroBuffett:null, heroDVPrompt:null, heroActedThisTurn:null,
     virtualGemSupply:{},
     openingDealt:false,
@@ -9788,7 +9797,9 @@ function endGame() {
   clearPracticeAiWatcher();
   stopTimer(); G.over=true;
   G.normalEnd = !!G.lastRound;
-  G.winners=computeWinners(); render();
+  G.winners=computeWinners();
+  aiLearnFromFinishedGame();
+  render();
     if (onlineMode && roomCode) pushG();
   showOverMod();
 }
@@ -10166,6 +10177,239 @@ function scheduleAiTurnFallback(turnKey) {
   }, 1400);
 }
 
+let _aiLearnProfileCache = null;
+function aiLearningDefaults() {
+  return {
+    version:1,
+    games:0,
+    weights:{points:1, missions:1, engine:1, take:1, reserve:1, block:1, tempo:1},
+    history:[]
+  };
+}
+
+function aiClampWeight(name, value) {
+  const ranges = {
+    points:[0.82, 1.35],
+    missions:[0.78, 1.4],
+    engine:[0.78, 1.35],
+    take:[0.72, 1.25],
+    reserve:[0.48, 1.16],
+    block:[0.72, 1.55],
+    tempo:[0.82, 1.35],
+  };
+  const [lo, hi] = ranges[name] || [0.75, 1.35];
+  return Math.max(lo, Math.min(hi, Number(value) || 1));
+}
+
+function aiLearningProfile() {
+  if (_aiLearnProfileCache) return _aiLearnProfileCache;
+  const base = aiLearningDefaults();
+  try {
+    const raw = localStorage.getItem(AI_LEARN_STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved && typeof saved === 'object') {
+        base.games = Math.max(0, Number(saved.games) || 0);
+        base.history = Array.isArray(saved.history) ? saved.history.slice(-24) : [];
+        Object.keys(base.weights).forEach(k => {
+          if (saved.weights && saved.weights[k] != null) base.weights[k] = aiClampWeight(k, saved.weights[k]);
+        });
+      }
+    }
+  } catch(e) {}
+  _aiLearnProfileCache = base;
+  return base;
+}
+
+function aiLearningWeights() {
+  return aiLearningProfile().weights || aiLearningDefaults().weights;
+}
+
+function aiSaveLearningProfile(profile) {
+  if (!profile) return;
+  Object.keys(profile.weights || {}).forEach(k => { profile.weights[k] = aiClampWeight(k, profile.weights[k]); });
+  profile.history = Array.isArray(profile.history) ? profile.history.slice(-24) : [];
+  _aiLearnProfileCache = profile;
+  try { localStorage.setItem(AI_LEARN_STORAGE_KEY, JSON.stringify(profile)); } catch(e) {}
+}
+
+function aiRecordTurnDecision(action) {
+  if (!G || !isPracticeAi(G.cur) || !action) return;
+  if (!Array.isArray(G.aiTelemetry)) G.aiTelemetry = [];
+  const card = action.card || null;
+  G.aiTelemetry.push({
+    turn:G.turnCount || 0,
+    playerIdx:G.cur,
+    type:action.type || 'none',
+    cardId:card ? card.id : null,
+    tier:card ? card.tier : null,
+    pts:card ? (card.pts || 0) : 0,
+    value:Math.round(action.value || 0),
+    routeFit:!!action.routeFit,
+    blockWin:!!action.blockWin,
+    blockTenpai:!!action.blockTenpai,
+    blockMission:!!action.blockMission,
+    blockRoute:!!action.blockRoute,
+    completesMission:!!action.completesMission,
+    winSoon:!!action.winSoon,
+  });
+  if (G.aiTelemetry.length > 260) G.aiTelemetry = G.aiTelemetry.slice(-260);
+}
+
+function aiPlayerActionStats(playerIdx) {
+  const rows = (G.aiTelemetry || []).filter(item => Number(item.playerIdx) === Number(playerIdx));
+  const stats = {total:0, buy:0, take:0, reserve:0, block:0, scoreBuy:0, missionBuy:0};
+  if (rows.length) {
+    rows.forEach(item => {
+      const type = item.type || 'none';
+      stats.total++;
+      if (stats[type] != null) stats[type]++;
+      if (type === 'reserve' && (item.blockWin || item.blockTenpai || item.blockMission || item.blockRoute)) stats.block++;
+      if (type === 'buy' && (item.pts || 0) > 0) stats.scoreBuy++;
+      if (type === 'buy' && item.completesMission) stats.missionBuy++;
+    });
+    return stats;
+  }
+  (G.log || []).forEach(item => {
+    if (Number(item.playerIdx) !== Number(playerIdx)) return;
+    if (['buy','take','reserve'].includes(item.type)) {
+      stats.total++;
+      stats[item.type]++;
+    }
+  });
+  return stats;
+}
+
+function aiMissionPointsFor(playerIdx) {
+  return (G.missions || []).reduce((sum, m) => sum + (Number(m.claimedBy) === Number(playerIdx) ? (m.pts || 0) : 0), 0);
+}
+
+function aiLearningGameKey() {
+  if (!G || !G.players) return '';
+  const winners = (G.winners || []).map(w => G.players.indexOf(w)).filter(i => i >= 0).join(',');
+  const board = (G.players || []).map(p => `${p.points || 0}/${(p.cards || []).length}/${(p.reserved || []).length}`).join('|');
+  return `${G.turnCount || 0}:${winners}:${board}`;
+}
+
+function aiAddDelta(target, patch, scale=1) {
+  Object.entries(patch || {}).forEach(([k,v]) => {
+    target[k] = (target[k] || 0) + v * scale;
+  });
+}
+
+function aiReasonLabel(reason) {
+  const labels = {
+    scoreTempo:'得分節奏落後',
+    missionRace:'任務被搶',
+    weakEngine:'永久寶石引擎太薄',
+    gemHoard:'拿寶石沒有轉成買牌',
+    overReserve:'鎖牌太多拖慢節奏',
+    underBlock:'沒有擋住對手最後爆分',
+    closeLoss:'接近勝利但終局推進不足',
+  };
+  return labels[reason] || reason;
+}
+
+function aiAnalyzeAiLoss(aiIdx, winnerIdx) {
+  const ai = G.players[aiIdx];
+  const winner = G.players[winnerIdx];
+  const stats = aiPlayerActionStats(aiIdx);
+  const total = Math.max(1, stats.total || 0);
+  const buyRate = (stats.buy || 0) / total;
+  const takeRate = (stats.take || 0) / total;
+  const reserveRate = (stats.reserve || 0) / total;
+  const pointGap = (winner.points || 0) - (ai.points || 0);
+  const missionGap = aiMissionPointsFor(winnerIdx) - aiMissionPointsFor(aiIdx);
+  const engineGap = coloredGemSum(winner.bonuses || {}) - coloredGemSum(ai.bonuses || {});
+  const cardGap = (winner.cards || []).length - (ai.cards || []).length;
+  const reasons = [];
+  const deltas = {};
+  const add = (reason, patch, scale=1) => {
+    reasons.push(reason);
+    aiAddDelta(deltas, patch, scale);
+  };
+
+  if (pointGap >= 3) add('scoreTempo', {points:0.028, tempo:0.022, take:-0.006}, Math.min(1.8, pointGap / 4));
+  if (missionGap >= 2) add('missionRace', {missions:0.035, engine:0.012, tempo:0.01}, Math.min(1.7, missionGap / 2));
+  if (engineGap >= 3 || cardGap >= 4) add('weakEngine', {engine:0.03, take:0.012, points:0.008}, Math.min(1.6, Math.max(engineGap / 4, cardGap / 5)));
+  if (takeRate >= 0.52 && buyRate <= 0.34) add('gemHoard', {take:-0.03, points:0.018, engine:0.018, tempo:0.018});
+  if (reserveRate >= 0.18) add('overReserve', {reserve:-0.055, take:0.012, tempo:0.014}, Math.min(1.8, reserveRate / 0.22));
+  if ((winner.points || 0) >= 15 && pointGap <= 5 && (stats.block || 0) <= 0) add('underBlock', {block:0.042, reserve:0.008});
+  if (!reasons.length) add('closeLoss', {tempo:0.014, points:0.012});
+
+  return {
+    aiIdx,
+    name:ai.name || `AI ${aiIdx}`,
+    reasons:[...new Set(reasons)],
+    deltas,
+    stats:{pointGap, missionGap, engineGap, cardGap, buyRate, takeRate, reserveRate}
+  };
+}
+
+function aiLearnFromFinishedGame() {
+  if (!G || !G.over || !G.normalEnd || onlineMode || !hasPracticeAiPlayers()) return G?.aiLearningReport || null;
+  if (!G.winners || !G.winners.length) G.winners = computeWinners();
+  const key = aiLearningGameKey();
+  if (G.aiLearningKey === key) return G.aiLearningReport || null;
+  G.aiLearningKey = key;
+
+  const winnerIdxs = new Set((G.winners || []).map(w => G.players.indexOf(w)).filter(i => i >= 0));
+  const winnerIdx = [...winnerIdxs][0];
+  const aiLosers = (G.players || [])
+    .map((p, idx) => ({p, idx}))
+    .filter(({p, idx}) => p && isPracticeAi(idx) && !winnerIdxs.has(idx));
+  if (!aiLosers.length || winnerIdx < 0) {
+    G.aiLearningReport = {updated:false, reasons:['AI本局未輸，不調整權重']};
+    return G.aiLearningReport;
+  }
+
+  const analyses = aiLosers.map(({idx}) => aiAnalyzeAiLoss(idx, winnerIdx));
+  const merged = {};
+  analyses.forEach(item => aiAddDelta(merged, item.deltas, 1 / Math.max(1, analyses.length)));
+  const profile = aiLearningProfile();
+  const before = {...profile.weights};
+  Object.keys(profile.weights).forEach(k => {
+    profile.weights[k] = aiClampWeight(k, profile.weights[k] + (merged[k] || 0));
+  });
+  profile.games = (profile.games || 0) + 1;
+  const reasons = [...new Set(analyses.flatMap(item => item.reasons))];
+  const record = {
+    at:Date.now(),
+    game:profile.games,
+    winner:G.players[winnerIdx]?.name || '',
+    ai:analyses.map(item => item.name),
+    reasons,
+    deltas:merged,
+    weights:{...profile.weights}
+  };
+  profile.history = [...(profile.history || []), record].slice(-24);
+  aiSaveLearningProfile(profile);
+  G.aiLearningReport = {...record, before, updated:true};
+  return G.aiLearningReport;
+}
+
+function aiLearningDeltaText(deltas) {
+  const labels = {points:'取分', missions:'任務', engine:'引擎', take:'拿寶', reserve:'鎖牌', block:'阻斷', tempo:'節奏'};
+  return Object.entries(deltas || {})
+    .filter(([,v]) => Math.abs(v) >= 0.004)
+    .sort((a,b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 5)
+    .map(([k,v]) => `${labels[k] || k} ${v > 0 ? '+' : ''}${Math.round(v * 100)}%`)
+    .join('、');
+}
+
+function aiLearningReportHtml(report) {
+  if (!report || !report.updated) return '';
+  const aiNames = (report.ai || []).map(htmlEsc).join('、');
+  const reasons = (report.reasons || []).slice(0, 4).map(aiReasonLabel).join('、');
+  const deltaText = aiLearningDeltaText(report.deltas) || '微幅保持';
+  return `<div class="over-ai-learn">
+    <div class="over-ai-learn-title">AI 賽後自我修正</div>
+    <div>${aiNames || 'AI'} 敗因：${htmlEsc(reasons || '終局效率不足')}</div>
+    <small>已記錄本局並調整下一場權重：${htmlEsc(deltaText)}</small>
+  </div>`;
+}
+
 function runPracticeAiTurn(turnCtx = currentTurnContext()) {
   if (typeof turnCtx === 'number') turnCtx = {...currentTurnContext(), turnCount:turnCtx};
   const turnKey = turnCtx.turnCount;
@@ -10181,6 +10425,7 @@ function runPracticeAiTurn(turnCtx = currentTurnContext()) {
   });
   G.ui = freshTurnUi();
   const action = choosePracticeAiAction();
+  aiRecordTurnDecision(action);
   let acted = false;
   if (action?.type === 'buy') acted = aiExecBuy(action);
   else if (action?.type === 'reserve') acted = aiExecReserve(action);
@@ -10194,6 +10439,7 @@ function runPracticeAiTurn(turnCtx = currentTurnContext()) {
 function choosePracticeAiAction() {
   const pl = G.players[G.cur];
   if (!pl) return null;
+  const learn = aiLearningWeights();
   const plan = aiStrategicPlan(pl);
   const buys = aiBuyActions(pl, plan);
   const reserves = aiReserveActions(pl, plan);
@@ -10206,7 +10452,8 @@ function choosePracticeAiAction() {
 
   const plannedBuy = aiPickValuable(buys.filter(a => a.routeFit || a.completesMission));
   const decisiveBlock = aiPickValuable(reserves.filter(a => a.blockTenpai || a.blockMission));
-  if (decisiveBlock && (!plannedBuy || decisiveBlock.value >= (plannedBuy.value || 0) + 520 || ((plannedBuy.projectedPts || 0) <= 0 && decisiveBlock.value >= (plannedBuy.value || 0) + 260))) {
+  const blockMargin = 520 / Math.max(0.72, learn.block || 1);
+  if (decisiveBlock && (!plannedBuy || decisiveBlock.value >= (plannedBuy.value || 0) + blockMargin || ((plannedBuy.projectedPts || 0) <= 0 && decisiveBlock.value >= (plannedBuy.value || 0) + blockMargin * 0.5))) {
     return decisiveBlock;
   }
   if (plannedBuy) return plannedBuy;
@@ -10220,8 +10467,9 @@ function choosePracticeAiAction() {
     if (!bestTake || bestBuy.value >= (bestTake.value || 0) - 90) return bestBuy;
   }
   if (bestReserve?.blockWin) return bestReserve;
-  if (bestReserve?.blockUrgent && bestReserve.value >= (bestTake?.value || 0) + 520 && bestReserve.value >= (bestBuy?.value || 0) + 260) return bestReserve;
-  if (bestReserve && (bestReserve.winSoon || bestReserve.completesMission) && bestReserve.value >= (bestTake?.value || 0) + 560 && bestReserve.value >= (bestBuy?.value || 0) + 280) return bestReserve;
+  if (bestReserve?.blockUrgent && bestReserve.value >= (bestTake?.value || 0) + blockMargin && bestReserve.value >= (bestBuy?.value || 0) + blockMargin * 0.5) return bestReserve;
+  const reserveMargin = 560 / Math.max(0.55, learn.reserve || 1);
+  if (bestReserve && (bestReserve.winSoon || bestReserve.completesMission) && bestReserve.value >= (bestTake?.value || 0) + reserveMargin && bestReserve.value >= (bestBuy?.value || 0) + reserveMargin * 0.5) return bestReserve;
   return bestTake || bestBuy || bestReserve || null;
 }
 
@@ -10266,6 +10514,7 @@ function aiReserveActions(pl, plan=null) {
   if (!pl || (pl.reserved || []).length >= 3) return [];
   const actions = [];
   const playerIdx = G.players.indexOf(pl);
+  const learn = aiLearningWeights();
   [3,2,1].forEach(t => (G.board[t] || []).forEach((card, bi) => {
     if (!card) return;
     const score = aiCardScore(pl, card, {playerIdx});
@@ -10281,21 +10530,22 @@ function aiReserveActions(pl, plan=null) {
     const reservedPenalty = reservedCount * 72;
     const routePressure = score.routePressure || 0;
     const reserveUrgency =
-      blockValue +
-      blockInfo.value +
-      routeBlock * 0.18 +
-      intentBlock * 0.08 +
-      goldBonus +
-      (routeFit >= 0 ? 70 - routeFit * 28 : 0) +
-      (score.completesMission ? 130 : 0) +
-      (score.winSoon ? 110 : 0) +
-      routePressure * 0.65 +
-      (card.pts || 0) * 36 -
+      (blockValue +
+        blockInfo.value +
+        routeBlock * 0.18 +
+        intentBlock * 0.08) * (learn.block || 1) +
+      (goldBonus +
+        (routeFit >= 0 ? 70 - routeFit * 28 : 0) +
+        (score.completesMission ? 130 : 0) +
+        (score.winSoon ? 110 : 0) +
+        routePressure * 0.65 +
+        (card.pts || 0) * 36) * (learn.reserve || 1) -
       missing * 32 -
       Math.max(0, turns - 2) * 48 -
       reservedPenalty;
-    const ownRouteReserve = routeFit === 0 && turns <= 1 && reserveUrgency > 520 && reservedCount === 0 && (score.winSoon || score.completesMission || (card.pts || 0) >= 4);
-    const tacticalBlock = blockInfo.critical || (blockInfo.tenpai && reserveUrgency > 620) || (blockInfo.mission && reserveUrgency > 760) || (blockInfo.route && reserveUrgency > 980);
+    const ownRouteReserve = routeFit === 0 && turns <= 1 && reserveUrgency > 520 / Math.max(0.55, learn.reserve || 1) && reservedCount === 0 && (score.winSoon || score.completesMission || (card.pts || 0) >= 4);
+    const blockGate = Math.max(0.72, learn.block || 1);
+    const tacticalBlock = blockInfo.critical || (blockInfo.tenpai && reserveUrgency > 620 / blockGate) || (blockInfo.mission && reserveUrgency > 760 / blockGate) || (blockInfo.route && reserveUrgency > 980 / blockGate);
     const tacticalScore = reservedCount === 0 && turns <= 1 && ((score.winSoon && ((card.pts || 0) >= 3 || score.completesMission)) || (score.completesMission && (card.pts || 0) >= 2) || ((card.pts || 0) >= 4 && score.value > 900));
     if (tacticalBlock || tacticalScore || ownRouteReserve) {
       actions.push({
@@ -10352,6 +10602,7 @@ function aiLegalTakeOptions(pl) {
 }
 
 function aiEvaluateTake(pl, selection, plan=null) {
+  const learn = aiLearningWeights();
   const playerIdx = G.players.indexOf(pl);
   const target = plan?.target ? {card:plan.target, value:plan.score || 0, winNow:false} : aiBestTargetCard(pl);
   const after = aiSimulateTakePlayer(pl, selection);
@@ -10361,7 +10612,7 @@ function aiEvaluateTake(pl, selection, plan=null) {
   const beforeTargets = plan?.cards?.length
     ? plan.cards.slice(0, 3).map(card => ({card, ...aiCardScore(pl, card, {playerIdx}), missing:aiCardMissing(pl, card)}))
     : aiTargetCards(pl).slice(0, 4);
-  let value = 70 + (afterValue - beforeValue) * 0.28;
+  let value = (70 + (afterValue - beforeValue) * 0.28) * (learn.take || 1);
 
   beforeTargets.forEach((t, idx) => {
     const beforeMissing = aiCardMissing(pl, t.card).goldAdjusted;
@@ -10369,20 +10620,20 @@ function aiEvaluateTake(pl, selection, plan=null) {
     const progress = Math.max(0, beforeMissing - afterMissing);
     if (progress > 0) {
       const closeMul = beforeMissing <= 3 ? 1.45 : beforeMissing <= 5 ? 1.1 : 0.82;
-      value += progress * Math.max(30, 76 - idx * 10) * closeMul;
+      value += progress * Math.max(30, 76 - idx * 10) * closeMul * (learn.take || 1);
     }
     if (!canBuy(pl, t.card) && canBuy(after, t.card)) {
-      value += 170 + (t.projectedPts || 0) * 62 + (t.missionGain || 0) * 76;
+      value += (170 + (t.projectedPts || 0) * 62 * (learn.points || 1) + (t.missionGain || 0) * 76 * (learn.missions || 1)) * (learn.take || 1);
     }
   });
 
   CI.forEach(c => {
     const gained = Math.max(0, (after.gems[c] || 0) - (pl.gems[c] || 0));
-    value += gained * (16 + Math.min(72, (keep[c] || 0)) * 0.44);
-    if ((selection[c] || 0) === 2) value += 22 + (keep[c] || 0) * 0.14;
+    value += gained * (16 + Math.min(72, (keep[c] || 0)) * 0.44) * (learn.take || 1);
+    if ((selection[c] || 0) === 2) value += (22 + (keep[c] || 0) * 0.14) * (learn.take || 1);
   });
-  value += aiGemCoverageValue(pl, after, selection, plan);
-  value += aiDenyGemValue(selection, playerIdx);
+  value += aiGemCoverageValue(pl, after, selection, plan) * (learn.take || 1);
+  value += aiDenyGemValue(selection, playerIdx) * (learn.block || 1);
   if (target?.value) value += Math.min(95, target.value * 0.06);
   return value;
 }
@@ -10452,6 +10703,7 @@ function aiStrategicPlan(pl) {
 }
 
 function aiProjectRouteFrom(pl, startEntry, entries, playerIdx) {
+  const learn = aiLearningWeights();
   let sim = aiClonePlayerState(pl);
   const used = new Set();
   const cards = [];
@@ -10473,7 +10725,7 @@ function aiProjectRouteFrom(pl, startEntry, entries, playerIdx) {
     const toBuy = aiTurnsToBuy(sim, card);
     used.add(card.id);
     cards.push(card);
-    score += value - toBuy * (depth === 0 ? 92 : 70) - Math.max(0, toBuy - 2) * 65;
+    score += value - toBuy * (depth === 0 ? 92 : 70) * (learn.tempo || 1) - Math.max(0, toBuy - 2) * 65 * (learn.tempo || 1);
     turns += 1 + toBuy;
     sim = aiPlayerAfterStrategicBuy(sim, card, playerIdx);
     if ((sim.points || 0) >= 15) {
@@ -10504,6 +10756,7 @@ function aiClonePlayerState(pl) {
 }
 
 function aiRouteCardValue(pl, card, playerIdx, depth=0) {
+  const learn = aiLearningWeights();
   const projectedPts = projectedCardPoints(playerIdx, card);
   const missionPts = aiCompletedMissionPoints(pl, card, playerIdx);
   const missing = aiCardMissing(pl, card);
@@ -10514,17 +10767,17 @@ function aiRouteCardValue(pl, card, playerIdx, depth=0) {
   const buyableBonus = canBuy(pl, card) ? 360 : 0;
   const earlyEngine = (pl.points || 0) < 7 && projectedPts === 0 ? 95 : 0;
   return (
-    winBonus +
+    winBonus * (learn.points || 1) +
     buyableBonus +
-    projectedPts * ((pl.points || 0) >= 8 ? 310 : 225) +
-    missionPts * 720 +
-    missionNeed * 2.4 +
-    Math.min(180, (demand[card.bonus] || 0) * 2.1) +
-    earlyEngine +
+    projectedPts * ((pl.points || 0) >= 8 ? 310 : 225) * (learn.points || 1) +
+    missionPts * 720 * (learn.missions || 1) +
+    missionNeed * 2.4 * (learn.missions || 1) +
+    Math.min(180, (demand[card.bonus] || 0) * 2.1) * (learn.engine || 1) +
+    earlyEngine * (learn.engine || 1) +
     (card.tier || 1) * 22 -
     missing.goldAdjusted * 58 -
     missing.total * 13 -
-    turns * (depth === 0 ? 112 : 82)
+    turns * (depth === 0 ? 112 : 82) * (learn.tempo || 1)
   );
 }
 
@@ -10649,6 +10902,7 @@ function aiTurnsToBuy(pl, card) {
 
 function aiCardScore(pl, card, opts={}) {
   if (!card) return {value:0, missionGain:0, projectedPts:0, winNow:false, winSoon:false, completesMission:false, routePressure:0};
+  const learn = aiLearningWeights();
   const playerIdx = Number.isFinite(opts.playerIdx) ? opts.playerIdx : G.players.indexOf(pl);
   const projectedPts = Number.isFinite(playerIdx) && playerIdx >= 0 ? projectedCardPoints(playerIdx, card) : (card.pts || 0);
   const totalCost = CI.reduce((sum,c) => sum + ((card.cost && card.cost[c]) || 0), 0);
@@ -10665,26 +10919,26 @@ function aiCardScore(pl, card, opts={}) {
   const winSoon = (pl.points || 0) + projectedPts >= 12;
   const reservedFit = (pl.reserved || []).some(c => c && c.bonus === card.bonus) ? 12 : 0;
   const earlyEngine = (pl.points || 0) < 7 && (pl.cards || []).length < 8 ? 42 : 0;
-  const tempo = (pl.points || 0) >= 8 ? projectedPts * 34 : projectedPts * 12;
+  const tempo = ((pl.points || 0) >= 8 ? projectedPts * 34 : projectedPts * 12) * (learn.tempo || 1);
   const affordability = canBuy(pl, card) ? 145 : Math.max(0, 140 - turns * 38 - missing.goldAdjusted * 8);
   const engineCard = projectedPts === 0 ? earlyEngine + Math.max(0, 38 - totalCost * 4) : 0;
   const value =
-    projectedPts * ((pl.points || 0) >= 8 ? 170 : 132) +
+    projectedPts * ((pl.points || 0) >= 8 ? 170 : 132) * (learn.points || 1) +
     tempo +
-    completedMissionPts * 330 +
-    missionGain * 165 +
-    routePressure +
-    bonusScarcity +
-    reservedFit +
-    engineCard +
+    completedMissionPts * 330 * (learn.missions || 1) +
+    missionGain * 165 * (learn.missions || 1) +
+    routePressure * (learn.engine || 1) +
+    bonusScarcity * (learn.engine || 1) +
+    reservedFit * (learn.engine || 1) +
+    engineCard * (learn.engine || 1) +
     affordability +
     (card.tier || 1) * 10 +
-    Math.min(620, opponentThreat * 0.35) +
-    (winNow ? 20000 : winSoon ? 520 : 0) -
+    Math.min(620, opponentThreat * 0.35 * (learn.block || 1)) +
+    (winNow ? 20000 : winSoon ? 520 * (learn.points || 1) * (learn.tempo || 1) : 0) -
     totalCost * 1.25 -
     missing.goldAdjusted * 48 -
     missing.total * 10 -
-    Math.max(0, turns - 2) * 62;
+    Math.max(0, turns - 2) * 62 * (learn.tempo || 1);
   return {value, missionGain, projectedPts, winNow, winSoon, completesMission:completedMissionPts > 0, routePressure, turns};
 }
 
@@ -10740,19 +10994,20 @@ function aiBestFutureCardValue(pl, playerIdx, excludeId=null) {
 
 function aiPositionValue(pl, playerIdx = G.players.indexOf(pl)) {
   if (!pl) return 0;
+  const learn = aiLearningWeights();
   const demand = aiColorDemand(pl);
-  let value = (pl.points || 0) * 170 + (pl.cards || []).length * 9;
+  let value = (pl.points || 0) * 170 * (learn.points || 1) + (pl.cards || []).length * 9 * (learn.engine || 1);
   CI.forEach(c => {
-    value += (pl.bonuses[c] || 0) * (24 + Math.min(46, (demand[c] || 0) * 0.24));
-    value += (pl.gems[c] || 0) * (8 + Math.min(28, (demand[c] || 0) * 0.09));
+    value += (pl.bonuses[c] || 0) * (24 + Math.min(46, (demand[c] || 0) * 0.24)) * (learn.engine || 1);
+    value += (pl.gems[c] || 0) * (8 + Math.min(28, (demand[c] || 0) * 0.09)) * (learn.take || 1);
   });
-  value += (pl.gems?.gold || 0) * 42;
+  value += (pl.gems?.gold || 0) * 42 * (learn.take || 1);
   (G.missions || []).forEach(m => {
     if (!m || m.claimedBy !== null) return;
     const prog = missionProgress(m, pl);
     const pct = prog.cur / Math.max(1, prog.target);
-    value += pct * pct * (m.pts || 1) * 155;
-    if (m.check(pl)) value += (m.pts || 1) * 220;
+    value += pct * pct * (m.pts || 1) * 155 * (learn.missions || 1);
+    if (m.check(pl)) value += (m.pts || 1) * 220 * (learn.missions || 1);
   });
   if ((pl.reserved || []).length) {
     (pl.reserved || []).forEach(card => {
@@ -11752,6 +12007,7 @@ function showOverMod() {
   document.getElementById('turn-notif')?.classList.remove('on');
   ['m-card','m-ret'].forEach(id=>{ const el=document.getElementById(id); if (el) el.style.display='none'; });
   if (!G.winners || !G.winners.length) G.winners=computeWinners();
+  const aiLearnHtml = aiLearningReportHtml(aiLearnFromFinishedGame() || G.aiLearningReport);
   const sorted=rankedRows();
   const winnerIdxs = new Set((G.winners||[]).map(w=>G.players.indexOf(w)).filter(i=>i>=0));
   const medals=['🥇','🥈','🥉',''];
@@ -11805,6 +12061,7 @@ function showOverMod() {
     <div class="over-title">🎊 遊戲結束！</div>
     <div class="over-winner">🏆 ${wn} 獲勝！</div>
     <div style="font-size:.78em;color:rgba(255,255,255,.62);margin:-6px 0 12px;text-align:center">${ladderNote}</div>
+    ${aiLearnHtml}
     <div class="over-rows">
     ${rows}
     </div>
