@@ -1108,6 +1108,11 @@ body > .dev-card .card-top .gem-img.gem-img-k {
 .btn-go  { background:linear-gradient(135deg,#226622,#44aa44); color:white; }
 .btn-end { background:linear-gradient(135deg,#662222,#aa4444); color:white; }
 .btn-grey { background:rgba(255,255,255,.1); color:white; }
+.btn-preconfirm {
+  background:linear-gradient(135deg,#8d7943,#d4bd76);
+  color:#211608;
+  text-shadow:0 1px 0 rgba(255,255,255,.28);
+}
 .bank-clear-btn {
   font-family:Arial,sans-serif;
   letter-spacing:0;
@@ -1214,6 +1219,22 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   margin-left:1px;
   vertical-align:baseline;
   -webkit-text-stroke:.2px rgba(20,15,12,.72);
+}
+.pi-section-label {
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  font-size:.57em; text-transform:uppercase; letter-spacing:1.5px;
+  color:rgba(255,255,255,.48); margin-top:5px; margin-bottom:1px;
+}
+.pi-section-label.bonus-label { margin-top:6px; }
+.pi-section-label.gem-token-label { justify-content:flex-start; gap:5px; }
+.pi-gem-total {
+  flex-shrink:0; min-width:22px; padding:1px 6px; border-radius:999px;
+  text-align:center; letter-spacing:0; font-size:1.08em; font-weight:950;
+  color:#fff; background:rgba(255,220,120,.1);
+  border:1px solid rgba(255,220,120,.16);
+}
+.pi-gem-total.warn {
+  color:#fff; background:rgba(255,76,56,.13); border-color:rgba(255,104,82,.28);
 }
 .pi-bonuses { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
 .pi-gems { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
@@ -2971,7 +2992,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
     <div class="h-sec">
       <h3>計時器</h3>
-      <p>每位玩家有 <strong>45 秒</strong>操作時間。剩餘 15 秒時會顯示「時光不等人」，時間到後會自動放棄該回合並換下一位玩家。</p>
+      <p>每位玩家有 <strong>45 秒</strong>操作時間。剩餘 15 秒時會顯示「時光不等人」，時間到後會依照寶石上限與庫存自動隨機拿取寶石；若已滿10顆或無寶石可拿，則放棄該回合。</p>
     </div>
 
     <div style="text-align:right;margin-top:18px">
@@ -3145,6 +3166,31 @@ function validSerial(v) { return AUTHORIZED_SERIALS.includes(normaliseSerial(v))
 function serialKey(v) { return normaliseSerial(v).replace(/[.#$\/\[\]]/g, '_'); }
 function isSpectator() { return !!(onlineMode && spectatorMode); }
 function isRoomGuest() { return !!(onlineMode && roomGuestMode); }
+function syncWaitControls(ready={}) {
+  const crown = document.getElementById('wait-crown');
+  const readyBtn = document.getElementById('wait-ready');
+  const startBtn = document.getElementById('wait-start');
+  const isWaitingPlayer = onlineMode && !isSpectator() && !isRoomGuest() && Number(myIdx) >= 0;
+
+  if (crown) crown.style.display = isHost && isWaitingPlayer ? 'inline-block' : 'none';
+
+  if (readyBtn) {
+    if (!isHost && isWaitingPlayer) {
+      readyBtn.style.display = 'inline-block';
+      if (ready[myIdx]) {
+        readyBtn.textContent = '取消準備';
+        readyBtn.style.opacity = '0.95';
+      } else {
+        readyBtn.textContent = '準備';
+        readyBtn.style.opacity = '1';
+      }
+    } else {
+      readyBtn.style.display = 'none';
+    }
+  }
+
+  if (startBtn) startBtn.style.display = isHost && isWaitingPlayer ? 'inline-block' : 'none';
+}
 function spectatorKey(v=currentSerial) { return serialKey(v || 'guest'); }
 function makeAccountSessionId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
@@ -3588,6 +3634,13 @@ async function closeRoomIfEveryoneOffline(code, room, reason='offline') {
   return true;
 }
 
+async function closeEndedRoom(code, room, reason='ended') {
+  if (!db || !code || !room || !(room.state && room.state.over)) return false;
+  await db.ref(`rooms/${code}`).remove().catch(() => {});
+  console.info('room closed because game ended', {code, reason});
+  return true;
+}
+
 function activeViewIdx() {
   if (!G || !G.players || !G.players.length) return -1;
   if (isSpectator()) {
@@ -3766,6 +3819,10 @@ function renderRoomList(rooms) {
   const list = document.getElementById('room-list');
   if (!list) return;
   Object.entries(rooms || {}).forEach(([code, room]) => {
+    if (room && room.state && room.state.over) {
+      closeEndedRoom(String(code || '').toUpperCase(), room, 'room-list').catch(() => {});
+      return;
+    }
     closeRoomIfEveryoneOffline(String(code || '').toUpperCase(), room, 'room-list').catch(() => {});
   });
   const entries = Object.entries(rooms || {})
@@ -3785,7 +3842,7 @@ function renderRoomList(rooms) {
         createdAt:Number(room && room.createdAt) || 0
       };
     })
-    .filter(item => item.room && item.max > 0 && item.joined > 0)
+    .filter(item => item.room && item.max > 0 && item.joined > 0 && !item.ended)
     .sort((a,b) =>
       Number(a.playing) - Number(b.playing) ||
       b.createdAt - a.createdAt ||
@@ -3871,6 +3928,11 @@ async function enterRoomLobby(codeOverride='') {
     const snap = await db.ref(`rooms/${code}`).once('value');
     const room = snap.val();
     if (!room) { alert('找不到房間，請確認房號'); return; }
+    if (await closeEndedRoom(code, room, 'enter-room')) {
+      alert('遊戲已結束，房間已關閉');
+      refreshRoomList();
+      return;
+    }
     const playerIdx = findSerialSlot(room, currentSerial);
     const reconnectGameIdx = playerIdx >= 0 && room.state && roomIsCoop(room)
       ? Number((room.state.seatTeamMap || {})[Number(playerIdx)] ?? coopSeatTeam(playerIdx, Number(room.state.numP || room.numTeams || 0)))
@@ -3926,9 +3988,7 @@ async function enterRoomAsGuest(code, room) {
   showOnly('screen-wait');
   warmPregameAssets();
   document.getElementById('wait-code-text').textContent = roomCode;
-  document.getElementById('wait-crown').style.display = 'none';
-  document.getElementById('wait-ready').style.display = 'none';
-  document.getElementById('wait-start').style.display = 'none';
+  syncWaitControls(room.ready || {});
   listenWait(roomCode);
 }
 
@@ -4187,7 +4247,7 @@ async function joinSpectator(codeOverride='') {
   const snap = await db.ref(`rooms/${code}`).once('value');
   const room = snap.val();
   if (!room) { alert('找不到房間，請確認房號'); return; }
-  if (room.state && room.state.over) { alert('遊戲已結束，無法觀戰'); return; }
+  if (await closeEndedRoom(code, room, 'join-spectator')) { alert('遊戲已結束，房間已關閉'); refreshRoomList(); return; }
   const playerIdx = findSerialSlot(room, currentSerial);
   if (playerIdx >= 0) {
     if (room.state) await reconnectToRoom(code, playerIdx, room);
@@ -4294,7 +4354,7 @@ function enterOnlineGameFromState(code, state, options={}) {
   setupActiveGamePresence(code).catch(() => {});
   warmKnownGameStateAssets({priority:'high'});
   showOnly('screen-game');
-  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
   render();
   listenChat(code);
   _knownDisc = new Set();
@@ -4310,6 +4370,11 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
   fbInit();
   const snap = cachedRoom ? {val:()=>cachedRoom} : await db.ref(`rooms/${code}`).once('value');
   const room = snap.val();
+  if (await closeEndedRoom(String(code || '').toUpperCase(), room, 'reconnect')) {
+    alert('遊戲已結束，房間已關閉');
+    showOnly('screen-lobby');
+    return;
+  }
   if (!room || !room.state || room.state.over) {
     alert('找不到可重連的進行中遊戲');
     showOnly('screen-lobby');
@@ -4350,7 +4415,7 @@ async function reconnectToRoom(code, idx, cachedRoom=null) {
     G.players[myGameIdx].disconnected = false;
   }
   showOnly('screen-game');
-  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
   render();
   listenChat(roomCode);
   _knownDisc = new Set();
@@ -4477,6 +4542,7 @@ function listenWait(code) {
       }
       return;
     }
+    if (await closeEndedRoom(code, room, 'wait-listener')) return;
     if (await closeRoomIfEveryoneOffline(code, room, 'wait-listener')) return;
     if (room.state) {
       db.ref(`rooms/${code}`).off();
@@ -4548,27 +4614,14 @@ function listenWait(code) {
     }
     document.getElementById('wait-list').innerHTML = html;
     updateWaitChoice(room, players, spectatorInfo);
-    // Update ready button label for non-host
-    if (isSpectator() || isRoomGuest()) {
-      const btn = document.getElementById('wait-ready');
-      if (btn) btn.style.display = 'none';
-      const startBtn = document.getElementById('wait-start');
-      if (startBtn) startBtn.style.display = 'none';
-    } else if (!isHost) {
-      const btn = document.getElementById('wait-ready');
-      if (btn) btn.style.display = 'inline-block';
-      if (ready[myIdx]) {
-        btn.textContent = '取消準備';
-        btn.style.opacity = '0.95';
-      } else {
-        btn.textContent = '準備';
-        btn.style.opacity = '1';
-      }
-    }
+    syncWaitControls(ready);
     // Enable start: host only, all joined non-host players must be ready
     const joinedNonHost = Object.keys(players).map(Number).filter(i=>i!==0);
     const allReady = joinedNonHost.length > 0 && joinedNonHost.every(i=>ready[i]===true);
-    if (isHost) document.getElementById('wait-start').disabled = !allReady;
+    if (isHost) {
+      const startBtn = document.getElementById('wait-start');
+      if (startBtn) startBtn.disabled = !allReady;
+    }
   });
 }
 
@@ -5315,7 +5368,7 @@ function renderChatMessages() {
 function toArr(v) { return v == null ? [] : Array.isArray(v) ? v : Object.values(v); }
 
 function applyRemoteState(data) {
-  const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  const prevUi = G.ui || {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
   const prevCur = typeof G.cur==='number' ? G.cur : -1;
   const prevSeat = G.activeSeat ?? null;
   // Firebase can return objects instead of arrays, and empty arrays as null — normalise everything
@@ -5371,7 +5424,9 @@ function applyRemoteState(data) {
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
   G.virtualGemSupply = data.virtualGemSupply || {};
   if (!isSpectator()) syncMyIdxFromStatePlayers();
-  G.ui = (G.cur!==prevCur || G.activeSeat !== prevSeat) ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false} : prevUi;
+  G.ui = (G.cur!==prevCur || G.activeSeat !== prevSeat)
+    ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false}
+    : prevUi;
   const repairedCards = reconcileDevCards('remote');
   reconcileGemBank('remote');
   if (repairedCards) scheduleDevCardRepairPush('remote');
@@ -5750,7 +5805,7 @@ function handleDisconnect(discIdx) {
     if (next < 0) return;
     G.cur = next;
     G.turnCount = (G.turnCount || 0) + 1;
-    G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+    G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
     stopTimer();
     if (isLeader()) {
       pushG();
@@ -5803,7 +5858,7 @@ function emptyGemPending() {
   return {w:0,u:0,g:0,r:0,k:0};
 }
 
-let _preGemAction = {pending:emptyGemPending(), pendGold:false};
+let _preGemAction = {pending:emptyGemPending(), pendGold:false, confirmed:false};
 
 function gemPendingTotal(pending) {
   return CI.reduce((s,c)=>s+(Number(pending && pending[c])||0),0);
@@ -5814,7 +5869,7 @@ function hasPreGemAction() {
 }
 
 function resetPreGemAction() {
-  _preGemAction = {pending:emptyGemPending(), pendGold:false};
+  _preGemAction = {pending:emptyGemPending(), pendGold:false, confirmed:false};
 }
 
 function preActionPlayerIdx() {
@@ -5890,6 +5945,18 @@ function cancelPreGemAction(showToast=true) {
   render();
 }
 
+function confirmPreGemAction() {
+  if (!hasPreGemAction()) { toast('尚未選擇預選寶石'); return; }
+  const status = preGemActionStatus({requireComplete:true});
+  if (!status.ok || !status.ready) {
+    toast(status.reason || '預選寶石尚未完成');
+    return;
+  }
+  _preGemAction.confirmed = true;
+  toast('已確認預選寶石');
+  render();
+}
+
 function preGemActionText() {
   if (_preGemAction.pendGold) return '預選金幣';
   return gemPendingTotal(_preGemAction.pending)>0 ? '預選寶石' : '尚未選擇';
@@ -5899,6 +5966,7 @@ function clickPreBank(col) {
   if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!canSelectPreGemAction()) { toast('還沒輪到你'); return; }
   if (_preGemAction.pendGold){ toast('已預選金幣，請先取消'); return; }
+  _preGemAction.confirmed = false;
   const p=_preGemAction.pending, b=G.bank, cnt=p[col]||0;
   const total=gemPendingTotal(p);
   const has2=CI.some(c=>(p[c]||0)===2);
@@ -5923,6 +5991,7 @@ function clickPreBank(col) {
 function clickPreGold() {
   if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!canSelectPreGemAction()) { toast('還沒輪到你'); return; }
+  _preGemAction.confirmed = false;
   if (_preGemAction.pendGold) {
     _preGemAction.pendGold=false;
     render();
@@ -6105,7 +6174,7 @@ const HEROES = [
   {id:11, key:'hudong',    name:'胡漢龑',        skill:'開心、開心、開心', desc:'購買紅色紅寶石卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'r', quote:'「你看，紅色的，好吉利！」'},
   {id:12, key:'willsmith', name:'威爾◆史密斯',  skill:'帽子歪了，請戴正', desc:'購買綠色祖母綠卡片時額外加1分（每局最多2次）',            uses:2,        passive:true,  passiveBonus:'g', quote:'「我不會讓任何人說你做不到，包括我自己。」'},
   {id:13, key:'trump',     name:'唐納◆特朗普',  skill:'TACO交易',         desc:'重新洗牌：將場上所有等級的牌全部收回牌堆重洗，重新發牌，並獲得2枚金幣', uses:1,        passive:false, quote:'「讓美國再次偉大！」'},
-  {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'自身至少1顆且對方至少3顆寶石/金幣才可發動；先預設答案問一位玩家，答中對方偷你1顆，答錯你偷對方最多3顆（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
+  {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'指定寶石/金幣至少2顆的玩家並先預設想聽的答案；對方答中時，你隨機拿走對方2顆，答錯則不交換任何寶石（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
   {id:15, key:'shiyuan',   name:'詩園鹹酥雞老闆', skill:'點石成雞',         desc:'選擇一名奧客，並把他其中一顆寶石炸成鹹酥雞；該寶石計分牌-1，鹹酥雞計分牌+1（每局1次）', uses:1, passive:false, quote:'「我們店裡免開發票，到底要我說幾次？」'},
 ];
 const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅',DV:'💔',shiyuan:'🍗'};
@@ -6511,8 +6580,48 @@ function finishHeroSelect(assigned, playerPools, onDone) {
   onDone();
 }
 
+function heroSelectionHeroId(selection) {
+  if (selection == null) return null;
+  const value = typeof selection === 'object'
+    ? (selection.heroId ?? selection.chosen ?? selection.id)
+    : selection;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function heroSelectionSerial(selection) {
+  if (!selection || typeof selection !== 'object') return '';
+  return normaliseSerial(selection.serial || selection.playerSerial || selection.name || '');
+}
+
+function heroSelectionForPlayer(selections, playerIdx) {
+  const player = G && G.players && G.players[playerIdx];
+  const playerSerial = normaliseSerial(player && (player.serial || player.name));
+  const direct = selections[playerIdx] ?? selections[String(playerIdx)];
+  const directId = heroSelectionHeroId(direct);
+  const directSerial = heroSelectionSerial(direct);
+  if (directId !== null && (!directSerial || !playerSerial || directSerial === playerSerial)) return directId;
+  for (const selection of Object.values(selections || {})) {
+    if (heroSelectionSerial(selection) === playerSerial) {
+      const id = heroSelectionHeroId(selection);
+      if (id !== null) return id;
+    }
+  }
+  return null;
+}
+
+function allOnlineHeroSelectionsReady(selections) {
+  if (!G || !G.players) return false;
+  for (let pi = 0; pi < G.numP; pi++) {
+    if (heroSelectionForPlayer(selections, pi) === null) return false;
+  }
+  return true;
+}
+
 function showOnlineHeroSelect(code, onDone) {
-  const myPool = (G.heroPool[myIdx] || []).map(id => HEROES.find(h=>h.id===id)).filter(Boolean);
+  syncMyIdxFromStatePlayers();
+  let selectIdx = myIdx;
+  let myPool = (G.heroPool[selectIdx] || []).map(id => HEROES.find(h=>h.id===id)).filter(Boolean);
   let selectedId = myPool.length ? myPool[0].id : null;
   let pushed = false;
   let _finalized = false;
@@ -6523,8 +6632,19 @@ function showOnlineHeroSelect(code, onDone) {
   document.body.appendChild(modal);
   warmHeroPoolAssets(G.heroPool, {priority:'high', decode:true});
 
+  function refreshSelectSeat() {
+    syncMyIdxFromStatePlayers();
+    if (!pushed && myIdx >= 0 && myIdx !== selectIdx) {
+      selectIdx = myIdx;
+      myPool = (G.heroPool[selectIdx] || []).map(id => HEROES.find(h=>h.id===id)).filter(Boolean);
+      selectedId = myPool.length ? myPool[0].id : null;
+    }
+    return selectIdx;
+  }
+
   function renderModal(waiting) {
-    const pl = G.players[myIdx];
+    const seat = refreshSelectSeat();
+    const pl = G.players[seat] || {name:currentSerial || '玩家', color:'#ffe08a'};
     const timerUrgent = _heroSelectSec <= 3 ? ' urgent' : '';
     if (waiting) {
       modal.innerHTML = `
@@ -6576,11 +6696,14 @@ function showOnlineHeroSelect(code, onDone) {
 
   function pushSelection() {
     if (pushed) return;
+    const seat = refreshSelectSeat();
+    if (seat < 0) { toast('找不到你的玩家座位，請重新進入房間'); return; }
     pushed = true;
     const chosenId = selectedId ?? (myPool.length ? myPool[0].id : null);
     if (chosenId !== null) {
-      latestSelections[myIdx] = chosenId;
-      db.ref(`rooms/${code}/heroSelections/${myIdx}`).set(chosenId);
+      const payload = {heroId:chosenId, serial:normaliseSerial(currentSerial || (G.players[seat] && (G.players[seat].serial || G.players[seat].name)))};
+      latestSelections[seat] = payload;
+      db.ref(`rooms/${code}/heroSelections/${seat}`).set(payload);
     }
     renderModal(true);
   }
@@ -6593,7 +6716,7 @@ function showOnlineHeroSelect(code, onDone) {
     clearInterval(_heroSelectTimer);
     db.ref(`rooms/${code}/heroSelections`).off();
     G.heroes = Array.from({length: G.numP}, (_, pi) =>
-      (sels[pi] !== undefined ? sels[pi] : (G.heroPool[pi]?.[0] ?? null))
+      (heroSelectionForPlayer(sels, pi) ?? (G.heroPool[pi]?.[0] ?? null))
     );
     G.heroUsed = G.heroes.map(hid => {
       const h = HEROES.find(x=>x.id===hid);
@@ -6613,15 +6736,17 @@ function showOnlineHeroSelect(code, onDone) {
     if (_finalized || !isLeader()) return;
     const updates = {};
     for (let pi = 0; pi < G.numP; pi++) {
-      if (latestSelections[pi] !== undefined) continue;
+      if (heroSelectionForPlayer(latestSelections, pi) !== null) continue;
       const fallbackId = G.heroPool[pi]?.[0] ?? null;
       if (fallbackId === null) continue;
-      latestSelections[pi] = fallbackId;
-      updates[pi] = fallbackId;
+      const player = G.players && G.players[pi];
+      const payload = {heroId:fallbackId, serial:normaliseSerial(player && (player.serial || player.name))};
+      latestSelections[pi] = payload;
+      updates[pi] = payload;
     }
     if (Object.keys(updates).length) {
       db.ref(`rooms/${code}/heroSelections`).update(updates);
-    } else if (Object.keys(latestSelections).length >= G.numP) {
+    } else if (allOnlineHeroSelectionsReady(latestSelections)) {
       finalize(latestSelections);
     }
   }
@@ -6629,7 +6754,7 @@ function showOnlineHeroSelect(code, onDone) {
   // All clients watch for everyone's selections
   db.ref(`rooms/${code}/heroSelections`).on('value', snap => {
     latestSelections = snap.val() || {};
-    if (Object.keys(latestSelections).length >= G.numP) finalize(latestSelections);
+    if (allOnlineHeroSelectionsReady(latestSelections)) finalize(latestSelections);
   });
 
   _heroSelectSec = 20;
@@ -6922,7 +7047,7 @@ function activateHeroSkill(playerIdx) {
   box.innerHTML = `<div class="hero-skill-confirm-box">
     <h3>⚡ ${hero.skill}</h3>
     <p>${hero.desc}</p>
-    ${hero.id===2 && !hasMuskableCard(playerIdx) ? '<p style="color:#ff7755;font-size:.78em">⚠ 場上沒有可購買的牌，無法發動工作狂</p>' : ''}
+    ${hero.id===2 && !hasMuskableCard(playerIdx) ? '<p style="color:#ff7755;font-size:.78em">⚠ 沒有可買或可留的牌，無法發動工作狂</p>' : ''}
     ${hero.id===2 && G.ui.muskActive ? '<p style="color:#55ccff;font-size:.78em">🚀 工作狂進行中</p>' : ''}
     <div class="btn-row">
       <button class="btn-action" onclick="confirmHeroSkill(${playerIdx})">發動技能</button>
@@ -7163,11 +7288,12 @@ function executeHeroSkill(hero, playerIdx) {
       showGemDepositPicker(playerIdx);
       break;
     case 2: // 伊龍馬斯 工作狂
-      if (!hasMuskableCard(playerIdx)) { toast('⚠ 場上沒有可購買的牌，無法發動工作狂'); return; }
+      if (!hasMuskableCard(playerIdx)) { toast('⚠ 沒有可買或可留的牌，無法發動工作狂'); return; }
       G.ui.muskActive = true;
       G.ui.muskCardDone = false;
+      G.ui.muskGemDone = false;
       addLog('skill', '發動「工作狂」，本回合可同時買/留牌＋拿寶石', playerIdx);
-      toast('🚀 工作狂發動！請先買牌或留牌，再拿寶石結束回合！');
+      toast('🚀 工作狂發動！本回合可拿寶石＋買牌/留牌，順序不限');
       render();
       break;
     case 3: // 雷曼兄弟 槓桿套利
@@ -7501,14 +7627,14 @@ function answerLabel(ans) {
 
 function canUseDVSkill(playerIdx) {
   const actor = G.players[playerIdx];
-  if (!actor || gsum(actor.gems) < 1) return false;
-  return G.players.some((p,i) => i !== playerIdx && gsum(p.gems) >= 3);
+  if (!actor) return false;
+  return G.players.some((p,i) => i !== playerIdx && gsum(p.gems) >= 2);
 }
 
 function dvSkillBlockMessage(playerIdx) {
   const actor = G.players[playerIdx];
-  if (!actor || gsum(actor.gems) < 1) return '💔 自身至少需要1顆寶石/金幣才能發動';
-  if (!G.players.some((p,i) => i !== playerIdx && gsum(p.gems) >= 3)) return '💔 沒有寶石/金幣至少3顆的對象可詢問';
+  if (!actor) return '💔 找不到發動技能的玩家';
+  if (!G.players.some((p,i) => i !== playerIdx && gsum(p.gems) >= 2)) return '💔 沒有寶石/金幣至少2顆的對象可詢問';
   return '💔 目前條件不足，無法發動';
 }
 
@@ -7529,8 +7655,8 @@ function showDVExpectedAnswerPicker(playerIdx) {
 
 window.showDVTargetPicker = function(playerIdx, expected) {
   if (!canUseDVSkill(playerIdx)) { toast(dvSkillBlockMessage(playerIdx)); return; }
-  const others = G.players.map((p,i)=>({p,i})).filter(({p,i})=>i!==playerIdx && gsum(p.gems) >= 3);
-  if (!others.length) { toast('💔 沒有寶石/金幣至少3顆的對象可詢問'); return; }
+  const others = G.players.map((p,i)=>({p,i})).filter(({p,i})=>i!==playerIdx && gsum(p.gems) >= 2);
+  if (!others.length) { toast('💔 沒有寶石/金幣至少2顆的對象可詢問'); return; }
   const box = document.getElementById('hero-skill-confirm') || document.createElement('div');
   box.id = 'hero-skill-confirm';
   box.innerHTML = `<div class="hero-skill-confirm-box">
@@ -7549,7 +7675,7 @@ window.showDVTargetPicker = function(playerIdx, expected) {
 window.confirmDVQuestionTarget = function(playerIdx, targetIdx, expected) {
   if (!canUseDVSkill(playerIdx)) { toast(dvSkillBlockMessage(playerIdx)); return; }
   const target = G.players[targetIdx];
-  if (!target || gsum(target.gems) < 3) { toast('💔 對方寶石/金幣不足3顆，無法發問'); return; }
+  if (!target || gsum(target.gems) < 2) { toast('💔 對方寶石/金幣不足2顆，無法發問'); return; }
   document.getElementById('hero-skill-confirm')?.remove();
   runConfirmedHeroSkill(playerIdx, () => startDVQuestion(playerIdx, targetIdx, expected), {
     showcaseFile:'dv_你還愛我嗎.png',
@@ -7705,24 +7831,30 @@ function resolveDVQuestion(prompt, answer, auto=false) {
   G.heroDVPrompt = null;
 
   const matched = answer === prompt.expected;
-  const fromIdx = matched ? actorIdx : targetIdx;
-  const toIdx = matched ? targetIdx : actorIdx;
-  const takeCount = matched ? 1 : 3;
-  let selection = randomGemSelectionFromPlayer(fromIdx, takeCount);
-  selection = transferGemSelection(fromIdx, toIdx, selection);
+  const fromIdx = targetIdx;
+  const toIdx = actorIdx;
+  let selection = cleanGemSelection({});
+  if (matched) {
+    selection = randomGemSelectionFromPlayer(fromIdx, 2);
+    selection = transferGemSelection(fromIdx, toIdx, selection);
+  }
   const got = selectionTotal(selection);
   const answerText = answerLabel(answer);
   const autoText = auto ? '（逾時隨機）' : '';
 
-  if (got > 0) {
-    addLog('skill', `「你還愛我嗎?」${target.name} 回答「${answerText}」${autoText}；${G.players[toIdx].name} 偷走 ${gemListLog(selection)}`, actorIdx);
+  if (matched && got > 0) {
+    addLog('skill', `「你還愛我嗎?」${target.name} 回答「${answerText}」${autoText}，符合 ${actor.name} 想聽的答案；${actor.name} 拿走 ${gemListLog(selection)}`, actorIdx);
+  } else if (matched) {
+    addLog('skill', `「你還愛我嗎?」${target.name} 回答「${answerText}」${autoText}，符合 ${actor.name} 想聽的答案；但沒有可拿的寶石/金幣`, actorIdx);
   } else {
-    addLog('skill', `「你還愛我嗎?」${target.name} 回答「${answerText}」${autoText}；但沒有可偷的寶石/金幣`, actorIdx);
+    addLog('skill', `「你還愛我嗎?」${target.name} 回答「${answerText}」${autoText}，沒有符合 ${actor.name} 想聽的答案；沒有交換寶石`, actorIdx);
   }
 
-  const msg = matched
-    ? `💔 ${target.name} 答「${answerText}」${autoText}，命中預設答案，偷走 ${actor.name} ${got} 顆寶石/金幣！`
-    : `💔 ${target.name} 答「${answerText}」${autoText}，沒有命中預設答案，${actor.name} 偷走 ${target.name} ${got} 顆寶石/金幣！`;
+  const msg = matched && got > 0
+    ? `💔 ${target.name} 答「${answerText}」${autoText}，正是 ${actor.name} 想聽的答案，${actor.name} 拿走 ${target.name} ${got} 顆寶石/金幣！`
+    : matched
+      ? `💔 ${target.name} 答「${answerText}」${autoText}，正是 ${actor.name} 想聽的答案，但目前沒有可拿的寶石/金幣。`
+    : `💔 ${target.name} 答「${answerText}」${autoText}，不是 ${actor.name} 想聽的答案，技能次數已消耗但不交換寶石。`;
   toast(msg);
 
   if (got > 0) {
@@ -8171,7 +8303,7 @@ function _buildG(names, serials=[], opts={}) {
     teamActiveSeats:coop ? Object.fromEntries(players.map((p,i)=>[i, Number(p.members?.[0]?.seat ?? i)])) : null,
     bank, decks, board, missions,
     cur:0, turnCount:0, lastRound:false, lastStarter:-1, over:false, normalEnd:false,
-    ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false},
+    ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false},
     log:[],
     heroes:null, heroUsed:null, heroBuffett:null, heroDVPrompt:null, heroActedThisTurn:null,
     virtualGemSupply:{},
@@ -8384,6 +8516,8 @@ function makeActionSnapshot(pl, pending={}) {
     gems:{...pl.gems},
     bank:{...G.bank},
     pending:{...pending},
+    muskCardDone:!!(G.ui && G.ui.muskCardDone),
+    muskGemDone:!!(G.ui && G.ui.muskGemDone),
     reserved:[...pl.reserved],
     board:JSON.parse(JSON.stringify(G.board)),
     decks:JSON.parse(JSON.stringify(G.decks)),
@@ -8504,7 +8638,12 @@ function canBuy(pl,card) {
 }
 function hasMuskableCard(playerIdx) {
   const pl=G.players[playerIdx];
-  for(const t of [1,2,3]){ for(const c of (G.board[t]||[])){ if(c&&canBuy(pl,c)) return true; } }
+  if (!pl) return false;
+  if ((pl.reserved || []).some(c => c && canBuy(pl, c))) return true;
+  for(const t of [1,2,3]){
+    for(const c of (G.board[t]||[])){ if(c&&canBuy(pl,c)) return true; }
+    if ((pl.reserved || []).length < 3 && ((G.board[t]||[]).some(Boolean) || (G.decks[t]||[]).length > 0)) return true;
+  }
   return false;
 }
 
@@ -9003,14 +9142,14 @@ function execBuy(card, fromRes) {
     completeRefillThen(refill, ()=>{
       if (_passiveHero) {
         const doAnim = () => playHeroAnimation(_passiveHero, _passiveCurIdx, () => {
-          if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
+          if (muskBuy) { finishMuskCardStep('買牌'); }
           else { afterAct(); render(); }
         });
         const quote = heroQuoteText(_passiveHero);
         if (quote) playQuoteReveal(quote, doAnim, _passiveHero);
         else doAnim();
       } else {
-        if (muskBuy) { toast('✅ 買牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
+        if (muskBuy) { finishMuskCardStep('買牌'); }
         else { afterAct(); render(); }
       }
     });
@@ -9043,8 +9182,8 @@ function execReserve(card, tier, bi) {
   animateCardAcquired(card, G.cur, `${pl.name} 預留寶石卡！`, ()=>{
     const refill = tier!==null && bi!==null ? fillBoard(card) : null;
     completeRefillThen(refill, ()=>{
-      if (gsum(pl.gems)>10){ render(); showRetMod(muskRes ? {mode:'musk'} : {}); }
-      else if (muskRes) { clearActionSnapshot(); toast('✅ 留牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); }
+      if (gsum(pl.gems)>10){ render(); showRetMod(muskRes ? {mode:'musk-card'} : {}); }
+      else if (muskRes) { finishMuskCardStep('留牌'); }
       else { afterAct(); render(); }
     });
   });
@@ -9508,6 +9647,7 @@ function playSyncedRemoteAnim(anim) {
 // [Change 4] Block confirmation when player takes fewer gems than possible
 function execTakeGems() {
   if (G.ui.acted) return;
+  if (G.ui.muskActive && G.ui.muskGemDone) { toast('🚀 工作狂：本回合已拿過寶石'); return; }
   const p=G.ui.pending;
   const tot=CI.reduce((s,c)=>s+(p[c]||0),0);
   if (!tot){ toast('請先選擇寶石'); return; }
@@ -9526,6 +9666,7 @@ function execTakeGems() {
 
   const pl=G.players[G.cur];
   const take={...p};
+  const muskTake = G.ui.muskActive && !G.ui.muskGemDone;
   window._retSnapshot = makeActionSnapshot(pl, take);
   markGemFlyAnim(take, G.cur);
   G.ui.acted=true;
@@ -9534,7 +9675,8 @@ function execTakeGems() {
     CI.forEach(c=>{ pl.gems[c]=(pl.gems[c]||0)+(take[c]||0); G.bank[c]-=(take[c]||0); });
     G.ui.pending={w:0,u:0,g:0,r:0,k:0};
     addLog('take', `拿取 ${gemListLog(take)}`, G.cur);
-    if (gsum(pl.gems)>10){ render(); showRetMod(); }
+    if (gsum(pl.gems)>10){ render(); showRetMod(muskTake ? {mode:'musk-gem'} : {}); }
+    else if (muskTake) { finishMuskGemStep('寶石'); }
     else { afterAct(); render(); }
   });
 }
@@ -9544,6 +9686,42 @@ function afterAct() {
   deactivateAllZones();
   checkMissions();
   advanceTurn();
+}
+
+function finishMuskCardStep(label='買牌') {
+  if (!G || !G.ui || !G.ui.muskActive) return false;
+  G.ui.muskCardDone = true;
+  G.ui.acted = false;
+  clearActionSnapshot();
+  if (G.ui.muskGemDone) {
+    toast(`✅ 工作狂完成${label}與拿寶石，自動結束回合`);
+    afterAct();
+    render();
+    return true;
+  }
+  toast(`✅ ${label}完成！可再拿寶石，或按工作狂結束回合`);
+  render();
+  if (onlineMode) pushG();
+  return true;
+}
+
+function finishMuskGemStep(label='寶石') {
+  if (!G || !G.ui || !G.ui.muskActive) return false;
+  G.ui.muskGemDone = true;
+  G.ui.acted = false;
+  G.ui.pending = emptyGemPending();
+  G.ui.pendGold = false;
+  clearActionSnapshot();
+  if (G.ui.muskCardDone) {
+    toast(`✅ 工作狂完成拿${label}與買/留牌，自動結束回合`);
+    afterAct();
+    render();
+    return true;
+  }
+  toast(`✅ 已領取${label}！可再買牌/留牌，或按工作狂結束回合`);
+  render();
+  if (onlineMode) pushG();
+  return true;
 }
 
 // ── Mission checking ──────────────────────────────────────────────────────
@@ -9581,7 +9759,7 @@ function advanceTurn() {
     G.teamActiveSeats = G.teamActiveSeats || {};
     G.teamActiveSeats[next] = coopNext.seat;
   }
-  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false; G.ui.muskActive=false; G.ui.muskCardDone=false;
+  G.cur=next; G.ui.pending={w:0,u:0,g:0,r:0,k:0}; G.ui.acted=false; G.ui.pendCard=null; G.ui.pendGold=false; G.ui.muskActive=false; G.ui.muskCardDone=false; G.ui.muskGemDone=false;
   checkBuffettReturn();
   stopTimer(); render();
   if (onlineMode && roomCode) {
@@ -9652,6 +9830,89 @@ async function awardLadderPointsOnce() {
   });
 }
 
+function closeTimeoutActionPanels() {
+  ['m-card','m-ret','hero-skill-confirm','buffett-return-modal','soros-return-modal','dv-answer-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'm-card' || id === 'm-ret') el.style.display = 'none';
+    else el.remove();
+  });
+}
+
+function randomTimeoutGemSelection(playerIdx) {
+  const pl = G && G.players && G.players[playerIdx];
+  const selection = emptyGemPending();
+  if (!pl || !G.bank) return selection;
+  const capacity = Math.max(0, 10 - gsum(pl.gems || {}));
+  if (capacity <= 0) return selection;
+
+  const maxTake = Math.min(3, capacity);
+  const avail = CI.filter(c => (G.bank[c] || 0) > 0);
+  if (!avail.length) return selection;
+
+  const options = [];
+  CI.filter(c => maxTake >= 2 && (G.bank[c] || 0) >= 4).forEach(c => {
+    const pick = emptyGemPending();
+    pick[c] = 2;
+    options.push(pick);
+  });
+
+  const diffCount = Math.min(maxTake, avail.length);
+  if (diffCount > 0) {
+    const pick = emptyGemPending();
+    shuffle([...avail]).slice(0, diffCount).forEach(c => { pick[c] = 1; });
+    options.push(pick);
+  }
+
+  if (!options.length) return selection;
+  const maxTokens = Math.max(...options.map(gemPendingTotal));
+  const bestOptions = options.filter(opt => gemPendingTotal(opt) === maxTokens);
+  return bestOptions[(Math.random() * bestOptions.length) | 0];
+}
+
+function autoTakeGemsOnTimeout() {
+  if (isSpectator() || isRoomGuest()) return false;
+  if (!G || G.over || !G.players || !G.players[G.cur]) return false;
+  if (G.ui && G.ui.acted) return false;
+  if (G.ui && G.ui.muskActive && G.ui.muskGemDone) return false;
+
+  const playerIdx = G.cur;
+  const pl = G.players[playerIdx];
+  const take = randomTimeoutGemSelection(playerIdx);
+  if (!gemListLog(take)) return false;
+
+  clearAiThinkTimer();
+  clearActionSnapshot();
+  resetReturnModalState();
+  closeTimeoutActionPanels();
+  G.ui.pending = emptyGemPending();
+  G.ui.pendGold = false;
+  G.ui.acted = true;
+  markGemFlyAnim(take, playerIdx);
+  render();
+
+  animateGemsToPlayer(take, playerIdx, () => {
+    CI.forEach(c => {
+      const n = Math.min(take[c] || 0, G.bank[c] || 0);
+      if (n <= 0) { take[c] = 0; return; }
+      pl.gems[c] = (pl.gems[c] || 0) + n;
+      G.bank[c] -= n;
+      take[c] = n;
+    });
+    const got = gemListLog(take);
+    if (!got) {
+      G.ui = {pending:emptyGemPending(), acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
+      skipCurrentTurn('timeout');
+      return;
+    }
+    addLog('take', `時間到，系統自動拿取 ${got}`, playerIdx);
+    toast(`⌛ ${pl.name} 時間到，系統自動拿取 ${got}`);
+    afterAct();
+    render();
+  });
+  return true;
+}
+
 function skipCurrentTurn(reason='timeout') {
   if (isSpectator() || isRoomGuest()) return;
   if (!G || G.over) return;
@@ -9670,14 +9931,8 @@ function skipCurrentTurn(reason='timeout') {
   }
   addLog('skip', label, G.cur);
   toast(`⌛ ${pl.name} ${label}`);
-  ['m-card','m-ret','hero-skill-confirm','buffett-return-modal','soros-return-modal','dv-answer-modal'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      if (id === 'm-card' || id === 'm-ret') el.style.display = 'none';
-      else el.remove();
-    }
-  });
-  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false};
+  closeTimeoutActionPanels();
+  G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
   advanceTurn();
 }
 
@@ -9737,9 +9992,10 @@ function autoReturnExcessOnTimeout() {
     render();
     return true;
   }
-  if (mode === 'musk') {
+  if (String(mode).startsWith('musk')) {
     G.ui.muskActive=false;
     G.ui.muskCardDone=false;
+    G.ui.muskGemDone=false;
   }
   skipCurrentTurn('timeout');
   return true;
@@ -9750,6 +10006,7 @@ function clickBank(col) {
   if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()){ clickPreBank(col); return; }
   if (G.ui.acted){ toast('已完成行動，請結束回合'); return; }
+  if (G.ui.muskActive && G.ui.muskGemDone){ toast('🚀 工作狂：本回合已拿過寶石'); return; }
   if (G.ui.pendGold){ toast('已選金幣，請先確認或取消'); return; }
   deactivateZone('g-cards');
   const p=G.ui.pending, b=G.bank, cnt=p[col]||0;
@@ -9786,8 +10043,10 @@ function clearPend(){
 function takeGold() {
   if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()||G.ui.acted||(G.bank.gold||0)<=0) return;
+  if (G.ui.muskActive && G.ui.muskGemDone) { toast('🚀 工作狂：本回合已拿過寶石/金幣'); return; }
   const pl=G.players[G.cur];
   if (gsum(pl.gems)>=10){ toast('寶石已達上限（10枚）'); return; }
+  const muskTake = G.ui.muskActive && !G.ui.muskGemDone;
   markGemFlyAnim({gold:1}, G.cur);
   G.ui.acted=true;
   render();
@@ -9796,13 +10055,26 @@ function takeGold() {
     pl.gems.gold=(pl.gems.gold||0)+1;
     G.ui.pendGold=false;
     addLog('take', `拿取 ${gemToken('gold',1)}`, G.cur);
-    afterAct();
+    if (muskTake) finishMuskGemStep('金幣');
+    else afterAct();
   });
 }
 
 function tryEnd() {
   if (!isMyTurn()){ toast('還沒輪到你'); return; }
-  if (G.ui.muskActive && !G.ui.acted){ toast('🚀 工作狂：請先拿取寶石才能結束回合'); return; }
+  if (G.ui.muskActive) {
+    if (!G.ui.muskCardDone && !G.ui.muskGemDone) {
+      toast('🚀 工作狂：請先完成拿寶石或買/留牌');
+      return;
+    }
+    if (CI.some(c=>(G.ui.pending[c]||0)>0) || G.ui.pendGold) {
+      toast('請先確認或清除已選的寶石');
+      return;
+    }
+    checkMissions();
+    advanceTurn();
+    return;
+  }
   if (!G.ui.acted){ toast('請先執行行動（取寶石、購買或預留）'); return; }
   checkMissions();
   advanceTurn();
@@ -9864,7 +10136,7 @@ function startAiTurn() {
       clearInterval(_timerInterval);
       _timerInterval = null;
       _timerExpired = true;
-      skipCurrentTurn('timeout');
+      handleTurnTimeout(turnKey);
     }
   }, 1000);
   const thinkMs = 700 + Math.floor(Math.random() * Math.max(1, AI_THINK_MAX_SECONDS * 1000 - 2300));
@@ -10416,17 +10688,34 @@ function rBank() {
     </div>`;
   } else if (preMode && hasPreGemAction()) {
     const preStatus = preGemActionStatus({requireComplete:true});
-    const preHint = preStatus.ready ? '輪到你時自動領取' : '輪到你時套用預選';
-    h+=`<div class="bank-actions" style="display:flex;align-items:center;gap:6px;margin-top:8px">
+    const preConfirmed = !!(_preGemAction.confirmed && preStatus.ready);
+    const preHint = preConfirmed
+      ? '已確認，輪到你時自動領取'
+      : preStatus.ready
+        ? '按確認後才會在輪到你時自動領取'
+        : (preStatus.reason || '預選尚未完成');
+    h+=`<div class="bank-actions" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
       <div style="flex:1;font-size:.68em;line-height:1.4;color:#ffe08a;background:rgba(255,224,138,.08);border:1px solid rgba(255,224,138,.22);border-radius:8px;padding:6px 7px">
         ${preGemActionText()}<br><span style="opacity:.68">${preHint}</span>
       </div>
-      <button class="btn btn-grey bank-clear-btn" style="font-size:.72em;padding:7px 8px" onclick="cancelPreGemAction()">取消</button>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-go btn-preconfirm" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="confirmPreGemAction()" ${preStatus.ready&&!preConfirmed?'':'disabled'}>${preConfirmed?'已確認預選寶石':'確認預選寶石'}</button>
+        <button class="btn btn-grey bank-clear-btn" style="font-size:.72em;padding:7px 8px" onclick="cancelPreGemAction()">取消</button>
+      </div>
     </div>`;
   } else if (myTurn && tot>0) {
     h+=`<div class="bank-actions" style="display:flex;gap:5px;margin-top:8px">
       <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認領取寶石</button>
       <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
+    </div>`;
+  }
+  if (activeTurn && G.ui.muskActive) {
+    const cardDone = !!G.ui.muskCardDone;
+    const gemDone = !!G.ui.muskGemDone;
+    const status = cardDone && gemDone ? '買/留牌與拿寶石已完成' : cardDone ? '已買/留牌，可再拿寶石' : gemDone ? '已拿寶石，可再買牌/留牌' : '可拿寶石＋買牌/留牌';
+    h+=`<div class="bank-actions" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+      <div style="font-size:.68em;line-height:1.4;color:#9ee7ff;background:rgba(85,180,255,.1);border:1px solid rgba(85,180,255,.22);border-radius:8px;padding:6px 7px">🚀 工作狂：${status}</div>
+      <button class="btn btn-end" style="font-size:.75em;padding:7px 8px" onclick="tryEnd()" ${cardDone||gemDone?'':'disabled'}>工作狂結束回合</button>
     </div>`;
   }
   if (G.lastRound) {
@@ -10439,6 +10728,7 @@ function clickGold() {
   if (isSpectator()) { toast('觀戰中無法操作'); return; }
   if (!isMyTurn()){ clickPreGold(); return; }
   if (G.ui.acted){ toast('已完成行動'); return; }
+  if (G.ui.muskActive && G.ui.muskGemDone){ toast('🚀 工作狂：本回合已拿過寶石/金幣'); return; }
   if (CI.some(c=>(G.ui.pending[c]||0)>0)){ toast('請先清除已選的寶石'); return; }
   if ((G.bank.gold||0)<=0){ toast('金幣已用盡'); return; }
   if (gsum(G.players[G.cur].gems)>=10){ toast('寶石已達上限（10枚）'); return; }
@@ -10483,9 +10773,9 @@ function rBottom() {
           <button class="btn btn-go" data-sound="treasure" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認領取寶石</button>
           <button class="btn btn-grey" onclick="clearPend()">清除</button>
         </div>`:''}
-      ${G.ui.muskActive?`<div style="font-size:.78em;color:#55ccff;margin:4px 0;text-align:center;padding:4px 8px;background:rgba(85,180,255,.12);border-radius:6px">🚀 工作狂：${G.ui.muskCardDone?'已買/留牌，請選取寶石結束回合':'可先買牌或留牌，再拿寶石結束回合'}</div>`:''}
+      ${G.ui.muskActive?`<div style="font-size:.78em;color:#55ccff;margin:4px 0;text-align:center;padding:4px 8px;background:rgba(85,180,255,.12);border-radius:6px">🚀 工作狂：${G.ui.muskCardDone&&G.ui.muskGemDone?'已完成兩個動作':G.ui.muskCardDone?'已買/留牌，可再拿寶石':G.ui.muskGemDone?'已拿寶石，可再買牌/留牌':'可拿寶石＋買牌/留牌，順序不限'}</div>`:''}
       <div class="btn-row" style="margin-top:6px">
-        <button class="btn btn-end" onclick="tryEnd()" ${G.ui.acted?'':'disabled'}>結束回合 →</button>
+        <button class="btn btn-end" onclick="tryEnd()" ${G.ui.acted||(G.ui.muskActive&&(G.ui.muskCardDone||G.ui.muskGemDone))?'':'disabled'}>${G.ui.muskActive?'工作狂結束回合':'結束回合 →'}</button>
       </div>
       ${G.lastRound?`<div style="font-size:.72em;color:#ff9955;margin-top:4px">⚠ 最終輪 — ${G.players[G.lastStarter].name}已達15分</div>`:''}
     </div>`;
@@ -10511,6 +10801,7 @@ function rPlayers() {
       const n=p.gems[c]||0; if(!n) return '';
       return `<div class="pi-gem-item">${gemSVG(c,14)}<span>${n}</span></div>`;
     }).join('');
+    const gemTotal = gsum(p.gems);
     let resH='';
     if(p.reserved.length){
       resH=`<div style="font-size:.62em;opacity:.45;margin-top:7px;margin-bottom:3px">預留牌</div><div style="display:flex;flex-direction:column;gap:3px">`;
@@ -10587,9 +10878,9 @@ function rPlayers() {
         ${p.disconnected?`<span style="font-size:.6em;color:#ff5533;margin-left:2px">● 已中離</span>`:p.offline?`<span style="font-size:.6em;color:#ffaa55;margin-left:2px">● 離線</span>`:''}
       </div>
       ${memberH}
-      <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:6px;margin-bottom:1px">寶石獎勵</div>
+      <div class="pi-section-label bonus-label"><span>寶石獎勵</span></div>
       <div class="pi-bonuses">${bonH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
-      <div style="font-size:.57em;text-transform:uppercase;letter-spacing:1.5px;opacity:.38;margin-top:5px;margin-bottom:1px">寶石代幣</div>
+      <div class="pi-section-label gem-token-label"><span>寶石代幣</span><span class="pi-gem-total ${gemTotal>10?'warn':''}">${gemTotal}</span></div>
       <div class="pi-gems">${gemH||'<span style="opacity:.22;font-size:.68em">—</span>'}</div>
       <div class="pi-mini" style="margin-top:5px">牌${p.cards.length}${p.reserved.length?` 預留${p.reserved.length}`:''}</div>
       ${resH}
@@ -10776,7 +11067,8 @@ function confRet() {
   clearActionSnapshot();
   document.getElementById('m-ret').style.display='none';
   if (mode==='skill') { render(); return; }
-  if (mode==='musk') { toast('✅ 留牌完成！請選取寶石後回合結束'); render(); if (onlineMode) pushG(); return; }
+  if (mode==='musk' || mode==='musk-card') { finishMuskCardStep('留牌'); return; }
+  if (mode==='musk-gem') { finishMuskGemStep('寶石'); return; }
   afterAct(); render();
 }
 
@@ -10797,7 +11089,10 @@ function cancelRet() {
   if (snap.log) G.log=snap.log;
   G.ui.pending=snap.pending; G.ui.acted=false;
   G.ui.pendCard=null; G.ui.pendGold=false;
-  if (G.ui.muskActive) G.ui.muskCardDone=false;
+  if (G.ui.muskActive) {
+    G.ui.muskCardDone=!!snap.muskCardDone;
+    G.ui.muskGemDone=!!snap.muskGemDone;
+  }
   clearActionSnapshot();
   window._retMode=null;
   window._retPend={w:0,u:0,g:0,r:0,k:0,gold:0};
@@ -11022,9 +11317,15 @@ function startHumanTurn() {
 function applyPreGemActionOnTurn() {
   if (!hasPreGemAction() || !G || G.over || !isMyTurn() || G.ui.acted) return;
   if (helpCoverOpen() && isTurnTimerPaused(G.turnCount || 0)) return;
+  if (!_preGemAction.confirmed) {
+    resetPreGemAction();
+    toast('預選未確認，已取消');
+    render();
+    return;
+  }
   const status = preGemActionStatus({requireComplete:true});
-  if (!status.ok) {
-    const reason = status.reason;
+  if (!status.ok || !status.ready) {
+    const reason = status.reason || '預選狀態已變更';
     resetPreGemAction();
     toast(`預選已取消：${reason}`);
     render();
@@ -11049,12 +11350,6 @@ function applyPreGemActionOnTurn() {
   G.ui.pendGold=false;
   pushCursor({pending:{...G.ui.pending}});
   render();
-
-  if (!status.ready) {
-    toast(status.reason || '已套用預選，請補選或確認');
-    activateZones();
-    return;
-  }
 
   execTakeGems();
 }
@@ -11248,6 +11543,8 @@ function handleTurnTimeout(turnKey) {
   if (isTurnTimerPaused(turnKey)) return;
   if (onlineMode && !(isMyTurn() || isLeader())) return;
   if (autoReturnExcessOnTimeout()) return;
+  if (G.ui && G.ui.acted) return;
+  if (autoTakeGemsOnTimeout()) return;
   skipCurrentTurn('timeout');
 }
 function _updateTimerEl() {
