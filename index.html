@@ -10205,6 +10205,10 @@ function choosePracticeAiAction() {
   if (blockWin) return blockWin;
 
   const plannedBuy = aiPickValuable(buys.filter(a => a.routeFit || a.completesMission));
+  const decisiveBlock = aiPickValuable(reserves.filter(a => a.blockTenpai || a.blockMission));
+  if (decisiveBlock && (!plannedBuy || decisiveBlock.value >= (plannedBuy.value || 0) + 520 || ((plannedBuy.projectedPts || 0) <= 0 && decisiveBlock.value >= (plannedBuy.value || 0) + 260))) {
+    return decisiveBlock;
+  }
   if (plannedBuy) return plannedBuy;
 
   const bestBuy = aiPickValuable(buys);
@@ -10215,7 +10219,9 @@ function choosePracticeAiAction() {
     if (bestBuy.projectedPts > 0 || bestBuy.missionGain >= 0.65) return bestBuy;
     if (!bestTake || bestBuy.value >= (bestTake.value || 0) - 90) return bestBuy;
   }
-  if (bestReserve && bestReserve.value >= (bestTake?.value || 0) + 95) return bestReserve;
+  if (bestReserve?.blockWin) return bestReserve;
+  if (bestReserve?.blockUrgent && bestReserve.value >= (bestTake?.value || 0) + 520 && bestReserve.value >= (bestBuy?.value || 0) + 260) return bestReserve;
+  if (bestReserve && (bestReserve.winSoon || bestReserve.completesMission) && bestReserve.value >= (bestTake?.value || 0) + 560 && bestReserve.value >= (bestBuy?.value || 0) + 280) return bestReserve;
   return bestTake || bestBuy || bestReserve || null;
 }
 
@@ -10266,31 +10272,41 @@ function aiReserveActions(pl, plan=null) {
     const missing = aiCardMissing(pl, card).goldAdjusted;
     const blockValue = aiOpponentThreatValue(card, playerIdx);
     const routeBlock = aiOpponentRoutePressure(card, playerIdx);
+    const intentBlock = aiOpponentIntentValue(card, playerIdx);
+    const blockInfo = aiOpponentBlockInfo(card, playerIdx);
     const routeFit = aiCardRouteIndex(card, plan);
     const turns = aiTurnsToBuy(pl, card);
     const goldBonus = (G.bank.gold || 0) > 0 ? 74 : 0;
-    const reservedPenalty = (pl.reserved || []).length * 58;
+    const reservedCount = (pl.reserved || []).length;
+    const reservedPenalty = reservedCount * 72;
     const routePressure = score.routePressure || 0;
     const reserveUrgency =
       blockValue +
-      routeBlock * 0.7 +
+      blockInfo.value +
+      routeBlock * 0.18 +
+      intentBlock * 0.08 +
       goldBonus +
-      (routeFit >= 0 ? 150 - routeFit * 35 : 0) +
-      (score.completesMission ? 190 : 0) +
-      (score.winSoon ? 150 : 0) +
+      (routeFit >= 0 ? 70 - routeFit * 28 : 0) +
+      (score.completesMission ? 130 : 0) +
+      (score.winSoon ? 110 : 0) +
       routePressure * 0.65 +
       (card.pts || 0) * 36 -
       missing * 32 -
       Math.max(0, turns - 2) * 48 -
       reservedPenalty;
-    const ownRouteReserve = routeFit >= 0 && turns <= 3 && reserveUrgency > 105;
-    const tacticalBlock = blockValue >= 220 || routeBlock >= 330;
-    const tacticalScore = score.winSoon || score.completesMission || ((card.pts || 0) >= 3 && turns <= 3);
+    const ownRouteReserve = routeFit === 0 && turns <= 1 && reserveUrgency > 520 && reservedCount === 0 && (score.winSoon || score.completesMission || (card.pts || 0) >= 4);
+    const tacticalBlock = blockInfo.critical || (blockInfo.tenpai && reserveUrgency > 620) || (blockInfo.mission && reserveUrgency > 760) || (blockInfo.route && reserveUrgency > 980);
+    const tacticalScore = reservedCount === 0 && turns <= 1 && ((score.winSoon && ((card.pts || 0) >= 3 || score.completesMission)) || (score.completesMission && (card.pts || 0) >= 2) || ((card.pts || 0) >= 4 && score.value > 900));
     if (tacticalBlock || tacticalScore || ownRouteReserve) {
       actions.push({
         type:'reserve', card, t, bi,
         ...score,
-        blockWin:blockValue >= 10000,
+        blockWin:blockInfo.critical || blockValue >= 10000,
+        blockUrgent:blockInfo.urgent,
+        blockTenpai:blockInfo.tenpai,
+        blockMission:blockInfo.mission,
+        blockRoute:blockInfo.route,
+        blockIntent:intentBlock,
         routeFit:routeFit >= 0,
         value:score.value * 0.55 + reserveUrgency
       });
@@ -10345,7 +10361,7 @@ function aiEvaluateTake(pl, selection, plan=null) {
   const beforeTargets = plan?.cards?.length
     ? plan.cards.slice(0, 3).map(card => ({card, ...aiCardScore(pl, card, {playerIdx}), missing:aiCardMissing(pl, card)}))
     : aiTargetCards(pl).slice(0, 4);
-  let value = 36 + (afterValue - beforeValue) * 0.24;
+  let value = 70 + (afterValue - beforeValue) * 0.28;
 
   beforeTargets.forEach((t, idx) => {
     const beforeMissing = aiCardMissing(pl, t.card).goldAdjusted;
@@ -10353,18 +10369,19 @@ function aiEvaluateTake(pl, selection, plan=null) {
     const progress = Math.max(0, beforeMissing - afterMissing);
     if (progress > 0) {
       const closeMul = beforeMissing <= 3 ? 1.45 : beforeMissing <= 5 ? 1.1 : 0.82;
-      value += progress * Math.max(20, 58 - idx * 8) * closeMul;
+      value += progress * Math.max(30, 76 - idx * 10) * closeMul;
     }
     if (!canBuy(pl, t.card) && canBuy(after, t.card)) {
-      value += 145 + (t.projectedPts || 0) * 55 + (t.missionGain || 0) * 70;
+      value += 170 + (t.projectedPts || 0) * 62 + (t.missionGain || 0) * 76;
     }
   });
 
   CI.forEach(c => {
     const gained = Math.max(0, (after.gems[c] || 0) - (pl.gems[c] || 0));
-    value += gained * (12 + Math.min(64, (keep[c] || 0)) * 0.38);
-    if ((selection[c] || 0) === 2) value += 18 + (keep[c] || 0) * 0.12;
+    value += gained * (16 + Math.min(72, (keep[c] || 0)) * 0.44);
+    if ((selection[c] || 0) === 2) value += 22 + (keep[c] || 0) * 0.14;
   });
+  value += aiGemCoverageValue(pl, after, selection, plan);
   value += aiDenyGemValue(selection, playerIdx);
   if (target?.value) value += Math.min(95, target.value * 0.06);
   return value;
@@ -10790,6 +10807,36 @@ function aiDenyGemValue(selection, selfIdx) {
   return value;
 }
 
+function aiGemCoverageValue(pl, after, selection, plan=null) {
+  const playerIdx = G.players.indexOf(pl);
+  const candidates = aiVisibleCardEntries(pl)
+    .map(entry => {
+      const score = aiCardScore(pl, entry.card, {playerIdx});
+      const missing = aiCardMissing(pl, entry.card);
+      return {...entry, ...score, missing};
+    })
+    .filter(item => item.card && !canBuy(pl, item.card) && item.missing.goldAdjusted <= 6)
+    .sort((a,b) => (b.value - b.missing.goldAdjusted * 42) - (a.value - a.missing.goldAdjusted * 42))
+    .slice(0, 8);
+  let value = 0;
+  candidates.forEach((item, idx) => {
+    const beforeMiss = aiCardMissing(pl, item.card).goldAdjusted;
+    const afterMiss = aiCardMissing(after, item.card).goldAdjusted;
+    const progress = Math.max(0, beforeMiss - afterMiss);
+    if (!progress) return;
+    const routeIdx = aiCardRouteIndex(item.card, plan);
+    const routeBonus = routeIdx >= 0 ? 1.55 - routeIdx * 0.16 : 1;
+    const missionBonus = item.completesMission ? 1.45 : 1;
+    value += progress * Math.max(18, 52 - idx * 4) * routeBonus * missionBonus;
+  });
+  const demand = aiColorDemand(pl);
+  CI.forEach(c => {
+    const gained = Math.max(0, (after.gems[c] || 0) - (pl.gems[c] || 0));
+    if (gained) value += gained * Math.min(64, (demand[c] || 0) * 0.18);
+  });
+  return value;
+}
+
 function aiOpponentRoutePressure(card, selfIdx) {
   let pressure = 0;
   (G.players || []).forEach((op, idx) => {
@@ -10807,6 +10854,90 @@ function aiOpponentRoutePressure(card, selfIdx) {
     );
   });
   return pressure;
+}
+
+function aiOpponentIntentValue(card, selfIdx) {
+  if (!card) return 0;
+  let pressure = 0;
+  (G.players || []).forEach((op, idx) => {
+    if (!op || idx === selfIdx || op.disconnected || op.offline) return;
+    const e = effCost(op, card);
+    const effTotal = CI.reduce((sum,c) => sum + (e[c] || 0), 0);
+    const missing = aiCardMissing(op, card);
+    const turns = aiTurnsToBuy(op, card);
+    const heldForCard = CI.reduce((sum,c) => sum + Math.min(op.gems?.[c] || 0, e[c] || 0), 0);
+    const coloredHeld = Math.max(1, coloredGemSum(op.gems || {}));
+    const fitRatio = effTotal > 0 ? heldForCard / Math.max(1, effTotal) : 1;
+    const concentration = heldForCard / coloredHeld;
+    const points = projectedCardPoints(idx, card);
+    const missionPts = aiCompletedMissionPoints(op, card, idx);
+    const route = aiStrategicPlan(op);
+    const routeIdx = aiCardRouteIndex(card, route);
+    const reservedIds = new Set((op.reserved || []).filter(Boolean).map(c => c.id));
+
+    let value =
+      Math.max(0, 310 - missing.goldAdjusted * 62 - Math.max(0, turns - 1) * 78) +
+      heldForCard * 38 +
+      fitRatio * 115 +
+      concentration * 95 +
+      points * ((op.points || 0) >= 8 ? 105 : 64) +
+      missionPts * 210 +
+      Math.min(120, (op.points || 0) * 13) +
+      (gsum(op.gems || {}) >= 8 ? 70 : 0) +
+      (canBuy(op, card) ? 650 : 0) +
+      (reservedIds.has(card.id) ? 220 : 0);
+
+    if (routeIdx >= 0) value += 520 - routeIdx * 135;
+    if ((op.points || 0) + points + missionPts >= 15) value += 2200;
+    if (turns > 3 || fitRatio < 0.38) value *= 0.42;
+    pressure = Math.max(pressure, value);
+  });
+  return pressure;
+}
+
+function aiOpponentBlockInfo(card, selfIdx) {
+  const info = {value:0, critical:false, urgent:false, win:false, tenpai:false, mission:false, route:false};
+  if (!card) return info;
+  (G.players || []).forEach((op, idx) => {
+    if (!op || idx === selfIdx || op.disconnected || op.offline) return;
+    const opPts = op.points || 0;
+    const points = projectedCardPoints(idx, card);
+    const missionPts = aiCompletedMissionPoints(op, card, idx);
+    const pointGain = points + missionPts;
+    const afterPts = opPts + pointGain;
+    const missing = aiCardMissing(op, card);
+    const turns = aiTurnsToBuy(op, card);
+    const routeIdx = aiCardRouteIndex(card, aiStrategicPlan(op));
+    const canNow = canBuy(op, card);
+    const winNow = canNow && afterPts >= 15 && pointGain > 0;
+    const winSoon = turns <= 2 && afterPts >= 15 && pointGain > 0;
+    const tenpaiSoon = turns <= 2 && opPts >= 8 && afterPts >= 12 && (points >= 3 || missionPts > 0);
+    const missionJump = turns <= 1 && opPts >= 8 && missionPts >= 2 && afterPts >= 10;
+    const routeClose = routeIdx === 0 && turns <= 1 && opPts >= 8 && (afterPts >= 11 || points >= 3 || missionPts > 0);
+    const highPointClose = turns <= 1 && opPts >= 8 && points >= 4;
+    const critical = winNow || winSoon;
+    const urgent = critical || tenpaiSoon || missionJump || routeClose || highPointClose;
+    if (!urgent) return;
+
+    const baseIntent = aiOpponentIntentValue(card, selfIdx);
+    let value =
+      Math.max(0, 680 - missing.goldAdjusted * 95 - turns * 90) +
+      baseIntent * 0.42 +
+      points * 95 +
+      missionPts * 220 +
+      (afterPts >= 12 ? 260 : 0) +
+      (routeIdx >= 0 ? 260 - routeIdx * 70 : 0) +
+      (canNow ? 240 : 0);
+    if (critical) value += 2600;
+    info.value = Math.max(info.value, value);
+    info.critical = info.critical || critical;
+    info.urgent = info.urgent || urgent;
+    info.win = info.win || critical;
+    info.tenpai = info.tenpai || tenpaiSoon;
+    info.mission = info.mission || missionJump;
+    info.route = info.route || routeClose || highPointClose;
+  });
+  return info;
 }
 
 function aiOpponentThreatValue(card, selfIdx) {
