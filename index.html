@@ -9870,13 +9870,14 @@ function randomTimeoutGemSelection(playerIdx) {
   return bestOptions[(Math.random() * bestOptions.length) | 0];
 }
 
-function autoTakeGemsOnTimeout() {
+function autoTakeGemsOnTimeout(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) return false;
-  if (!G || G.over || !G.players || !G.players[G.cur]) return false;
+  if (!isCurrentTurnContext(turnCtx)) return false;
+  if (!G || G.over || !G.players || !G.players[turnCtx.playerIdx]) return false;
   if (G.ui && G.ui.acted) return false;
   if (G.ui && G.ui.muskActive && G.ui.muskGemDone) return false;
 
-  const playerIdx = G.cur;
+  const playerIdx = turnCtx.playerIdx;
   const pl = G.players[playerIdx];
   const take = randomTimeoutGemSelection(playerIdx);
   if (!gemListLog(take)) return false;
@@ -9892,30 +9893,34 @@ function autoTakeGemsOnTimeout() {
   render();
 
   animateGemsToPlayer(take, playerIdx, () => {
+    if (!isCurrentTurnContext(turnCtx)) return;
+    const livePl = G.players[playerIdx];
+    if (!livePl) return;
     CI.forEach(c => {
       const n = Math.min(take[c] || 0, G.bank[c] || 0);
       if (n <= 0) { take[c] = 0; return; }
-      pl.gems[c] = (pl.gems[c] || 0) + n;
+      livePl.gems[c] = (livePl.gems[c] || 0) + n;
       G.bank[c] -= n;
       take[c] = n;
     });
     const got = gemListLog(take);
     if (!got) {
       G.ui = {pending:emptyGemPending(), acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
-      skipCurrentTurn('timeout');
+      skipCurrentTurn('timeout', turnCtx);
       return;
     }
     addLog('take', `時間到，系統自動拿取 ${got}`, playerIdx);
-    toast(`⌛ ${pl.name} 時間到，系統自動拿取 ${got}`);
+    toast(`⌛ ${livePl.name} 時間到，系統自動拿取 ${got}`);
     afterAct();
     render();
   });
   return true;
 }
 
-function skipCurrentTurn(reason='timeout') {
+function skipCurrentTurn(reason='timeout', turnCtx=null) {
   if (isSpectator() || isRoomGuest()) return;
   if (!G || G.over) return;
+  if (turnCtx && !isCurrentTurnContext(turnCtx)) return;
   const pl = G.players[G.cur];
   if (!pl) return;
   const label = reason === 'offline' ? '斷線跳過回合' : '時間到，放棄回合';
@@ -9970,11 +9975,12 @@ function randomReturnExcessGems(playerIdx, reason='timeout') {
   return returned;
 }
 
-function autoReturnExcessOnTimeout() {
+function autoReturnExcessOnTimeout(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) return false;
-  if (!G || G.over || !G.players || !G.players[G.cur] || gsum(G.players[G.cur].gems) <= 10) return false;
+  if (!isCurrentTurnContext(turnCtx)) return false;
+  if (!G || G.over || !G.players || !G.players[turnCtx.playerIdx] || gsum(G.players[turnCtx.playerIdx].gems) <= 10) return false;
   const mode = window._retMode || 'timeout';
-  const playerIdx = G.cur;
+  const playerIdx = turnCtx.playerIdx;
   const playerName = G.players[playerIdx].name;
   const returned = randomReturnExcessGems(playerIdx, 'timeout');
   if (!returned || !gemListLog(returned)) return false;
@@ -9988,6 +9994,7 @@ function autoReturnExcessOnTimeout() {
   });
   toast(`⌛ ${playerName} 時間到，系統隨機歸還至10顆`);
   if (mode === 'action') {
+    if (!isCurrentTurnContext(turnCtx)) return true;
     afterAct();
     render();
     return true;
@@ -9997,7 +10004,7 @@ function autoReturnExcessOnTimeout() {
     G.ui.muskCardDone=false;
     G.ui.muskGemDone=false;
   }
-  skipCurrentTurn('timeout');
+  skipCurrentTurn('timeout', turnCtx);
   return true;
 }
 
@@ -10117,7 +10124,8 @@ function freshTurnUi() {
 
 function startAiTurn() {
   if (!G || G.over || !isPracticeAi(G.cur)) return;
-  const turnKey = G.turnCount || 0;
+  const turnCtx = currentTurnContext();
+  const turnKey = turnCtx.turnCount;
   if (_aiActiveTurnKey === turnKey && _aiThinkTimer) return;
   clearAiThinkTimer();
   _aiActiveTurnKey = turnKey;
@@ -10129,6 +10137,11 @@ function startAiTurn() {
   _updateTimerEl();
   refreshPlayerTimers();
   _timerInterval = setInterval(() => {
+    if (!isCurrentTurnContext(turnCtx)) {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      return;
+    }
     _timerSec = Math.max(0, _timerSec - 1);
     _updateTimerEl();
     refreshPlayerTimers();
@@ -10136,11 +10149,11 @@ function startAiTurn() {
       clearInterval(_timerInterval);
       _timerInterval = null;
       _timerExpired = true;
-      handleTurnTimeout(turnKey);
+      handleTurnTimeout(turnCtx);
     }
   }, 1000);
   const thinkMs = 700 + Math.floor(Math.random() * Math.max(1, AI_THINK_MAX_SECONDS * 1000 - 2300));
-  _aiThinkTimer = setTimeout(() => runPracticeAiTurn(turnKey), thinkMs);
+  _aiThinkTimer = setTimeout(() => runPracticeAiTurn(turnCtx), thinkMs);
 }
 
 function scheduleAiTurnFallback(turnKey) {
@@ -10153,11 +10166,13 @@ function scheduleAiTurnFallback(turnKey) {
   }, 1400);
 }
 
-function runPracticeAiTurn(turnKey = G.turnCount || 0) {
+function runPracticeAiTurn(turnCtx = currentTurnContext()) {
+  if (typeof turnCtx === 'number') turnCtx = {...currentTurnContext(), turnCount:turnCtx};
+  const turnKey = turnCtx.turnCount;
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerInterval = null;
-  if ((onlineMode && roomCode) || G.over || !isPracticeAi(G.cur) || (G.turnCount || 0) !== turnKey) return;
+  if ((onlineMode && roomCode) || !isCurrentTurnContext(turnCtx) || !isPracticeAi(G.cur)) return;
   ['m-card','m-ret','hero-skill-confirm','buffett-return-modal','soros-return-modal','dv-answer-modal'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -10178,42 +10193,70 @@ function runPracticeAiTurn(turnKey = G.turnCount || 0) {
 
 function choosePracticeAiAction() {
   const pl = G.players[G.cur];
-  const buys = aiBuyActions(pl);
-  const reserves = aiReserveActions(pl);
-  const take = aiTakeAction(pl);
+  if (!pl) return null;
+  const plan = aiStrategicPlan(pl);
+  const buys = aiBuyActions(pl, plan);
+  const reserves = aiReserveActions(pl, plan);
+  const takes = aiTakeActions(pl, plan);
+  const immediateWin = aiPickValuable(buys.filter(a => a.winNow));
+  if (immediateWin) return immediateWin;
+
+  const blockWin = aiPickValuable(reserves.filter(a => a.blockWin));
+  if (blockWin) return blockWin;
+
+  const plannedBuy = aiPickValuable(buys.filter(a => a.routeFit || a.completesMission));
+  if (plannedBuy) return plannedBuy;
+
   const bestBuy = aiPickValuable(buys);
   const bestReserve = aiPickValuable(reserves);
-
-  if (bestBuy?.winNow) return bestBuy;
-  if (bestReserve?.blockWin) return bestReserve;
-  if (bestBuy && bestBuy.missionGain >= 1) return bestBuy;
-  if (bestBuy && bestBuy.value >= (take?.value || 0) + (pl.cards.length < 6 ? -8 : 18)) return bestBuy;
-  if (bestReserve && bestReserve.value >= (take?.value || 0) + 115) return bestReserve;
-  if (take && (!bestBuy || take.value > bestBuy.value + 22)) return take;
-  if (bestBuy) return bestBuy;
-  if (take) return take;
-  return bestReserve || null;
+  const bestTake = aiPickValuable(takes);
+  if (bestBuy) {
+    if (gsum(pl.gems || {}) >= 8) return bestBuy;
+    if (bestBuy.projectedPts > 0 || bestBuy.missionGain >= 0.65) return bestBuy;
+    if (!bestTake || bestBuy.value >= (bestTake.value || 0) - 90) return bestBuy;
+  }
+  if (bestReserve && bestReserve.value >= (bestTake?.value || 0) + 95) return bestReserve;
+  return bestTake || bestBuy || bestReserve || null;
 }
 
-function aiBuyActions(pl) {
+function aiBuyActions(pl, plan=null) {
   const actions = [];
   const playerIdx = G.players.indexOf(pl);
+  const stateBefore = aiPositionValue(pl, playerIdx);
   (pl.reserved || []).forEach((card, ri) => {
     if (card && canBuy(pl, card)) {
       const score = aiCardScore(pl, card, {playerIdx});
-      actions.push({type:'buy', card, fromRes:true, ri, ...score, value:score.value + 28});
+      const after = aiPlayerAfterBuy(pl, card, playerIdx);
+      const future = aiBestFutureCardValue(after, playerIdx, card.id);
+      const routeFit = aiCardRouteIndex(card, plan);
+      actions.push({
+        type:'buy', card, fromRes:true, ri,
+        ...score,
+        routeFit:routeFit >= 0,
+        value:score.value + 170 + (routeFit >= 0 ? 520 - routeFit * 90 : 0) +
+          (aiPositionValue(after, playerIdx) - stateBefore) * 0.42 + future * 0.10
+      });
     }
   });
   [3,2,1].forEach(t => (G.board[t] || []).forEach((card, bi) => {
     if (card && canBuy(pl, card)) {
       const score = aiCardScore(pl, card, {playerIdx});
-      actions.push({type:'buy', card, fromRes:false, t, bi, ...score});
+      const after = aiPlayerAfterBuy(pl, card, playerIdx);
+      const future = aiBestFutureCardValue(after, playerIdx, card.id);
+      const routeFit = aiCardRouteIndex(card, plan);
+      actions.push({
+        type:'buy', card, fromRes:false, t, bi,
+        ...score,
+        routeFit:routeFit >= 0,
+        value:score.value + 145 + (routeFit >= 0 ? 500 - routeFit * 90 : 0) +
+          (aiPositionValue(after, playerIdx) - stateBefore) * 0.42 + future * 0.10
+      });
     }
   }));
   return actions;
 }
 
-function aiReserveActions(pl) {
+function aiReserveActions(pl, plan=null) {
   if (!pl || (pl.reserved || []).length >= 3) return [];
   const actions = [];
   const playerIdx = G.players.indexOf(pl);
@@ -10222,14 +10265,34 @@ function aiReserveActions(pl) {
     const score = aiCardScore(pl, card, {playerIdx});
     const missing = aiCardMissing(pl, card).goldAdjusted;
     const blockValue = aiOpponentThreatValue(card, playerIdx);
-    const goldBonus = (G.bank.gold || 0) > 0 ? 42 : 0;
-    const reserveUrgency = (card.pts || 0) * 26 + blockValue - missing * 18 + goldBonus;
-    if (reserveUrgency > 55 || blockValue >= 140 || score.winSoon) {
+    const routeBlock = aiOpponentRoutePressure(card, playerIdx);
+    const routeFit = aiCardRouteIndex(card, plan);
+    const turns = aiTurnsToBuy(pl, card);
+    const goldBonus = (G.bank.gold || 0) > 0 ? 74 : 0;
+    const reservedPenalty = (pl.reserved || []).length * 58;
+    const routePressure = score.routePressure || 0;
+    const reserveUrgency =
+      blockValue +
+      routeBlock * 0.7 +
+      goldBonus +
+      (routeFit >= 0 ? 150 - routeFit * 35 : 0) +
+      (score.completesMission ? 190 : 0) +
+      (score.winSoon ? 150 : 0) +
+      routePressure * 0.65 +
+      (card.pts || 0) * 36 -
+      missing * 32 -
+      Math.max(0, turns - 2) * 48 -
+      reservedPenalty;
+    const ownRouteReserve = routeFit >= 0 && turns <= 3 && reserveUrgency > 105;
+    const tacticalBlock = blockValue >= 220 || routeBlock >= 330;
+    const tacticalScore = score.winSoon || score.completesMission || ((card.pts || 0) >= 3 && turns <= 3);
+    if (tacticalBlock || tacticalScore || ownRouteReserve) {
       actions.push({
         type:'reserve', card, t, bi,
         ...score,
-        blockWin:blockValue >= 9000,
-        value:score.value + reserveUrgency
+        blockWin:blockValue >= 10000,
+        routeFit:routeFit >= 0,
+        value:score.value * 0.55 + reserveUrgency
       });
     }
   }));
@@ -10237,24 +10300,74 @@ function aiReserveActions(pl) {
 }
 
 function aiTakeAction(pl) {
+  return aiPickValuable(aiTakeActions(pl, aiStrategicPlan(pl)));
+}
+
+function aiTakeActions(pl, plan=null) {
   const avail = CI.filter(c => (G.bank[c] || 0) > 0);
-  if (!avail.length) return null;
-  const target = aiBestTargetCard(pl);
-  const wanted = aiWantedColors(pl, target).filter(c => avail.includes(c));
-  const keep = aiGemKeepScores(pl, target);
-  const sameOptions = CI.filter(c => (G.bank[c] || 0) >= 4 && wanted.filter(x => x === c).length >= 2);
-  if (sameOptions.length) {
-    const c = sameOptions.sort((a,b)=>(keep[b]||0)-(keep[a]||0))[0];
-    return {type:'take', selection:{w:0,u:0,g:0,r:0,k:0,[c]:2}, value:(target?.value || 0) + 70 + (keep[c] || 0)};
-  }
-  const colors = [];
-  [...wanted, ...aiFallbackGemColors(pl, avail)].forEach(c => {
-    if (colors.length < 3 && !colors.includes(c)) colors.push(c);
+  if (!pl || !avail.length) return [];
+  return aiLegalTakeOptions(pl).map(selection => ({
+    type:'take',
+    selection,
+    value:aiEvaluateTake(pl, selection, plan)
+  }));
+}
+
+function aiLegalTakeOptions(pl) {
+  const options = [];
+  const avail = CI.filter(c => (G.bank[c] || 0) > 0);
+  CI.filter(c => (G.bank[c] || 0) >= 4).forEach(c => {
+    const pick = emptyGemPending();
+    pick[c] = 2;
+    options.push(pick);
   });
-  const selection = {w:0,u:0,g:0,r:0,k:0};
-  colors.forEach(c => selection[c] = 1);
-  const takeValue = colors.reduce((sum,c)=>sum + 16 + (keep[c] || 0) * 0.35, target?.value || 0);
-  return colors.length ? {type:'take', selection, value:takeValue} : null;
+  const takeN = Math.min(3, avail.length);
+  function addComb(start, chosen) {
+    if (chosen.length === takeN) {
+      const pick = emptyGemPending();
+      chosen.forEach(c => { pick[c] = 1; });
+      options.push(pick);
+      return;
+    }
+    for (let i = start; i < avail.length; i++) addComb(i + 1, [...chosen, avail[i]]);
+  }
+  if (takeN > 0) addComb(0, []);
+  return options;
+}
+
+function aiEvaluateTake(pl, selection, plan=null) {
+  const playerIdx = G.players.indexOf(pl);
+  const target = plan?.target ? {card:plan.target, value:plan.score || 0, winNow:false} : aiBestTargetCard(pl);
+  const after = aiSimulateTakePlayer(pl, selection);
+  const beforeValue = aiPositionValue(pl, playerIdx);
+  const afterValue = aiPositionValue(after, playerIdx);
+  const keep = aiGemKeepScores(pl, target);
+  const beforeTargets = plan?.cards?.length
+    ? plan.cards.slice(0, 3).map(card => ({card, ...aiCardScore(pl, card, {playerIdx}), missing:aiCardMissing(pl, card)}))
+    : aiTargetCards(pl).slice(0, 4);
+  let value = 36 + (afterValue - beforeValue) * 0.24;
+
+  beforeTargets.forEach((t, idx) => {
+    const beforeMissing = aiCardMissing(pl, t.card).goldAdjusted;
+    const afterMissing = aiCardMissing(after, t.card).goldAdjusted;
+    const progress = Math.max(0, beforeMissing - afterMissing);
+    if (progress > 0) {
+      const closeMul = beforeMissing <= 3 ? 1.45 : beforeMissing <= 5 ? 1.1 : 0.82;
+      value += progress * Math.max(20, 58 - idx * 8) * closeMul;
+    }
+    if (!canBuy(pl, t.card) && canBuy(after, t.card)) {
+      value += 145 + (t.projectedPts || 0) * 55 + (t.missionGain || 0) * 70;
+    }
+  });
+
+  CI.forEach(c => {
+    const gained = Math.max(0, (after.gems[c] || 0) - (pl.gems[c] || 0));
+    value += gained * (12 + Math.min(64, (keep[c] || 0)) * 0.38);
+    if ((selection[c] || 0) === 2) value += 18 + (keep[c] || 0) * 0.12;
+  });
+  value += aiDenyGemValue(selection, playerIdx);
+  if (target?.value) value += Math.min(95, target.value * 0.06);
+  return value;
 }
 
 function aiWantedColors(pl, preferred=null) {
@@ -10297,6 +10410,135 @@ function aiBestTargetCard(pl) {
   return targets[0] || null;
 }
 
+function aiVisibleCardEntries(pl) {
+  const entries = [];
+  (pl.reserved || []).forEach((card, ri) => {
+    if (card) entries.push({card, reserved:true, ri});
+  });
+  [1,2,3].forEach(t => (G.board[t] || []).forEach((card, bi) => {
+    if (card) entries.push({card, reserved:false, t, bi});
+  }));
+  return entries;
+}
+
+function aiStrategicPlan(pl) {
+  if (!pl) return {cards:[], target:null, score:0, turns:0};
+  const playerIdx = G.players.indexOf(pl);
+  const entries = aiVisibleCardEntries(pl);
+  if (!entries.length) return {cards:[], target:null, score:0, turns:0};
+  const routes = entries
+    .map(entry => aiProjectRouteFrom(pl, entry, entries, playerIdx))
+    .filter(route => route && route.cards.length);
+  if (!routes.length) return {cards:[], target:null, score:0, turns:0};
+  routes.sort((a,b) => (b.score || 0) - (a.score || 0));
+  return routes[0];
+}
+
+function aiProjectRouteFrom(pl, startEntry, entries, playerIdx) {
+  let sim = aiClonePlayerState(pl);
+  const used = new Set();
+  const cards = [];
+  let score = 0;
+  let turns = 0;
+  for (let depth = 0; depth < 4; depth++) {
+    let entry = null;
+    if (depth === 0) {
+      entry = startEntry;
+    } else {
+      entry = entries
+        .filter(e => e.card && !used.has(e.card.id))
+        .map(e => ({entry:e, value:aiRouteCardValue(sim, e.card, playerIdx, depth)}))
+        .sort((a,b) => b.value - a.value)[0]?.entry || null;
+    }
+    if (!entry || !entry.card || used.has(entry.card.id)) break;
+    const card = entry.card;
+    const value = aiRouteCardValue(sim, card, playerIdx, depth);
+    const toBuy = aiTurnsToBuy(sim, card);
+    used.add(card.id);
+    cards.push(card);
+    score += value - toBuy * (depth === 0 ? 92 : 70) - Math.max(0, toBuy - 2) * 65;
+    turns += 1 + toBuy;
+    sim = aiPlayerAfterStrategicBuy(sim, card, playerIdx);
+    if ((sim.points || 0) >= 15) {
+      score += 2600 - depth * 260;
+      break;
+    }
+  }
+  const missionMomentum = (G.missions || []).reduce((sum, m) => {
+    if (!m || m.claimedBy !== null) return sum;
+    const before = missionProgress(m, pl);
+    const after = missionProgress(m, sim);
+    return sum + Math.max(0, after.cur - before.cur) * (m.pts || 1) * 70;
+  }, 0);
+  score += missionMomentum + aiPositionValue(sim, playerIdx) * 0.16 - turns * 34;
+  return {cards, target:cards[0] || null, score, turns};
+}
+
+function aiClonePlayerState(pl) {
+  return {
+    ...pl,
+    points:pl.points || 0,
+    bonuses:{...(pl.bonuses || {})},
+    gems:{...(pl.gems || {})},
+    cards:[...(pl.cards || [])],
+    reserved:[...(pl.reserved || [])],
+    _aiMissionClaims:[...((pl && pl._aiMissionClaims) || [])],
+  };
+}
+
+function aiRouteCardValue(pl, card, playerIdx, depth=0) {
+  const projectedPts = projectedCardPoints(playerIdx, card);
+  const missionPts = aiCompletedMissionPoints(pl, card, playerIdx);
+  const missing = aiCardMissing(pl, card);
+  const turns = aiTurnsToBuy(pl, card);
+  const demand = aiColorDemand(pl);
+  const missionNeed = aiMissionBonusNeed(pl, card.bonus);
+  const winBonus = ((pl.points || 0) + projectedPts + missionPts >= 15) ? 2600 : 0;
+  const buyableBonus = canBuy(pl, card) ? 360 : 0;
+  const earlyEngine = (pl.points || 0) < 7 && projectedPts === 0 ? 95 : 0;
+  return (
+    winBonus +
+    buyableBonus +
+    projectedPts * ((pl.points || 0) >= 8 ? 310 : 225) +
+    missionPts * 720 +
+    missionNeed * 2.4 +
+    Math.min(180, (demand[card.bonus] || 0) * 2.1) +
+    earlyEngine +
+    (card.tier || 1) * 22 -
+    missing.goldAdjusted * 58 -
+    missing.total * 13 -
+    turns * (depth === 0 ? 112 : 82)
+  );
+}
+
+function aiPlayerAfterStrategicBuy(pl, card, playerIdx = G.players.indexOf(pl)) {
+  const after = aiPlayerAfterBuy(pl, card, playerIdx);
+  const e = effCost(pl, card);
+  let goldNeed = 0;
+  CI.forEach(c => {
+    const need = e[c] || 0;
+    const spend = Math.min(after.gems[c] || 0, need);
+    after.gems[c] = (after.gems[c] || 0) - spend;
+    goldNeed += Math.max(0, need - spend);
+  });
+  after.gems.gold = Math.max(0, (after.gems.gold || 0) - goldNeed);
+  const claims = new Set(after._aiMissionClaims || []);
+  (G.missions || []).forEach(m => {
+    if (!m || m.claimedBy !== null || claims.has(m.name)) return;
+    if (!m.check(pl) && m.check(after)) {
+      after.points = (after.points || 0) + (m.pts || 0);
+      claims.add(m.name);
+    }
+  });
+  after._aiMissionClaims = [...claims];
+  return after;
+}
+
+function aiCardRouteIndex(card, plan) {
+  if (!card || !plan || !Array.isArray(plan.cards)) return -1;
+  return plan.cards.findIndex(c => c && c.id === card.id);
+}
+
 function aiFallbackGemColors(pl, avail) {
   const keep = aiGemKeepScores(pl);
   const bonusNeed = [...CI].sort((a,b) =>
@@ -10320,14 +10562,16 @@ function aiColorDemand(pl) {
   (G.missions || []).forEach(m => {
     if (!m || m.claimedBy !== null) return;
     if (m.req) {
+      const prog = missionProgress(m, pl);
+      const urgency = 1 + (prog.cur / Math.max(1, prog.target)) * 0.85;
       CI.forEach(c => {
         const need = Math.max(0, (m.req[c] || 0) - (pl.bonuses[c] || 0));
-        demand[c] += need * (18 + (m.pts || 1) * 8);
+        demand[c] += need * (22 + (m.pts || 1) * 12) * urgency;
       });
-    } else if (m.name === '蝝銵?') {
+    } else if (m.name === '純色行會') {
       const best = Math.max(...CI.map(c => pl.bonuses[c] || 0));
       CI.forEach(c => {
-        if ((pl.bonuses[c] || 0) === best && best < 4) demand[c] += 18;
+        if ((pl.bonuses[c] || 0) === best && best < 4) demand[c] += 32 + (m.pts || 1) * 10;
       });
     }
   });
@@ -10337,10 +10581,14 @@ function aiColorDemand(pl) {
 function aiMissionBonusNeed(pl, col) {
   return (G.missions || []).reduce((sum, m) => {
     if (!m || m.claimedBy !== null) return sum;
-    if (m.req && (m.req[col] || 0) > (pl.bonuses[col] || 0)) return sum + (m.pts || 1) * 28;
-    if (m.name === '蝝銵?' && (pl.bonuses[col] || 0) < 4) {
+    if (m.req && (m.req[col] || 0) > (pl.bonuses[col] || 0)) {
+      const prog = missionProgress(m, pl);
+      const close = prog.cur / Math.max(1, prog.target);
+      return sum + (m.pts || 1) * (34 + close * 44);
+    }
+    if (m.name === '純色行會' && (pl.bonuses[col] || 0) < 4) {
       const best = Math.max(...CI.map(c => pl.bonuses[c] || 0));
-      if ((pl.bonuses[col] || 0) === best) return sum + (m.pts || 1) * 15;
+      if ((pl.bonuses[col] || 0) === best) return sum + (m.pts || 1) * 26;
     }
     return sum;
   }, 0);
@@ -10375,36 +10623,52 @@ function aiCardMissing(pl, card) {
   return {shorts, total, goldAdjusted:Math.max(0, total - (pl.gems.gold || 0))};
 }
 
+function aiTurnsToBuy(pl, card) {
+  const missing = aiCardMissing(pl, card);
+  if (missing.goldAdjusted <= 0) return 0;
+  const maxColorShort = Math.max(0, ...CI.map(c => missing.shorts[c] || 0));
+  return Math.max(Math.ceil(missing.goldAdjusted / 3), Math.ceil(maxColorShort / 2));
+}
+
 function aiCardScore(pl, card, opts={}) {
-  if (!card) return {value:0, missionGain:0, projectedPts:0, winNow:false, winSoon:false};
+  if (!card) return {value:0, missionGain:0, projectedPts:0, winNow:false, winSoon:false, completesMission:false, routePressure:0};
   const playerIdx = Number.isFinite(opts.playerIdx) ? opts.playerIdx : G.players.indexOf(pl);
   const projectedPts = Number.isFinite(playerIdx) && playerIdx >= 0 ? projectedCardPoints(playerIdx, card) : (card.pts || 0);
   const totalCost = CI.reduce((sum,c) => sum + ((card.cost && card.cost[c]) || 0), 0);
   const missing = aiCardMissing(pl, card);
+  const turns = aiTurnsToBuy(pl, card);
   const missionGain = aiMissionGain(pl, card);
+  const completedMissionPts = aiCompletedMissionPoints(pl, card, playerIdx);
   const colorDemand = aiColorDemand(pl);
   const missionNeed = aiMissionBonusNeed(pl, card.bonus);
-  const bonusScarcity = 22 - Math.min(16, (pl.bonuses[card.bonus] || 0) * 4);
-  const engineNeed = Math.min(120, (colorDemand[card.bonus] || 0) * 2.2 + missionNeed);
+  const bonusScarcity = 28 - Math.min(22, (pl.bonuses[card.bonus] || 0) * 4);
+  const routePressure = Math.min(260, (colorDemand[card.bonus] || 0) * 2.45 + missionNeed * 1.45);
+  const opponentThreat = Number.isFinite(playerIdx) && playerIdx >= 0 ? aiOpponentThreatValue(card, playerIdx) : 0;
   const winNow = (pl.points || 0) + projectedPts >= 15;
   const winSoon = (pl.points || 0) + projectedPts >= 12;
   const reservedFit = (pl.reserved || []).some(c => c && c.bonus === card.bonus) ? 12 : 0;
-  const earlyEngine = (pl.points || 0) < 7 && (pl.cards || []).length < 8 ? 28 : 0;
-  const tempo = (pl.points || 0) >= 9 ? projectedPts * 22 : 0;
+  const earlyEngine = (pl.points || 0) < 7 && (pl.cards || []).length < 8 ? 42 : 0;
+  const tempo = (pl.points || 0) >= 8 ? projectedPts * 34 : projectedPts * 12;
+  const affordability = canBuy(pl, card) ? 145 : Math.max(0, 140 - turns * 38 - missing.goldAdjusted * 8);
+  const engineCard = projectedPts === 0 ? earlyEngine + Math.max(0, 38 - totalCost * 4) : 0;
   const value =
-    projectedPts * 135 +
+    projectedPts * ((pl.points || 0) >= 8 ? 170 : 132) +
     tempo +
-    missionGain * 125 +
-    engineNeed +
+    completedMissionPts * 330 +
+    missionGain * 165 +
+    routePressure +
     bonusScarcity +
     reservedFit +
-    (projectedPts === 0 ? earlyEngine : 0) +
+    engineCard +
+    affordability +
     (card.tier || 1) * 10 +
-    (winNow ? 10000 : winSoon ? 260 : 0) -
-    totalCost * 1.4 -
-    missing.goldAdjusted * 36 -
-    missing.total * 9;
-  return {value, missionGain, projectedPts, winNow, winSoon};
+    Math.min(620, opponentThreat * 0.35) +
+    (winNow ? 20000 : winSoon ? 520 : 0) -
+    totalCost * 1.25 -
+    missing.goldAdjusted * 48 -
+    missing.total * 10 -
+    Math.max(0, turns - 2) * 62;
+  return {value, missionGain, projectedPts, winNow, winSoon, completesMission:completedMissionPts > 0, routePressure, turns};
 }
 
 function aiMissionGain(pl, card) {
@@ -10427,23 +10691,148 @@ function aiMissionGain(pl, card) {
   }, 0);
 }
 
+function aiCompletedMissionPoints(pl, card, playerIdx = G.players.indexOf(pl)) {
+  if (!G.missions || !G.missions.length) return 0;
+  const after = aiPlayerAfterBuy(pl, card, playerIdx);
+  return G.missions.reduce((sum, m) => {
+    if (!m || m.claimedBy !== null) return sum;
+    return !m.check(pl) && m.check(after) ? sum + (m.pts || 0) : sum;
+  }, 0);
+}
+
+function aiPlayerAfterBuy(pl, card, playerIdx = G.players.indexOf(pl)) {
+  const projectedPts = Number.isFinite(playerIdx) && playerIdx >= 0 ? projectedCardPoints(playerIdx, card) : (card.pts || 0);
+  const after = {
+    ...pl,
+    points:(pl.points || 0) + projectedPts,
+    bonuses:{...(pl.bonuses || {})},
+    gems:{...(pl.gems || {})},
+    cards:[...(pl.cards || []), card],
+    reserved:[...(pl.reserved || [])].filter(c => c && c.id !== card.id),
+  };
+  after.bonuses[card.bonus] = (after.bonuses[card.bonus] || 0) + 1;
+  return after;
+}
+
+function aiBestFutureCardValue(pl, playerIdx, excludeId=null) {
+  return Math.max(0, ...aiTargetCards(pl)
+    .filter(t => t.card && t.card.id !== excludeId)
+    .slice(0, 5)
+    .map(t => t.value - (t.missing?.goldAdjusted || 0) * 44 - Math.max(0, (t.turns || 0) - 2) * 58));
+}
+
+function aiPositionValue(pl, playerIdx = G.players.indexOf(pl)) {
+  if (!pl) return 0;
+  const demand = aiColorDemand(pl);
+  let value = (pl.points || 0) * 170 + (pl.cards || []).length * 9;
+  CI.forEach(c => {
+    value += (pl.bonuses[c] || 0) * (24 + Math.min(46, (demand[c] || 0) * 0.24));
+    value += (pl.gems[c] || 0) * (8 + Math.min(28, (demand[c] || 0) * 0.09));
+  });
+  value += (pl.gems?.gold || 0) * 42;
+  (G.missions || []).forEach(m => {
+    if (!m || m.claimedBy !== null) return;
+    const prog = missionProgress(m, pl);
+    const pct = prog.cur / Math.max(1, prog.target);
+    value += pct * pct * (m.pts || 1) * 155;
+    if (m.check(pl)) value += (m.pts || 1) * 220;
+  });
+  if ((pl.reserved || []).length) {
+    (pl.reserved || []).forEach(card => {
+      if (!card) return;
+      const missing = aiCardMissing(pl, card);
+      value += Math.max(0, 110 - missing.goldAdjusted * 32) + (card.pts || 0) * 34;
+    });
+  }
+  value -= Math.max(0, gsum(pl.gems || {}) - 10) * 60;
+  return value;
+}
+
+function aiSimulateTakePlayer(pl, selection) {
+  const sim = {
+    ...pl,
+    gems:{...(pl.gems || {})},
+    bonuses:{...(pl.bonuses || {})},
+    cards:[...(pl.cards || [])],
+    reserved:[...(pl.reserved || [])],
+  };
+  CI.forEach(c => { sim.gems[c] = (sim.gems[c] || 0) + Math.max(0, selection[c] || 0); });
+  while (gsum(sim.gems) > 10) {
+    const keep = aiGemKeepScores(sim);
+    const drop = [...CI,'gold']
+      .filter(c => (sim.gems[c] || 0) > 0)
+      .sort((a,b) =>
+        ((keep[a] || 0) - (keep[b] || 0)) ||
+        ((sim.gems[b] || 0) - (sim.gems[a] || 0)) ||
+        (a === 'gold' ? 1 : 0) ||
+        (b === 'gold' ? -1 : 0)
+      )[0];
+    if (!drop) break;
+    sim.gems[drop]--;
+  }
+  return sim;
+}
+
+function aiDenyGemValue(selection, selfIdx) {
+  let value = 0;
+  CI.forEach(c => {
+    const n = selection[c] || 0;
+    if (!n) return;
+    const left = Math.max(0, (G.bank[c] || 0) - n);
+    if (left > 2) return;
+    (G.players || []).forEach((op, idx) => {
+      if (!op || idx === selfIdx || op.disconnected || op.offline) return;
+      const demand = aiColorDemand(op)[c] || 0;
+      const closeTargets = aiTargetCards(op).slice(0, 3).filter(t => (aiCardMissing(op, t.card).shorts[c] || 0) > 0);
+      value += Math.min(46, demand * 0.12) + closeTargets.length * (left === 0 ? 18 : 10);
+    });
+  });
+  return value;
+}
+
+function aiOpponentRoutePressure(card, selfIdx) {
+  let pressure = 0;
+  (G.players || []).forEach((op, idx) => {
+    if (!op || idx === selfIdx || op.disconnected || op.offline) return;
+    const missing = aiCardMissing(op, card);
+    const turns = aiTurnsToBuy(op, card);
+    const projectedPts = projectedCardPoints(idx, card);
+    const missionPts = aiCompletedMissionPoints(op, card, idx);
+    const missionNeed = aiMissionBonusNeed(op, card.bonus);
+    const close = Math.max(0, 220 - turns * 45 - missing.goldAdjusted * 22);
+    const pointPressure = (op.points || 0) >= 9 ? projectedPts * 80 : projectedPts * 42;
+    pressure = Math.max(
+      pressure,
+      close + pointPressure + missionPts * 180 + missionNeed * 0.95 + ((op.points || 0) >= 12 ? 90 : 0)
+    );
+  });
+  return pressure;
+}
+
 function aiOpponentThreatValue(card, selfIdx) {
   let threat = 0;
   (G.players || []).forEach((op, idx) => {
     if (!op || idx === selfIdx || op.disconnected || op.offline) return;
-    if (!canBuy(op, card)) return;
     const pts = projectedCardPoints(idx, card);
-    if ((op.points || 0) + pts >= 15) threat = Math.max(threat, 10000);
-    else threat = Math.max(threat, pts * 110 + (op.points || 0) * 8);
+    const missing = aiCardMissing(op, card);
+    const turns = aiTurnsToBuy(op, card);
+    const missionSwing = aiCompletedMissionPoints(op, card, idx);
+    if (canBuy(op, card)) {
+      if ((op.points || 0) + pts >= 15) threat = Math.max(threat, 12000);
+      else threat = Math.max(threat, pts * 135 + missionSwing * 190 + (op.points || 0) * 10 + 90);
+    } else if (turns <= 1 && missing.goldAdjusted <= 3) {
+      threat = Math.max(threat, pts * 90 + missionSwing * 130 + (op.points || 0) * 7 + 45);
+    }
   });
   return threat;
 }
 
 function aiPickValuable(actions) {
-  const top = [...actions].sort((a,b) => (b.value || 0) - (a.value || 0)).slice(0, Math.min(2, actions.length));
-  if (!top.length) return null;
-  if (top.length === 1) return top[0];
-  return Math.random() < 0.78 ? top[0] : top[1];
+  const sorted = [...actions].filter(Boolean).sort((a,b) => (b.value || 0) - (a.value || 0));
+  if (!sorted.length) return null;
+  const close = sorted.slice(0, 3).filter(a => (a.value || 0) >= (sorted[0].value || 0) - 18);
+  if (close.length <= 1 || Math.random() < 0.9) return sorted[0];
+  return close[1 + ((Math.random() * (close.length - 1)) | 0)] || sorted[0];
 }
 
 function aiExecBuy(action) {
@@ -11307,11 +11696,14 @@ window.showSkillBlockReason = function(heroId, playerIdx) {
   toast(msgs[heroId] || '⚠ 目前條件不足，技能無法發動');
 };
 
-function startHumanTurn() {
+function startHumanTurn(turnCtx=currentTurnContext()) {
+  if (!isCurrentTurnContext(turnCtx)) return;
   updateCoverHelpImageForTurn();
-  startTimer();
+  startTimer(turnCtx);
   if (helpCoverOpen()) setHelpTurnPause();
-  window.setTimeout(applyPreGemActionOnTurn, 80);
+  window.setTimeout(() => {
+    if (isCurrentTurnContext(turnCtx)) applyPreGemActionOnTurn();
+  }, 80);
 }
 
 function applyPreGemActionOnTurn() {
@@ -11377,8 +11769,9 @@ function notifyTurn(playerIdx = G?.cur, callback = turnCallbackFor(playerIdx), o
   return true;
 }
 function showTurnNotification(playerIdx, callback) {
+  const turnCtx = currentTurnContext(playerIdx);
   if (!isSpectator() && G.players && isTurnUnavailable(G.players[playerIdx]) && isLeader()) {
-    skipCurrentTurn(G.players[playerIdx]?.offline ? 'offline' : 'timeout');
+    skipCurrentTurn(G.players[playerIdx]?.offline ? 'offline' : 'timeout', turnCtx);
     return;
   }
   playClick('turn');
@@ -11388,7 +11781,9 @@ function showTurnNotification(playerIdx, callback) {
   document.getElementById('tn-sub').style.color = pl.color;
   document.getElementById('tn-name').textContent = turnName;
   document.getElementById('tn-name').style.color = pl.color;
-  _turnNotifCallback = callback;
+  _turnNotifCallback = () => {
+    if (isCurrentTurnContext(turnCtx) && typeof callback === 'function') callback(turnCtx);
+  };
   clearTimeout(window._tndTimer);
   // Force reflow so opacity transition always restarts from 0
   el.classList.remove('on');
@@ -11410,6 +11805,22 @@ function dismissTurnNotif() {
 let _timerInterval = null;
 let _timerSec = TURN_LIMIT_SECONDS;
 let _timerExpired = false;
+
+function currentTurnContext(playerIdx = G?.cur) {
+  return {
+    turnCount:G ? (G.turnCount || 0) : -1,
+    playerIdx:Number(playerIdx),
+    activeSeat:isCoopGame() ? Number(activeCoopSeat()) : null
+  };
+}
+
+function isCurrentTurnContext(ctx) {
+  if (!ctx || !G || G.over) return false;
+  if (Number(G.turnCount || 0) !== Number(ctx.turnCount)) return false;
+  if (Number(G.cur) !== Number(ctx.playerIdx)) return false;
+  if (ctx.activeSeat !== null && Number(activeCoopSeat()) !== Number(ctx.activeSeat)) return false;
+  return true;
+}
 
 function activateZones() {
   if ((G.turnCount||0) >= 2 * G.numP) return; // Stop guiding after 2 full rounds
@@ -11442,18 +11853,24 @@ function refreshPlayerTimers() {
   if (G.players && document.getElementById('g-players')) rPlayers();
 }
 
-function startTimer() {
+function startTimer(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) return;
+  if (!isCurrentTurnContext(turnCtx)) return;
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
   _timerExpired = false;
-  const turnKey = G.turnCount || 0;
+  const turnKey = turnCtx.turnCount;
   hideUrgeBanner();
   _updateTimerEl();
   refreshPlayerTimers();
   activateZones();
   _timerInterval = setInterval(() => {
+    if (!isCurrentTurnContext(turnCtx)) {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      return;
+    }
     if (isTurnTimerPaused(turnKey)) {
       _updateTimerEl();
       refreshPlayerTimers();
@@ -11464,9 +11881,10 @@ function startTimer() {
     if (_timerSec === 15) refreshPlayerTimers();
     if (_timerSec <= 0) {
       clearInterval(_timerInterval);
+      _timerInterval = null;
       _timerExpired = true;
       refreshPlayerTimers();
-      handleTurnTimeout(turnKey);
+      handleTurnTimeout(turnCtx);
     }
   }, 1000);
 }
@@ -11482,16 +11900,22 @@ function stopTimer() {
 }
 
 // Passive countdown for non-active players (display only, no game effects)
-function startTimerDisplay() {
+function startTimerDisplay(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) { startSpectatorTimerDisplay(); return; }
+  if (!isCurrentTurnContext(turnCtx)) return;
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
   _timerExpired = false;
-  const turnKey = G.turnCount || 0;
+  const turnKey = turnCtx.turnCount;
   _updateTimerEl();
   refreshPlayerTimers();
   _timerInterval = setInterval(() => {
+    if (!isCurrentTurnContext(turnCtx)) {
+      clearInterval(_timerInterval);
+      _timerInterval = null;
+      return;
+    }
     if (isTurnTimerPaused(turnKey)) {
       _updateTimerEl();
       refreshPlayerTimers();
@@ -11501,9 +11925,10 @@ function startTimerDisplay() {
     _updateTimerEl();
     if (_timerSec <= 0) {
       clearInterval(_timerInterval);
+      _timerInterval = null;
       _timerExpired = true;
       refreshPlayerTimers();
-      if (onlineMode && isLeader()) handleTurnTimeout(turnKey);
+      if (onlineMode && isLeader()) handleTurnTimeout(turnCtx);
     }
   }, 1000);
 }
@@ -11512,11 +11937,12 @@ function startSpectatorTimerDisplay() {
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
   _timerExpired = false;
-  const turnKey = G.turnCount || 0;
+  const turnCtx = currentTurnContext();
+  const turnKey = turnCtx.turnCount;
   _updateTimerEl();
   refreshPlayerTimers();
   _timerInterval = setInterval(() => {
-    if (!G || G.over || (G.turnCount || 0) !== turnKey) {
+    if (!isCurrentTurnContext(turnCtx)) {
       clearInterval(_timerInterval);
       _timerInterval = null;
       return;
@@ -11537,15 +11963,16 @@ function startSpectatorTimerDisplay() {
     }
   }, 1000);
 }
-function handleTurnTimeout(turnKey) {
+function handleTurnTimeout(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) return;
-  if (!G || G.over || (G.turnCount || 0) !== turnKey) return;
-  if (isTurnTimerPaused(turnKey)) return;
+  if (typeof turnCtx === 'number') turnCtx = {...currentTurnContext(), turnCount:turnCtx};
+  if (!isCurrentTurnContext(turnCtx)) return;
+  if (isTurnTimerPaused(turnCtx.turnCount)) return;
   if (onlineMode && !(isMyTurn() || isLeader())) return;
-  if (autoReturnExcessOnTimeout()) return;
+  if (autoReturnExcessOnTimeout(turnCtx)) return;
   if (G.ui && G.ui.acted) return;
-  if (autoTakeGemsOnTimeout()) return;
-  skipCurrentTurn('timeout');
+  if (autoTakeGemsOnTimeout(turnCtx)) return;
+  skipCurrentTurn('timeout', turnCtx);
 }
 function _updateTimerEl() {
   const s = Math.max(0, _timerSec);
