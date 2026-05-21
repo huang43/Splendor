@@ -3087,6 +3087,9 @@ const AUTHORIZED_SERIALS = [
 ];
 const LOGIN_STORAGE_KEY = 'splendor-login-serial';
 const AI_LEARN_STORAGE_KEY = 'splendor-ai-learning-v1';
+const AI_MATCH_LOG_STORAGE_KEY = 'splendor-ai-match-logs-v1';
+const AI_LEARN_BATCH_SIZE = 5;
+const AI_MATCH_LOG_LIMIT = 50;
 const TURN_LIMIT_SECONDS = 45;
 const AI_THINK_MAX_SECONDS = 10;
 const SPECTATOR_LIMIT = 4;
@@ -10182,6 +10185,7 @@ function aiLearningDefaults() {
   return {
     version:1,
     games:0,
+    batches:0,
     weights:{points:1, missions:1, engine:1, take:1, reserve:1, block:1, tempo:1},
     history:[]
   };
@@ -10210,6 +10214,7 @@ function aiLearningProfile() {
       const saved = JSON.parse(raw);
       if (saved && typeof saved === 'object') {
         base.games = Math.max(0, Number(saved.games) || 0);
+        base.batches = Math.max(0, Number(saved.batches) || 0);
         base.history = Array.isArray(saved.history) ? saved.history.slice(-24) : [];
         Object.keys(base.weights).forEach(k => {
           if (saved.weights && saved.weights[k] != null) base.weights[k] = aiClampWeight(k, saved.weights[k]);
@@ -10231,6 +10236,32 @@ function aiSaveLearningProfile(profile) {
   profile.history = Array.isArray(profile.history) ? profile.history.slice(-24) : [];
   _aiLearnProfileCache = profile;
   try { localStorage.setItem(AI_LEARN_STORAGE_KEY, JSON.stringify(profile)); } catch(e) {}
+}
+
+function aiMatchLogDefaults() {
+  return {version:1, batchSize:AI_LEARN_BATCH_SIZE, logs:[]};
+}
+
+function aiLoadMatchLogs() {
+  const store = aiMatchLogDefaults();
+  try {
+    const raw = localStorage.getItem(AI_MATCH_LOG_STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved && typeof saved === 'object' && Array.isArray(saved.logs)) {
+        store.logs = saved.logs.slice(-AI_MATCH_LOG_LIMIT);
+      }
+    }
+  } catch(e) {}
+  return store;
+}
+
+function aiSaveMatchLogs(store) {
+  if (!store) return;
+  store.version = 1;
+  store.batchSize = AI_LEARN_BATCH_SIZE;
+  store.logs = Array.isArray(store.logs) ? store.logs.slice(-AI_MATCH_LOG_LIMIT) : [];
+  try { localStorage.setItem(AI_MATCH_LOG_STORAGE_KEY, JSON.stringify(store)); } catch(e) {}
 }
 
 function aiRecordTurnDecision(action) {
@@ -10346,6 +10377,114 @@ function aiAnalyzeAiLoss(aiIdx, winnerIdx) {
   };
 }
 
+function aiCompactPlayerForLog(p, idx, winnerIdxs) {
+  const stats = aiPlayerActionStats(idx);
+  return {
+    idx,
+    name:p?.name || '',
+    ai:isPracticeAi(idx),
+    winner:winnerIdxs.has(idx),
+    points:p?.points || 0,
+    cards:(p?.cards || []).length,
+    reserved:(p?.reserved || []).length,
+    bonuses:{...(p?.bonuses || {})},
+    gems:{...(p?.gems || {})},
+    missionPts:aiMissionPointsFor(idx),
+    actionStats:stats
+  };
+}
+
+function aiCompactBattleLogEntry(item) {
+  return {
+    turn:item.turn || 0,
+    playerIdx:Number(item.playerIdx),
+    type:item.type || '',
+    text:String(item.text || '').slice(0, 180)
+  };
+}
+
+function aiBuildMatchLog(key, winnerIdxs, winnerIdx, analyses) {
+  const aiLost = analyses.length > 0;
+  return {
+    key,
+    at:Date.now(),
+    turnCount:G.turnCount || 0,
+    normalEnd:!!G.normalEnd,
+    winnerIdxs:[...winnerIdxs],
+    winner:G.players[winnerIdx]?.name || '',
+    aiLost,
+    players:(G.players || []).map((p, idx) => aiCompactPlayerForLog(p, idx, winnerIdxs)),
+    missions:(G.missions || []).map(m => ({name:m.name || '', pts:m.pts || 0, claimedBy:m.claimedBy ?? null})),
+    analyses:analyses.map(item => ({
+      aiIdx:item.aiIdx,
+      name:item.name,
+      reasons:item.reasons,
+      deltas:item.deltas,
+      stats:item.stats
+    })),
+    telemetry:(G.aiTelemetry || []).slice(-220),
+    battleLog:(G.log || []).slice(-120).map(aiCompactBattleLogEntry),
+    learnedBatch:null,
+    learnedAt:null
+  };
+}
+
+function aiStoreFinishedMatchLog(matchLog) {
+  const store = aiLoadMatchLogs();
+  const existing = store.logs.find(log => log && log.key === matchLog.key);
+  if (existing) return {store, matchLog:existing, added:false};
+  store.logs.push(matchLog);
+  store.logs = store.logs.slice(-AI_MATCH_LOG_LIMIT);
+  aiSaveMatchLogs(store);
+  return {store, matchLog, added:true};
+}
+
+function aiPendingMatchLogs(store) {
+  return (store?.logs || []).filter(log => log && !log.learnedBatch);
+}
+
+function aiApplyBatchLearning(store, batchLogs) {
+  const profile = aiLearningProfile();
+  const before = {...profile.weights};
+  const analyses = batchLogs.flatMap(log => Array.isArray(log.analyses) ? log.analyses : []);
+  const reasons = [...new Set(analyses.flatMap(item => item.reasons || []))];
+  const merged = {};
+  analyses.forEach(item => aiAddDelta(merged, item.deltas || {}, 1 / Math.max(1, analyses.length)));
+
+  if (analyses.length) {
+    Object.keys(profile.weights).forEach(k => {
+      profile.weights[k] = aiClampWeight(k, profile.weights[k] + (merged[k] || 0));
+    });
+  }
+  profile.games = (profile.games || 0) + batchLogs.length;
+  profile.batches = (profile.batches || 0) + 1;
+
+  const record = {
+    at:Date.now(),
+    batch:profile.batches,
+    gamesUsed:batchLogs.length,
+    lossGames:batchLogs.filter(log => log.aiLost).length,
+    winners:[...new Set(batchLogs.map(log => log.winner).filter(Boolean))],
+    ai:[...new Set(analyses.map(item => item.name).filter(Boolean))],
+    reasons,
+    deltas:merged,
+    weights:{...profile.weights}
+  };
+  profile.history = [...(profile.history || []), record].slice(-24);
+  aiSaveLearningProfile(profile);
+
+  const learnedKeys = new Set(batchLogs.map(log => log.key));
+  const now = Date.now();
+  (store.logs || []).forEach(log => {
+    if (!learnedKeys.has(log.key)) return;
+    log.learnedBatch = profile.batches;
+    log.learnedAt = now;
+  });
+  aiSaveMatchLogs(store);
+
+  return {...record, before, updated:analyses.length > 0, batchReady:true};
+}
+
 function aiLearnFromFinishedGame() {
   if (!G || !G.over || !G.normalEnd || onlineMode || !hasPracticeAiPlayers()) return G?.aiLearningReport || null;
   if (!G.winners || !G.winners.length) G.winners = computeWinners();
@@ -10358,33 +10497,25 @@ function aiLearnFromFinishedGame() {
   const aiLosers = (G.players || [])
     .map((p, idx) => ({p, idx}))
     .filter(({p, idx}) => p && isPracticeAi(idx) && !winnerIdxs.has(idx));
-  if (!aiLosers.length || winnerIdx < 0) {
-    G.aiLearningReport = {updated:false, reasons:['AI本局未輸，不調整權重']};
+
+  const analyses = winnerIdx < 0 ? [] : aiLosers.map(({idx}) => aiAnalyzeAiLoss(idx, winnerIdx));
+  const matchLog = aiBuildMatchLog(key, winnerIdxs, winnerIdx, analyses);
+  const stored = aiStoreFinishedMatchLog(matchLog);
+  const pending = aiPendingMatchLogs(stored.store);
+  if (pending.length < AI_LEARN_BATCH_SIZE) {
+    G.aiLearningReport = {
+      stored:true,
+      updated:false,
+      added:stored.added,
+      pending:pending.length,
+      batchSize:AI_LEARN_BATCH_SIZE,
+      matchLog:stored.matchLog,
+      reasons:analyses.length ? [...new Set(analyses.flatMap(item => item.reasons))] : []
+    };
     return G.aiLearningReport;
   }
 
-  const analyses = aiLosers.map(({idx}) => aiAnalyzeAiLoss(idx, winnerIdx));
-  const merged = {};
-  analyses.forEach(item => aiAddDelta(merged, item.deltas, 1 / Math.max(1, analyses.length)));
-  const profile = aiLearningProfile();
-  const before = {...profile.weights};
-  Object.keys(profile.weights).forEach(k => {
-    profile.weights[k] = aiClampWeight(k, profile.weights[k] + (merged[k] || 0));
-  });
-  profile.games = (profile.games || 0) + 1;
-  const reasons = [...new Set(analyses.flatMap(item => item.reasons))];
-  const record = {
-    at:Date.now(),
-    game:profile.games,
-    winner:G.players[winnerIdx]?.name || '',
-    ai:analyses.map(item => item.name),
-    reasons,
-    deltas:merged,
-    weights:{...profile.weights}
-  };
-  profile.history = [...(profile.history || []), record].slice(-24);
-  aiSaveLearningProfile(profile);
-  G.aiLearningReport = {...record, before, updated:true};
+  G.aiLearningReport = aiApplyBatchLearning(stored.store, pending);
   return G.aiLearningReport;
 }
 
@@ -10399,14 +10530,32 @@ function aiLearningDeltaText(deltas) {
 }
 
 function aiLearningReportHtml(report) {
-  if (!report || !report.updated) return '';
+  if (!report) return '';
+  if (report.stored && !report.updated) {
+    const pending = Math.max(0, Number(report.pending) || 0);
+    const batchSize = Math.max(1, Number(report.batchSize) || AI_LEARN_BATCH_SIZE);
+    const reasons = (report.reasons || []).slice(0, 3).map(aiReasonLabel).join('、');
+    return `<div class="over-ai-learn">
+      <div class="over-ai-learn-title">AI 對戰資料已保存</div>
+      <div>已累積 ${pending}/${batchSize} 場，滿 ${batchSize} 場後才批次分析並優化權重。</div>
+      <small>${reasons ? `本局觀察：${htmlEsc(reasons)}` : '本局先作為樣本保存，避免單場牌運造成誤判。'}</small>
+    </div>`;
+  }
+  if (!report.updated && report.batchReady) {
+    return `<div class="over-ai-learn">
+      <div class="over-ai-learn-title">AI 批次分析完成</div>
+      <div>已讀取 ${report.gamesUsed || 0} 場對戰 log；這批 AI 沒有明確敗因，權重先不調整。</div>
+      <small>資料已標記為分析完成，後續會繼續累積新樣本。</small>
+    </div>`;
+  }
+  if (!report.updated) return '';
   const aiNames = (report.ai || []).map(htmlEsc).join('、');
   const reasons = (report.reasons || []).slice(0, 4).map(aiReasonLabel).join('、');
   const deltaText = aiLearningDeltaText(report.deltas) || '微幅保持';
   return `<div class="over-ai-learn">
-    <div class="over-ai-learn-title">AI 賽後自我修正</div>
-    <div>${aiNames || 'AI'} 敗因：${htmlEsc(reasons || '終局效率不足')}</div>
-    <small>已記錄本局並調整下一場權重：${htmlEsc(deltaText)}</small>
+    <div class="over-ai-learn-title">AI 批次模型優化</div>
+    <div>已彙整 ${report.gamesUsed || 0} 場對戰 log；${aiNames || 'AI'} 主要敗因：${htmlEsc(reasons || '終局效率不足')}</div>
+    <small>已更新下一場權重：${htmlEsc(deltaText)}</small>
   </div>`;
 }
 
