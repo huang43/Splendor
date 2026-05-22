@@ -3158,6 +3158,7 @@ let _lastTurnNotifKey = '';
 let _pendingSkillChainAnim = null;
 let _turnPause = null;
 let _helpPauseToken = null;
+let _skillPauseToken = null;
 let _chatRef = null;
 let _chatQuery = null;
 let _chatHandler = null;
@@ -3194,6 +3195,7 @@ const AI_MATCH_LOG_STORAGE_KEY = 'splendor-ai-match-logs-v1';
 const AI_LEARN_BATCH_SIZE = 5;
 const AI_MATCH_LOG_LIMIT = 50;
 const TURN_LIMIT_SECONDS = 45;
+const TIMEOUT_TURN_ADVANCE_DELAY_MS = 2000;
 const AI_THINK_MAX_SECONDS = 10;
 const OFFLINE_GRACE_MS = 15000;
 const SPECTATOR_LIMIT = 4;
@@ -4601,6 +4603,11 @@ async function markPlayerLeftRoom(code, idx) {
       seats.sort((a,b)=>a.seat-b.seat);
       const next = seats.find(s => s.seat > Number(idx)) || seats[0];
       if (next) {
+        const memberName = memberIdx >= 0 ? (members[memberIdx].name || '') : '';
+        appendStateLogUpdate(updates, state, 'skip', `${memberName || '玩家'} 中離，跳過回合`, teamIdx, {
+          name:memberName || (team && team.name) || '',
+          color:team && team.color
+        });
         updates['state/activeSeat'] = next.seat;
         updates['state/cur'] = next.teamIdx;
         updates['state/turnCount'] = (Number(state.turnCount) || 0) + 1;
@@ -4637,10 +4644,28 @@ async function markPlayerLeftRoom(code, idx) {
     while (players[next] && (players[next].disconnected || players[next].offline) && guard++ < players.length + 1) {
       next = (next + 1) % Number(state.numP || players.length || 1);
     }
+    appendStateLogUpdate(updates, state, 'skip', '中離，跳過回合', idx);
     updates['state/cur'] = next;
     updates['state/turnCount'] = (Number(state.turnCount) || 0) + 1;
   }
   await roomRef.update(updates);
+}
+
+function appendStateLogUpdate(updates, state, type, text, playerIdx, display={}) {
+  if (!updates || !state) return;
+  const players = toArr(state.players);
+  const pl = players[Number(playerIdx)] || {};
+  const log = toArr(state.log);
+  log.push({
+    id:`${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+    turn:(Number(state.turnCount) || 0) + 1,
+    playerIdx:Number(playerIdx),
+    playerName:display.name || pl.name || '',
+    color:display.color || pl.color || '#ffe08a',
+    type,
+    text,
+  });
+  updates['state/log'] = log.length > 90 ? log.slice(-90) : log;
 }
 
 // ── Wait room listener ────────────────────────────────────────────────────
@@ -5046,6 +5071,36 @@ function releaseHelpTurnPause() {
   if (!_helpPauseToken) return;
   const token = _helpPauseToken;
   _helpPauseToken = null;
+  if (pauseTokenMatches(_turnPause, token)) {
+    _turnPause = null;
+    refreshPlayerTimers();
+  }
+  if (onlineMode && db && roomCode) {
+    db.ref(`rooms/${roomCode}/turnPause`).transaction(cur => pauseTokenMatches(cur, token) ? null : cur);
+  }
+}
+
+function setSkillTurnPause(playerIdx) {
+  if (!G || !G.players || typeof G.cur !== 'number' || G.over || !gameScreenVisible()) return null;
+  if (Number(playerIdx) !== Number(G.cur)) return null;
+  const token = {
+    paused:true,
+    reason:'skill',
+    by:`skill:${onlineMode ? myIdx : 'local'}`,
+    playerIdx:G.cur,
+    turnCount:G.turnCount || 0,
+    at:Date.now()
+  };
+  _skillPauseToken = token;
+  _turnPause = token;
+  refreshPlayerTimers();
+  if (onlineMode && db && roomCode) db.ref(`rooms/${roomCode}/turnPause`).set(token);
+  return token;
+}
+
+function releaseSkillTurnPause(token=_skillPauseToken) {
+  if (!token) return;
+  if (pauseTokenMatches(_skillPauseToken, token)) _skillPauseToken = null;
   if (pauseTokenMatches(_turnPause, token)) {
     _turnPause = null;
     refreshPlayerTimers();
@@ -5982,16 +6037,7 @@ function handleDisconnect(discIdx) {
 
   // Multiple players remain — if it was disconnected player's turn, skip
   if (G.cur === discIdx) {
-    const next = nextAvailablePlayer(discIdx);
-    if (next < 0) return;
-    G.cur = next;
-    G.turnCount = (G.turnCount || 0) + 1;
-    G.ui = {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
-    stopTimer();
-    if (isLeader()) {
-      pushG();
-      notifyTurn(G.cur, turnCallbackFor(G.cur));
-    }
+    if (isLeader()) skipCurrentTurn('offline');
   } else {
     // Not their turn, just sync the disconnected flag
     if (isLeader()) { pushG(); render(); }
@@ -7554,12 +7600,14 @@ window.cancelCoopSkillApproval = function(approvalId) {
 function performConfirmedHeroSkill(playerIdx, onExecute, animOptions={}) {
   const hero = getPlayerHero(playerIdx);
   if (!hero) return;
+  const skillPauseToken = setSkillTurnPause(playerIdx);
   // Decrement uses & mark turn used
   if (G.heroUsed[playerIdx] !== Infinity) G.heroUsed[playerIdx]--;
   if (!G.heroActedThisTurn) G.heroActedThisTurn = Array(G.numP).fill(false);
   G.heroActedThisTurn[playerIdx] = true;
 
   const executeAfterHero = () => {
+    releaseSkillTurnPause(skillPauseToken);
     beginSkillChainAnim(hero, playerIdx, animOptions);
     onExecute(hero, playerIdx);
     flushPendingSkillChainAnim();
@@ -10419,15 +10467,16 @@ function autoTakeGemsOnTimeout(turnCtx=currentTurnContext()) {
     });
     const got = gemListLog(take);
     if (!got) {
-      G.ui = {pending:emptyGemPending(), acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false};
-      skipCurrentTurn('timeout', turnCtx);
+      G.ui = {pending:emptyGemPending(), acted:true, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false, timeoutPending:true};
+      render();
+      scheduleTimeoutTurnAdvance(turnCtx, () => skipCurrentTurn('timeout', turnCtx));
       return;
     }
     addLog('take', `時間到，系統自動拿取 ${got}`, playerIdx);
     rememberTurnAction('take');
-    toast(`⌛ ${livePl.name} 時間到，系統自動拿取 ${got}`);
-    afterAct();
+    toast(`⌛ ${livePl.name} 時間到，系統自動拿取寶石`);
     render();
+    scheduleTimeoutTurnAdvance(turnCtx, () => { afterAct(); render(); });
   });
   return true;
 }
@@ -10511,10 +10560,14 @@ function autoReturnExcessOnTimeout(turnCtx=currentTurnContext()) {
     else el.remove();
   });
   toast(`⌛ ${playerName} 時間到，系統隨機歸還至10顆`);
+  if (G.ui) {
+    G.ui.acted = true;
+    G.ui.timeoutPending = true;
+  }
+  render();
   if (mode === 'action') {
     if (!isCurrentTurnContext(turnCtx)) return true;
-    afterAct();
-    render();
+    scheduleTimeoutTurnAdvance(turnCtx, () => { afterAct(); render(); });
     return true;
   }
   if (String(mode).startsWith('musk')) {
@@ -10522,7 +10575,7 @@ function autoReturnExcessOnTimeout(turnCtx=currentTurnContext()) {
     G.ui.muskCardDone=false;
     G.ui.muskGemDone=false;
   }
-  skipCurrentTurn('timeout', turnCtx);
+  scheduleTimeoutTurnAdvance(turnCtx, () => skipCurrentTurn('timeout', turnCtx));
   return true;
 }
 
@@ -12855,6 +12908,8 @@ function dismissTurnNotif() {
 let _timerInterval = null;
 let _timerSec = TURN_LIMIT_SECONDS;
 let _timerExpired = false;
+let _timeoutAdvanceTimer = null;
+let _timeoutAdvanceKey = '';
 
 function currentTurnContext(playerIdx = G?.cur) {
   return {
@@ -12880,6 +12935,36 @@ function isOfflineGracePendingForTurn(turnCtx=currentTurnContext()) {
 
 function isTurnTimerHeld(turnCtx, turnKey) {
   return isTurnTimerPaused(turnKey) || isOfflineGracePendingForTurn(turnCtx);
+}
+
+function timeoutTurnKey(turnCtx) {
+  if (!turnCtx) return '';
+  return `${Number(turnCtx.turnCount)}:${Number(turnCtx.playerIdx)}:${turnCtx.activeSeat ?? ''}`;
+}
+
+function clearTimeoutTurnAdvance() {
+  if (_timeoutAdvanceTimer) clearTimeout(_timeoutAdvanceTimer);
+  _timeoutAdvanceTimer = null;
+  _timeoutAdvanceKey = '';
+}
+
+function scheduleTimeoutTurnAdvance(turnCtx, action) {
+  if (!isCurrentTurnContext(turnCtx)) return false;
+  if (G && G.ui) {
+    G.ui.acted = true;
+    G.ui.timeoutPending = true;
+  }
+  clearTimeoutTurnAdvance();
+  const key = timeoutTurnKey(turnCtx);
+  _timeoutAdvanceKey = key;
+  _timeoutAdvanceTimer = setTimeout(() => {
+    if (_timeoutAdvanceKey !== key) return;
+    _timeoutAdvanceTimer = null;
+    _timeoutAdvanceKey = '';
+    if (!isCurrentTurnContext(turnCtx)) return;
+    if (typeof action === 'function') action();
+  }, TIMEOUT_TURN_ADVANCE_DELAY_MS);
+  return true;
 }
 
 function activateZones() {
@@ -12916,6 +13001,7 @@ function refreshPlayerTimers() {
 function startTimer(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) return;
   if (!isCurrentTurnContext(turnCtx)) return;
+  clearTimeoutTurnAdvance();
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
@@ -12949,6 +13035,7 @@ function startTimer(turnCtx=currentTurnContext()) {
   }, 1000);
 }
 function stopTimer() {
+  clearTimeoutTurnAdvance();
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerInterval = null;
@@ -12963,6 +13050,7 @@ function stopTimer() {
 function startTimerDisplay(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) { startSpectatorTimerDisplay(); return; }
   if (!isCurrentTurnContext(turnCtx)) return;
+  clearTimeoutTurnAdvance();
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
@@ -12993,6 +13081,7 @@ function startTimerDisplay(turnCtx=currentTurnContext()) {
   }, 1000);
 }
 function startSpectatorTimerDisplay() {
+  clearTimeoutTurnAdvance();
   clearAiThinkTimer();
   clearInterval(_timerInterval);
   _timerSec = TURN_LIMIT_SECONDS;
@@ -13032,7 +13121,8 @@ function handleTurnTimeout(turnCtx=currentTurnContext()) {
   if (autoReturnExcessOnTimeout(turnCtx)) return;
   if (G.ui && G.ui.acted) return;
   if (autoTakeGemsOnTimeout(turnCtx)) return;
-  skipCurrentTurn('timeout', turnCtx);
+  scheduleTimeoutTurnAdvance(turnCtx, () => skipCurrentTurn('timeout', turnCtx));
+  render();
 }
 function _updateTimerEl() {
   const s = Math.max(0, _timerSec);
