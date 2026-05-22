@@ -8845,9 +8845,11 @@ function shindoCompletionRate(pl, card) {
   let covered = 0;
   let short = 0;
   CI.forEach(c => {
+    const rawNeed = (card.cost && card.cost[c]) || 0;
+    const bonus = Math.min(rawNeed, Math.max(0, Number(pl.bonuses && pl.bonuses[c]) || 0));
     const need = e[c] || 0;
     const have = Math.max(0, Number(pl.gems && pl.gems[c]) || 0);
-    covered += Math.min(need, have);
+    covered += bonus + Math.min(need, have);
     short += Math.max(0, need - have);
   });
   covered += Math.min(short, Math.max(0, Number(pl.gems && pl.gems.gold) || 0));
