@@ -2591,10 +2591,103 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 .hero-info-skill { color:#ffe08a; font-size:.9em; font-weight:800; margin-bottom:5px; }
 .hero-info-desc { color:rgba(255,255,255,.76); font-size:.82em; line-height:1.5; }
 .hero-info-uses { color:#b8b8c8; font-size:.74em; margin-top:6px; }
+#hero-catalog-modal {
+  position:fixed; inset:0; z-index:835;
+  display:flex; align-items:center; justify-content:center;
+  padding:18px; background:rgba(0,0,0,.78);
+}
+.hero-catalog-box {
+  width:min(900px, calc(100vw - 28px));
+  max-height:calc(100vh - 34px);
+  display:grid; grid-template-columns:minmax(0,1.15fr) minmax(250px,.85fr);
+  gap:16px; padding:20px;
+  border-radius:18px; border:1px solid rgba(255,215,50,.35);
+  background:linear-gradient(180deg,rgba(22,16,42,.98),rgba(12,9,24,.98));
+  box-shadow:0 24px 70px rgba(0,0,0,.74), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.hero-catalog-title {
+  grid-column:1 / -1;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  color:#ffe08a; font-size:1.16em; font-weight:900; letter-spacing:1.4px;
+}
+.hero-catalog-close {
+  width:34px; height:34px; border-radius:9px;
+  border:1.5px solid rgba(255,224,138,.28);
+  background:rgba(8,13,24,.82); color:#fff6d6;
+  cursor:pointer; font-weight:900; font-size:1.05em;
+}
+.hero-catalog-close:hover { border-color:#ffcc44; color:white; }
+.hero-catalog-grid {
+  min-height:0; max-height:62vh; overflow:auto;
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(70px, 1fr));
+  gap:7px; padding:7px;
+  border-radius:12px; border:1px solid rgba(255,255,255,.1);
+  background:rgba(6,10,18,.38);
+}
+.hero-catalog-tile {
+  min-width:0; aspect-ratio:1;
+  position:relative; overflow:hidden; cursor:pointer;
+  border-radius:6px; border:1.5px solid rgba(255,255,255,.18);
+  background:#171324; padding:0;
+  box-shadow:0 8px 18px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+.hero-catalog-tile:hover,
+.hero-catalog-tile.active {
+  transform:translateY(-2px);
+  border-color:rgba(255,204,68,.78);
+  box-shadow:0 10px 24px rgba(0,0,0,.44), 0 0 16px rgba(255,204,68,.2);
+}
+.hero-catalog-tile img {
+  width:100%; height:100%; object-fit:cover; object-position:top center; display:block;
+}
+.hero-catalog-fallback {
+  width:100%; height:100%; display:none; align-items:center; justify-content:center;
+  font-size:2em; color:#ffe08a;
+}
+.hero-catalog-name {
+  position:absolute; left:0; right:0; bottom:0;
+  padding:13px 4px 5px;
+  color:#fff6d6; font-size:.58em; font-weight:900; line-height:1.12; text-align:center;
+  background:linear-gradient(0deg,rgba(0,0,0,.88),rgba(0,0,0,0));
+  text-shadow:0 1px 3px rgba(0,0,0,.95);
+}
+.hero-catalog-detail {
+  min-height:0; padding:15px;
+  border-radius:14px; border:1px solid rgba(255,215,50,.22);
+  background:rgba(255,255,255,.045);
+  display:flex; flex-direction:column; gap:11px;
+}
+.hero-catalog-detail-top { display:flex; gap:13px; align-items:center; min-width:0; }
+.hero-catalog-detail-avatar {
+  width:78px; height:78px; flex:0 0 auto; overflow:hidden;
+  border-radius:50%; border:2px solid rgba(255,215,50,.46);
+  background:#1a1a2e; box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.hero-catalog-detail-avatar img {
+  width:100%; height:100%; object-fit:cover; object-position:top center; display:block;
+}
+.hero-catalog-detail h3 { margin:0 0 6px; color:#fff; font-size:1.08em; line-height:1.25; }
+.hero-catalog-skill { color:#ffe08a; font-weight:900; line-height:1.35; }
+.hero-catalog-desc { color:rgba(255,255,255,.78); font-size:.88em; line-height:1.55; }
+.hero-catalog-uses { color:#b8b8c8; font-size:.78em; }
 @media (max-width:760px) {
   .hero-skill-confirm-box { width:min(340px, calc(100vw - 34px)); padding:22px 20px; }
   .hero-info-card { gap:11px; }
   .hero-info-avatar-wrap { width:58px; height:58px; }
+  .hero-catalog-box {
+    grid-template-columns:1fr;
+    padding:16px 13px;
+    gap:12px;
+  }
+  .hero-catalog-title { font-size:1em; }
+  .hero-catalog-grid {
+    max-height:42vh;
+    grid-template-columns:repeat(auto-fill, minmax(60px, 1fr));
+    gap:6px;
+  }
+  .hero-catalog-detail-avatar { width:64px; height:64px; }
+  .hero-catalog-name { font-size:.54em; padding-bottom:4px; }
 }
 .shiyuan-gem-card {
   min-width:118px; border:1.5px solid rgba(255,255,255,.18); border-radius:12px;
@@ -2831,6 +2924,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     <button class="btn-online" onclick="showOnlineCreate()">建立房間</button>
     <button class="btn-online" onclick="startLocal()">練習模式(AI對戰)</button>
     <button class="btn-online" onclick="showLadder()">寶石天梯榜</button>
+    <button class="btn-online" onclick="openHeroCatalog()">英雄列表</button>
   </div>
 </div>
 
@@ -6273,7 +6367,7 @@ const HEROES = [
   {id:13, key:'trump',     name:'唐納◆特朗普',  skill:'TACO交易',         desc:'重新洗牌：將場上所有等級的牌全部收回牌堆重洗，重新發牌，並獲得2枚金幣', uses:1,        passive:false, quote:'「讓美國再次偉大！」'},
   {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'指定寶石/金幣至少2顆的玩家並先預設想聽的答案；對方答中時，你隨機拿走對方2顆，答錯則不交換任何寶石（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
   {id:15, key:'shiyuan',   name:'詩園鹹酥雞老闆', skill:'點石成雞',         desc:'選擇一名奧客，並把他其中一顆寶石炸成鹹酥雞；該寶石計分牌-1，鹹酥雞計分牌+1（每局1次）', uses:1, passive:false, quote:'「我們店裡免開發票，到底要我說幾次？」'},
-  {id:16, key:'shindo',    name:'進藤光',        skill:'神之一手',         desc:'被動：牌面顯示所有玩家對每張牌的寶石代幣完成率。主動：秘密預測一名玩家下一次行動（拿寶石/留牌/買牌），命中+1分（每局2次）', uses:2, passive:false, quote:'「佐為，看見了嗎？神之一手。」'},
+  {id:16, key:'shindo',    name:'進藤光',        skill:'神之一手',         desc:'被動：牌面顯示所有玩家對每張牌的寶石代幣完成率。主動：秘密預測一名分數大於等於8分的玩家下一次行動（拿寶石/留牌/買牌），命中+1分（每局2次）', uses:2, passive:false, quote:'「佐為，看見了嗎？神之一手。」'},
 ];
 const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅',DV:'💔',shiyuan:'🍗',shindo:'♟'};
 const SHINDO_TARGET_MIN_POINTS = 8;
@@ -7160,6 +7254,74 @@ function showHeroInfo(playerIdx, ev) {
   box.addEventListener('click', () => box.remove(), {once:true});
   document.body.appendChild(box);
 }
+
+function heroCatalogUsesText(hero) {
+  if (!hero) return '';
+  if (hero.passive) return `被動技能｜每局最多 ${hero.uses} 次`;
+  if (hero.uses === Infinity) return '主動技能｜無限次';
+  return `主動技能｜每局最多 ${hero.uses} 次`;
+}
+
+function heroCatalogDetailHtml(hero) {
+  if (!hero) return '';
+  const src = heroImgSrc(hero.key);
+  return `
+    <div class="hero-catalog-detail-top">
+      <div class="hero-catalog-detail-avatar">
+        <img src="${src}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(hero.name)}">
+        <span class="hero-catalog-fallback">${HERO_EMOJI[hero.key]||'👤'}</span>
+      </div>
+      <div style="min-width:0">
+        <h3>${htmlEsc(hero.name)}</h3>
+        <div class="hero-catalog-skill">⚡ ${htmlEsc(hero.skill)}</div>
+      </div>
+    </div>
+    <div class="hero-catalog-desc">${htmlEsc(hero.desc)}</div>
+    <div class="hero-catalog-uses">${htmlEsc(heroCatalogUsesText(hero))}</div>
+  `;
+}
+
+window.selectHeroCatalog = function(heroId) {
+  const hero = HEROES.find(h => h.id === Number(heroId));
+  if (!hero) return;
+  const detail = document.getElementById('hero-catalog-detail');
+  if (detail) detail.innerHTML = heroCatalogDetailHtml(hero);
+  document.querySelectorAll('.hero-catalog-tile').forEach(tile => {
+    tile.classList.toggle('active', Number(tile.dataset.heroId) === Number(heroId));
+  });
+};
+
+window.closeHeroCatalog = function() {
+  document.getElementById('hero-catalog-modal')?.remove();
+};
+
+window.openHeroCatalog = function() {
+  document.getElementById('hero-catalog-modal')?.remove();
+  const firstHero = HEROES[0];
+  const box = document.createElement('div');
+  box.id = 'hero-catalog-modal';
+  box.innerHTML = `
+    <div class="hero-catalog-box" onclick="event.stopPropagation()">
+      <div class="hero-catalog-title">
+        <span>英雄列表</span>
+        <button class="hero-catalog-close" type="button" onclick="closeHeroCatalog()" aria-label="關閉英雄列表">×</button>
+      </div>
+      <div class="hero-catalog-grid">
+        ${HEROES.map(hero => `
+          <button class="hero-catalog-tile" type="button" data-hero-id="${hero.id}" onclick="selectHeroCatalog(${hero.id})" title="${htmlEsc(hero.name)}">
+            <img src="${heroImgSrc(hero.key)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(hero.name)}">
+            <span class="hero-catalog-fallback">${HERO_EMOJI[hero.key]||'👤'}</span>
+            <span class="hero-catalog-name">${htmlEsc(hero.name)}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div id="hero-catalog-detail" class="hero-catalog-detail">${heroCatalogDetailHtml(firstHero)}</div>
+    </div>
+  `;
+  box.addEventListener('click', closeHeroCatalog);
+  document.body.appendChild(box);
+  if (firstHero) selectHeroCatalog(firstHero.id);
+};
 
 function shindoTargetOptions(playerIdx) {
   return (G.players || [])
@@ -13046,13 +13208,13 @@ function gameScreenVisible() {
 function outGameClickArea(el) {
   return !!(el && (
     el.closest('#screen-login,#screen-lobby,#screen-ladder,#screen-create,#screen-join,#screen-wait,#screen-setup') ||
-    (!gameScreenVisible() && el.closest('#btn-sfx,#btn-bgm,#btn-help,#btn-logout,#m-help'))
+    (!gameScreenVisible() && el.closest('#btn-sfx,#btn-bgm,#btn-help,#btn-logout,#m-help,#hero-catalog-modal'))
   ));
 }
 
 function outGameClickable(el) {
   if (!el || gameScreenVisible()) return null;
-  const control = el.closest('.btn-online:not(:disabled),.btn-start:not(:disabled)');
+  const control = el.closest('.btn-online:not(:disabled),.btn-start:not(:disabled),.hero-catalog-tile:not(:disabled),.hero-catalog-close:not(:disabled)');
   return control && outGameClickArea(control) ? control : null;
 }
 
