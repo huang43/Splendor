@@ -6393,7 +6393,7 @@ ALL_CARDS.forEach(card => {
 const HEROES = [
   {id:1,  key:'buffett',   name:'沃倫◆巴菲特',  skill:'長期投資',         desc:'存入1顆五色寶石代幣（不可存金幣），下次輪到自己時憑空獲得3顆同色寶石（每局2次）', uses:2,        passive:false, quote:'「別人恐懼我貪婪。」'},
   {id:2,  key:'musk',      name:'埃龍◆馬斯克',  skill:'工作狂',           desc:'本回合可同時進行拿寶石＋買牌兩個動作',                   uses:1,        passive:false, quote:'「如果你努力工作，好事就會發生。」'},
-  {id:3,  key:'lehman',    name:'雷曼兄弟',      skill:'槓桿套利',         desc:'自選2顆寶石或金幣代幣歸還銀行，換取3分',                uses:1,        passive:false, quote:'「我永遠不會滿足，我對現狀從不感到快樂。」'},
+  {id:3,  key:'lehman',    name:'雷曼兄弟',      skill:'槓桿套利',         desc:'自選2顆寶石或金幣代幣歸還銀行，換取2分',                uses:1,        passive:false, quote:'「我永遠不會滿足，我對現狀從不感到快樂。」'},
   {id:4,  key:'jensen',    name:'黃仁勳',        skill:'你相信光嗎?',      desc:'購買白色鑽石卡片時額外加1分（每局最多2次）',              uses:2,        passive:true,  passiveBonus:'w', quote:'「你相信光嗎？」'},
   {id:5,  key:'altman',    name:'山姆◆奧特曼',  skill:'搖錢樹',           desc:'從聲望超過3分的玩家手裡隨機奪取一顆寶石代幣',             uses:3,        passive:false, quote:'「給我看激勵機制，我就能預測結果。」'},
   {id:6,  key:'munger',    name:'查理◆芒格',    skill:'預言家',           desc:'同時查看三個牌堆各頂部1張牌，可免費預留其中1張並取得1枚金幣', uses:1,        passive:false, quote:'「永遠都要逆向思考。」'},
@@ -8517,6 +8517,7 @@ window.confirmHeroSkillWithTarget = function(playerIdx, targetIdx) {
 
 function showLehmanPicker(playerIdx) {
   const need = 2;
+  const reward = 2;
   const pl = G.players[playerIdx];
   const avail = [...CI,'gold'].filter(c => (pl.gems[c]||0) > 0);
   window._lehmanPlayerIdx = playerIdx;
@@ -8525,7 +8526,7 @@ function showLehmanPicker(playerIdx) {
   const box = document.createElement('div'); box.id='hero-skill-confirm';
   box.innerHTML = `<div class="hero-skill-confirm-box">
     <h3>📉 槓桿套利</h3>
-    <p>選擇共${need}顆寶石或金幣歸還銀行，換取3分</p>
+    <p>選擇共${need}顆寶石或金幣歸還銀行，換取${reward}分</p>
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin:14px 0;justify-content:center">
       ${avail.map(c=>`<div style="display:flex;flex-direction:column;align-items:center;gap:5px">
         ${gemSVG(c,24)}
@@ -8541,7 +8542,7 @@ function showLehmanPicker(playerIdx) {
       已選：<span id="lehman-total">0</span> / ${need} 顆
     </div>
     <div class="btn-row">
-      <button id="lehman-confirm-btn" class="btn-action" onclick="confirmLehmanExchange(${playerIdx})" disabled style="opacity:.35">確認兌換 → 3分</button>
+      <button id="lehman-confirm-btn" class="btn-action" onclick="confirmLehmanExchange(${playerIdx})" disabled style="opacity:.35">確認兌換 → ${reward}分</button>
       <button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button>
     </div>
   </div>`;
@@ -8579,14 +8580,14 @@ window.doLehmanExchange = function(playerIdx, selection=null) {
     Object.entries(sel).forEach(([c, n]) => {
       if (n > 0) { pl.gems[c] = (pl.gems[c]||0) - n; G.bank[c] = (G.bank[c]||0) + n; }
     });
-    pl.points += 3;
-    addLog('skill', `發動「槓桿套利」，歸還 ${gemListLog(sel)}，獲得3分`, playerIdx);
+    pl.points += 2;
+    addLog('skill', `發動「槓桿套利」，歸還 ${gemListLog(sel)}，獲得2分`, playerIdx);
     markSkillGemAnim('gem-return-to-bank', {
       actorIdx: playerIdx,
       targetIdx: playerIdx,
       selection: sel,
     });
-    toast('📉 歸還2顆代幣，獲得3分！');
+    toast('📉 歸還2顆代幣，獲得2分！');
     renderAndSyncSkill();
   });
 };
