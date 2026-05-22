@@ -3064,6 +3064,7 @@ let _hostRoomRef = null;
 let _presenceRef = null;
 let _presenceDisconnectRef = null;
 let _presenceUnloadHandler = null;
+let _offlineGraceTimers = new Map();
 let _lastPlayedRemoteAnimId = '';
 let _playedRemoteAnimIds = new Set();
 let _remoteAnimRunId = 0;
@@ -3108,6 +3109,7 @@ const AI_LEARN_BATCH_SIZE = 5;
 const AI_MATCH_LOG_LIMIT = 50;
 const TURN_LIMIT_SECONDS = 45;
 const AI_THINK_MAX_SECONDS = 10;
+const OFFLINE_GRACE_MS = 15000;
 const SPECTATOR_LIMIT = 4;
 let currentSerial = '';
 let _loginReconnectCheckId = 0;
@@ -5610,6 +5612,52 @@ async function setupActiveGamePresence(code) {
   await db.ref(`rooms/${code}`).update(updates).catch(() => {});
 }
 
+function offlineGraceKey(seat) {
+  return String(Number(seat));
+}
+
+function isOfflineGracePending(seat) {
+  return _offlineGraceTimers.has(offlineGraceKey(seat));
+}
+
+function clearOfflineGraceTimer(seat) {
+  const key = offlineGraceKey(seat);
+  const timer = _offlineGraceTimers.get(key);
+  if (!timer) return false;
+  clearTimeout(timer);
+  _offlineGraceTimers.delete(key);
+  return true;
+}
+
+function scheduleOfflineGrace(seat, name, onExpire) {
+  if (!Number.isFinite(Number(seat))) return false;
+  const key = offlineGraceKey(seat);
+  if (_offlineGraceTimers.has(key)) return false;
+  showDisconnectNotif(name, 'offline-wait');
+  const timer = setTimeout(() => {
+    _offlineGraceTimers.delete(key);
+    if (typeof onExpire === 'function') onExpire();
+  }, OFFLINE_GRACE_MS);
+  _offlineGraceTimers.set(key, timer);
+  return true;
+}
+
+async function stillPresenceFalse(code, seat) {
+  const snap = await db.ref(`rooms/${code}/presence/${seat}`).once('value').catch(() => null);
+  return !!(snap && snap.val() === false);
+}
+
+async function maybeCloseRoomAfterOfflineGrace(code) {
+  if (!onlineMode || roomCode !== code || !G || !G.players || G.over) return;
+  const seats = gameSeatIdsFromState(G, G);
+  if (!seats.length || seats.some(seat => isOfflineGracePending(seat))) return;
+  const snap = await db.ref(`rooms/${code}/presence`).once('value').catch(() => null);
+  const presence = snap && snap.val();
+  if (!seatsAllOffline(seats, presence || {})) return;
+  const roomSnap = await db.ref(`rooms/${code}`).once('value').catch(() => null);
+  await closeRoomIfEveryoneOffline(code, roomSnap && roomSnap.val(), 'presence');
+}
+
 async function setupWaitingPresence(code, idx, opts={}) {
   await cancelPresenceCleanup();
   const host = !!opts.host;
@@ -5710,59 +5758,72 @@ function listenPresence(code) {
   db.ref(`rooms/${code}/presence`).on('value', snap => {
     if (!G || !G.players || G.over) return;
     const presence = snap.val() || {};
-    if (onlineMode && roomCode === code && seatsAllOffline(gameSeatIdsFromState(G, G), presence)) {
-      db.ref(`rooms/${code}`).once('value')
-        .then(roomSnap => closeRoomIfEveryoneOffline(code, roomSnap.val(), 'presence'))
-        .catch(() => {});
-      return;
-    }
     if (isCoopGame()) {
       let changed = false;
       G.players.forEach((team, teamIdx) => {
         const members = team.members || [];
-        members.forEach(member => {
+        members.forEach((member, memberIdx) => {
           const seat = Number(member.seat);
           if (seat === myIdx) return;
           if (member.disconnected) return;
           if (presence[seat] === false && !_knownOffline.has(seat)) {
-            _knownOffline.add(seat);
-            member.offline = true;
-            changed = true;
-            showDisconnectNotif(member.name, 'offline');
-          } else if (presence[seat] === true && _knownOffline.has(seat)) {
+            scheduleOfflineGrace(seat, member.name, async () => {
+              if (!await stillPresenceFalse(code, seat)) return;
+              if (!G || G.over || !isCoopGame()) return;
+              const liveTeam = G.players[teamIdx];
+              const liveMembers = liveTeam && liveTeam.members || [];
+              const liveMember = liveMembers[memberIdx];
+              if (!liveMember || liveMember.disconnected) return;
+              _knownOffline.add(seat);
+              liveMember.offline = true;
+              liveTeam.offline = liveMembers.length > 0 && liveMembers.every(m => m.offline || m.disconnected);
+              showDisconnectNotif(liveMember.name, 'offline');
+              if (Number(activeCoopSeat()) === seat && isLeader()) skipCurrentTurn('offline');
+              else if (isLeader()) { pushG(); render(); }
+              maybeCloseRoomAfterOfflineGrace(code);
+            });
+          } else if (presence[seat] === true && (_knownOffline.has(seat) || member.offline || isOfflineGracePending(seat))) {
+            clearOfflineGraceTimer(seat);
             _knownOffline.delete(seat);
             member.offline = false;
             changed = true;
             showDisconnectNotif(member.name, 'reconnect');
           }
         });
-        const offline = members.length > 0 && members.every(m => m.offline || presence[Number(m.seat)] === false);
+        const offline = members.length > 0 && members.every(m => m.offline || m.disconnected);
         if (team.offline !== offline) { team.offline = offline; changed = true; }
       });
-      const activeSeatOffline = presence[Number(activeCoopSeat())] === false;
-      if ((G.players[G.cur] && G.players[G.cur].offline || activeSeatOffline) && isLeader()) {
+      if (G.players[G.cur] && G.players[G.cur].offline && isLeader()) {
         skipCurrentTurn('offline');
       } else if (changed && isLeader()) {
         pushG();
         render();
       }
+      maybeCloseRoomAfterOfflineGrace(code);
       return;
     }
     G.players.forEach((pl, idx) => {
       if (idx === myIdx) return;
       if (pl.disconnected) return;
       if (presence[idx] === false && !_knownOffline.has(idx)) {
-        _knownOffline.add(idx);
-        G.players[idx].offline = true;
-        showDisconnectNotif(pl.name, 'offline');
-        handleOffline(idx);
-      } else if (presence[idx] === true && _knownOffline.has(idx)) {
+        scheduleOfflineGrace(idx, pl.name, async () => {
+          if (!await stillPresenceFalse(code, idx)) return;
+          if (!G || G.over || !G.players || !G.players[idx] || G.players[idx].disconnected) return;
+          _knownOffline.add(idx);
+          G.players[idx].offline = true;
+          showDisconnectNotif(G.players[idx].name, 'offline');
+          handleOffline(idx);
+          maybeCloseRoomAfterOfflineGrace(code);
+        });
+      } else if (presence[idx] === true && (_knownOffline.has(idx) || G.players[idx].offline || isOfflineGracePending(idx))) {
+        clearOfflineGraceTimer(idx);
         _knownOffline.delete(idx);
         G.players[idx].offline = false;
         showDisconnectNotif(pl.name, 'reconnect');
         if (isLeader()) { pushG(); render(); }
       }
     });
+    maybeCloseRoomAfterOfflineGrace(code);
   });
 }
 
@@ -5857,10 +5918,12 @@ function showDisconnectNotif(name, kind='left') {
     ? `↻ ${name} 已重新連線`
     : kind === 'offline'
       ? `⚠ ${name} 暫時離線，等待重新連線`
+      : kind === 'offline-wait'
+        ? `⚠ ${name} 連線不穩，保留15秒重連時間`
       : `⚠ ${name} 已中離`;
   el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-    background:rgba(20,10,10,.92);border:2px solid ${kind==='reconnect'?'#55cc88':'#ff5533'};border-radius:14px;
-    padding:20px 32px;font-size:1.1em;font-weight:bold;color:${kind==='reconnect'?'#9dffbf':'#ff8866'};
+    background:rgba(20,10,10,.92);border:2px solid ${kind==='reconnect'?'#55cc88':kind==='offline-wait'?'#ffaa44':'#ff5533'};border-radius:14px;
+    padding:20px 32px;font-size:1.1em;font-weight:bold;color:${kind==='reconnect'?'#9dffbf':kind==='offline-wait'?'#ffd28a':'#ff8866'};
     z-index:9999;text-align:center;pointer-events:none;
     animation:fadeIn .3s ease`;
   el.innerHTML = htmlEsc(msg);
@@ -12656,6 +12719,16 @@ function isCurrentTurnContext(ctx) {
   return true;
 }
 
+function isOfflineGracePendingForTurn(turnCtx=currentTurnContext()) {
+  if (!turnCtx) return false;
+  const seat = turnCtx.activeSeat !== null ? turnCtx.activeSeat : turnCtx.playerIdx;
+  return isOfflineGracePending(seat);
+}
+
+function isTurnTimerHeld(turnCtx, turnKey) {
+  return isTurnTimerPaused(turnKey) || isOfflineGracePendingForTurn(turnCtx);
+}
+
 function activateZones() {
   if ((G.turnCount||0) >= 2 * G.numP) return; // Stop guiding after 2 full rounds
   ['g-bank','g-cards'].forEach(id => {
@@ -12705,7 +12778,7 @@ function startTimer(turnCtx=currentTurnContext()) {
       _timerInterval = null;
       return;
     }
-    if (isTurnTimerPaused(turnKey)) {
+    if (isTurnTimerHeld(turnCtx, turnKey)) {
       _updateTimerEl();
       refreshPlayerTimers();
       return;
@@ -12750,7 +12823,7 @@ function startTimerDisplay(turnCtx=currentTurnContext()) {
       _timerInterval = null;
       return;
     }
-    if (isTurnTimerPaused(turnKey)) {
+    if (isTurnTimerHeld(turnCtx, turnKey)) {
       _updateTimerEl();
       refreshPlayerTimers();
       return;
@@ -12781,7 +12854,7 @@ function startSpectatorTimerDisplay() {
       _timerInterval = null;
       return;
     }
-    if (isTurnTimerPaused(turnKey)) {
+    if (isTurnTimerHeld(turnCtx, turnKey)) {
       _updateTimerEl();
       refreshPlayerTimers();
       return;
@@ -12801,7 +12874,7 @@ function handleTurnTimeout(turnCtx=currentTurnContext()) {
   if (isSpectator() || isRoomGuest()) return;
   if (typeof turnCtx === 'number') turnCtx = {...currentTurnContext(), turnCount:turnCtx};
   if (!isCurrentTurnContext(turnCtx)) return;
-  if (isTurnTimerPaused(turnCtx.turnCount)) return;
+  if (isTurnTimerHeld(turnCtx, turnCtx.turnCount)) return;
   if (onlineMode && !(isMyTurn() || isLeader())) return;
   if (autoReturnExcessOnTimeout(turnCtx)) return;
   if (G.ui && G.ui.acted) return;
