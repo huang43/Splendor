@@ -1409,6 +1409,21 @@ body > .dev-card .card-top .gem-img.gem-img-k {
   background:linear-gradient(135deg,#cc6600,#ffaa22);
 }
 .cost-detail-row { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:.88em; }
+.shindo-insight {
+  position:absolute; right:4px; bottom:4px; z-index:6;
+  display:flex; flex-direction:column; gap:1px; min-width:42px;
+  padding:3px 4px; border-radius:6px;
+  background:rgba(9,8,16,.74); border:1px solid rgba(255,224,138,.32);
+  box-shadow:0 3px 10px rgba(0,0,0,.35);
+  pointer-events:none;
+}
+.shindo-insight-row {
+  display:flex; align-items:center; justify-content:space-between; gap:4px;
+  font-size:.52em; line-height:1.05; font-weight:900;
+  color:#fff4c4; text-shadow:0 1px 2px rgba(0,0,0,.9);
+}
+.shindo-insight-row b { font-weight:950; }
+.shindo-insight-row span { color:#fff; }
 
 /* Gem colors */
 .gc-w    { background:radial-gradient(circle at 35% 30%,#fff,#c8bca8); color:#333; }
@@ -3064,6 +3079,7 @@ let _chatChannel = 'all';
 let _chatLocalSeq = 0;
 let _lastChatSendText = '';
 let _lastChatSendAt = 0;
+let _lastShindoNoticeId = '';
 let _accountSessionId = '';
 let _accountSessionRef = null;
 let _accountSessionHandler = null;
@@ -4894,6 +4910,9 @@ function pushG() {
   if (G.heroUsed)         serial.heroUsed         = G.heroUsed.map(v => v===Infinity ? 'Inf' : v);
   if (G.heroBuffett)      serial.heroBuffett      = G.heroBuffett;
   if (G.heroDVPrompt)     serial.heroDVPrompt     = G.heroDVPrompt;
+  if (G.heroShindoPrediction) serial.heroShindoPrediction = G.heroShindoPrediction;
+  if (G.heroShindoFailed && Object.keys(G.heroShindoFailed).length) serial.heroShindoFailed = G.heroShindoFailed;
+  if (G.heroShindoNotice) serial.heroShindoNotice = G.heroShindoNotice;
   if (G.virtualGemSupply) serial.virtualGemSupply = G.virtualGemSupply;
   if (G.heroActedThisTurn) serial.heroActedThisTurn = G.heroActedThisTurn;
   db.ref(`rooms/${roomCode}/state`).set(serial);
@@ -5432,8 +5451,12 @@ function applyRemoteState(data) {
   if (data.heroUsed)        G.heroUsed         = toArr(data.heroUsed).map(v=>v==='Inf'?Infinity:+v);
   G.heroBuffett = data.heroBuffett || null;
   if (data.heroDVPrompt)    G.heroDVPrompt     = data.heroDVPrompt;
+  G.heroShindoPrediction = data.heroShindoPrediction || null;
+  G.heroShindoFailed = data.heroShindoFailed || {};
+  G.heroShindoNotice = data.heroShindoNotice || null;
   if (data.heroActedThisTurn) G.heroActedThisTurn = toArr(data.heroActedThisTurn);
   G.virtualGemSupply = data.virtualGemSupply || {};
+  syncShindoNotice();
   if (!isSpectator()) syncMyIdxFromStatePlayers();
   G.ui = (G.cur!==prevCur || G.activeSeat !== prevSeat)
     ? {pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false}
@@ -6187,8 +6210,11 @@ const HEROES = [
   {id:13, key:'trump',     name:'唐納◆特朗普',  skill:'TACO交易',         desc:'重新洗牌：將場上所有等級的牌全部收回牌堆重洗，重新發牌，並獲得2枚金幣', uses:1,        passive:false, quote:'「讓美國再次偉大！」'},
   {id:14, key:'DV',        name:'迦納共和國離婚辦事處書記官', skill:'你還愛我嗎?', desc:'指定寶石/金幣至少2顆的玩家並先預設想聽的答案；對方答中時，你隨機拿走對方2顆，答錯則不交換任何寶石（每局2次）', uses:2, passive:false, quote:'「來，離婚這邊請。」'},
   {id:15, key:'shiyuan',   name:'詩園鹹酥雞老闆', skill:'點石成雞',         desc:'選擇一名奧客，並把他其中一顆寶石炸成鹹酥雞；該寶石計分牌-1，鹹酥雞計分牌+1（每局1次）', uses:1, passive:false, quote:'「我們店裡免開發票，到底要我說幾次？」'},
+  {id:16, key:'shindo',    name:'進藤光',        skill:'神之一手',         desc:'被動：牌面顯示所有玩家對每張牌的寶石代幣完成率。主動：秘密預測一名玩家下一次行動（拿寶石/留牌/買牌），命中+1分（每局2次）', uses:2, passive:false, quote:'「佐為，看見了嗎？神之一手。」'},
 ];
-const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅',DV:'💔',shiyuan:'🍗'};
+const HERO_EMOJI = {buffett:'💰',musk:'🚀',lehman:'📉',jensen:'💡',altman:'🌳',munger:'🔮',satoshi:'₿',soros:'🎯',tzuyu:'💜',jaychou:'🎵',hudong:'😄',willsmith:'🎩',trump:'🦅',DV:'💔',shiyuan:'🍗',shindo:'♟'};
+const SHINDO_TARGET_MIN_POINTS = 8;
+const SHINDO_ACTION_LABELS = {take:'拿寶石', reserve:'留牌', buy:'買牌'};
 // Maps hero key → showcase image filename (names may differ from current skill names)
 const HERO_SHOWCASE = {
   buffett:'buffett_長期投資.png', musk:'musk_工作狂.png',
@@ -6198,13 +6224,47 @@ const HERO_SHOWCASE = {
   trump:  'trump_TACO交易.png',  tzuyu: 'tzuyu_紫瑜我愛你.png',
   jaychou:'jaychou_你算什麼藍人.png', hudong:'hudong_開心、開心、開心.png',
   willsmith:'willsmith_帽子歪了，請戴正.png', DV:'dv_你還愛我嗎.png',
-  shiyuan:'shiyuan_點石成雞.png',
+  shiyuan:'shiyuan_點石成雞.png', shindo:'shindo_神之一手.png',
 };
-const HERO_CUTOUT = {DV:'dv_phase2_cutout.png', shiyuan:'shiyuan_stall_cutout.png'};
+const HERO_CUTOUT = {DV:'dv_phase2_cutout.png', shiyuan:'shiyuan_stall_cutout.png', shindo:'shindo_sai_cutout.png'};
 
 function heroImgSrc(key) {
   if (key === 'DV') return imgAsset('heros/DVPF_avatar.jpg');
   return imgAsset(`heros/${key}.jpg`);
+}
+
+function shindoFailed(playerIdx) {
+  return !!(G && G.heroShindoFailed && G.heroShindoFailed[playerIdx]);
+}
+
+function shindoActivePrediction(playerIdx) {
+  const pred = G && G.heroShindoPrediction;
+  if (!pred) return false;
+  const serial = normaliseSerial(pred.actorSerial || '');
+  if (serial && G && G.players && G.players[playerIdx]) {
+    return serial === normaliseSerial(G.players[playerIdx].serial || G.players[playerIdx].name || '');
+  }
+  return Number(pred.actorIdx) === Number(playerIdx);
+}
+
+function heroDisplayName(hero, playerIdx=null) {
+  if (hero && hero.key === 'shindo' && playerIdx != null && shindoFailed(playerIdx)) return '盡疼胱';
+  return hero ? hero.name : '';
+}
+
+function heroPlayerImgSrc(hero, playerIdx=null) {
+  if (hero && hero.key === 'shindo' && playerIdx != null && shindoActivePrediction(playerIdx)) {
+    return imgAsset('heros/shindo_sai_active.jpg');
+  }
+  if (hero && hero.key === 'shindo' && playerIdx != null && shindoFailed(playerIdx)) {
+    return imgAsset('heros/shindo_failed.jpg');
+  }
+  return hero ? heroImgSrc(hero.key) : '';
+}
+
+function heroAnimationImgSrc(hero) {
+  if (hero && hero.key === 'shindo') return imgAsset('heros/shindo_sai_active.jpg');
+  return hero ? heroImgSrc(hero.key) : '';
 }
 
 function heroAvatarHTML(hero, cls='hero-avatar-img', style='') {
@@ -6225,6 +6285,11 @@ const HERO_SPECIAL_SKILL_ASSETS = {
   shiyuan: {
     showcase:['shiyuan_鹹酥雞_第二段.png','shiyuan_點石成雞.png'],
     cutout:['shiyuan_stall_cutout.png']
+  },
+  shindo: {
+    showcase:['shindo_神之一手.png'],
+    cutout:['shindo_sai_cutout.png'],
+    assetPaths:['heros/第二段動畫右.jpg','heros/shindo_failed.jpg','heros/shindo_sai_active.jpg']
   }
 };
 
@@ -6397,6 +6462,7 @@ function heroAssetUrls(hero, includeSkill=false) {
   if (special) {
     (special.showcase || []).forEach(name => urls.push(imgAsset(`heros/skill_showcases/${name}`)));
     (special.cutout || []).forEach(name => urls.push(imgAsset(`heros/skill_showcases/_cutouts/${name}`)));
+    (special.assetPaths || []).forEach(path => urls.push(imgAsset(path)));
   }
   return urls;
 }
@@ -6458,10 +6524,30 @@ let _heroSelectTimer = null;
 let _heroSelectSec   = 10;
 let _mySelectIdx     = 0;
 
+function heroDrawWeight(hero) {
+  return hero && hero.key === 'shindo' ? 0.5 : 1;
+}
+
+function drawWeightedHeroes(count) {
+  const pool = [...HEROES];
+  const picked = [];
+  while (pool.length && picked.length < count) {
+    const total = pool.reduce((sum,h)=>sum + heroDrawWeight(h), 0);
+    let roll = Math.random() * total;
+    let idx = 0;
+    for (; idx < pool.length; idx++) {
+      roll -= heroDrawWeight(pool[idx]);
+      if (roll <= 0) break;
+    }
+    picked.push(pool.splice(Math.min(idx, pool.length - 1), 1)[0]);
+  }
+  return picked;
+}
+
 function drawHeroPool(numPlayers) {
   // 2p→3 each, 3p→2 each, 4p→2 each (non-overlapping private pools)
   const perPlayer = numPlayers <= 2 ? 3 : 2;
-  const shuffled = shuffle([...HEROES]);
+  const shuffled = drawWeightedHeroes(numPlayers * perPlayer);
   return Array.from({length: numPlayers}, (_, i) =>
     shuffled.slice(i * perPlayer, (i + 1) * perPlayer).map(h => h.id)
   );
@@ -6584,6 +6670,9 @@ function finishHeroSelect(assigned, playerPools, onDone) {
     return h ? (h.uses === Infinity ? Infinity : h.uses) : 0;
   });
   G.heroBuffett = null;
+  G.heroShindoPrediction = null;
+  G.heroShindoFailed = {};
+  G.heroShindoNotice = null;
   G.heroActedThisTurn = Array(G.numP).fill(false);
   const modal = document.getElementById('hero-select-modal');
   if (modal) modal.remove();
@@ -6734,6 +6823,9 @@ function showOnlineHeroSelect(code, onDone) {
       return h ? (h.uses===Infinity ? Infinity : h.uses) : 0;
     });
     G.heroBuffett = null;
+    G.heroShindoPrediction = null;
+    G.heroShindoFailed = {};
+    G.heroShindoNotice = null;
     G.heroActedThisTurn = Array(G.numP).fill(false);
     const m = document.getElementById('hero-select-modal');
     if (m) m.remove();
@@ -6917,6 +7009,9 @@ function showCoopOnlineHeroSelect(code, onDone) {
       return h ? (h.uses===Infinity ? Infinity : h.uses) : 0;
     });
     G.heroBuffett = null;
+    G.heroShindoPrediction = null;
+    G.heroShindoFailed = {};
+    G.heroShindoNotice = null;
     G.heroActedThisTurn = Array(G.numP).fill(false);
     cleanup();
     warmSelectedHeroAssets({priority:'high', decode:true});
@@ -6967,9 +7062,9 @@ function heroUsesText(hero, usesLeft) {
   return usesLeft > 0 ? `剩 ${usesLeft} 次` : '已用盡';
 }
 
-function heroSkillDetailHtml(hero, usesLeft) {
+function heroSkillDetailHtml(hero, usesLeft, playerIdx=null) {
   if (!hero) return '';
-  return `<b>${htmlEsc(hero.name)}</b><br>⚡ ${htmlEsc(hero.skill)}<br><span style="opacity:.7">${htmlEsc(hero.desc)}</span><br><span style="color:#aaa;font-size:.9em">${htmlEsc(heroUsesText(hero, usesLeft))}</span>`;
+  return `<b>${htmlEsc(heroDisplayName(hero, playerIdx))}</b><br>⚡ ${htmlEsc(hero.skill)}<br><span style="opacity:.7">${htmlEsc(hero.desc)}</span><br><span style="color:#aaa;font-size:.9em">${htmlEsc(heroUsesText(hero, usesLeft))}</span>`;
 }
 
 function showHeroInfo(playerIdx, ev) {
@@ -6987,11 +7082,11 @@ function showHeroInfo(playerIdx, ev) {
   box.innerHTML = `<div class="hero-skill-confirm-box" onclick="event.stopPropagation()">
     <div class="hero-info-card">
       <div class="hero-info-avatar-wrap">
-        <img class="hero-info-avatar" src="${heroImgSrc(hero.key)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(hero.name)}">
+        <img class="hero-info-avatar" src="${heroPlayerImgSrc(hero, idx)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(heroDisplayName(hero, idx))}">
         <span class="hero-info-fallback" style="display:none">${HERO_EMOJI[hero.key]||'👤'}</span>
       </div>
       <div class="hero-info-copy">
-        <h3>${htmlEsc(hero.name)}</h3>
+        <h3>${htmlEsc(heroDisplayName(hero, idx))}</h3>
         <div class="hero-info-skill">⚡ ${htmlEsc(hero.skill)}</div>
         <div class="hero-info-desc">${htmlEsc(hero.desc)}</div>
         <div class="hero-info-uses">${htmlEsc(heroUsesText(hero, usesLeft))}</div>
@@ -7001,6 +7096,78 @@ function showHeroInfo(playerIdx, ev) {
   </div>`;
   box.addEventListener('click', () => box.remove(), {once:true});
   document.body.appendChild(box);
+}
+
+function shindoTargetOptions(playerIdx) {
+  return (G.players || [])
+    .map((p,i)=>({p,i}))
+    .filter(({p,i}) => i !== playerIdx && p && !p.disconnected && (p.points || 0) >= SHINDO_TARGET_MIN_POINTS);
+}
+
+function canUseShindoSkill(playerIdx) {
+  return shindoTargetOptions(playerIdx).length > 0 && !G.heroShindoPrediction;
+}
+
+function shindoSkillBlockMessage(playerIdx) {
+  if (G.heroShindoPrediction) return '♟ 佐為正在等待上一個預測結果';
+  return `♟ 沒有分數大於等於 ${SHINDO_TARGET_MIN_POINTS} 的可預測玩家`;
+}
+
+function showShindoPredictionPicker(playerIdx) {
+  const targets = shindoTargetOptions(playerIdx);
+  if (!targets.length || G.heroShindoPrediction) { toast(shindoSkillBlockMessage(playerIdx)); return; }
+  const box = document.createElement('div');
+  box.id = 'hero-skill-confirm';
+  box.innerHTML = `<div class="hero-skill-confirm-box" style="max-width:min(560px,92vw)">
+    <h3>♟ 神之一手</h3>
+    <p>秘密預測一名玩家下一次行動。現在測試版門檻：分數大於等於 ${SHINDO_TARGET_MIN_POINTS}。</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${targets.map(({p,i})=>`<div style="padding:9px 10px;border-radius:8px;background:rgba(255,255,255,.055);border:1px solid rgba(255,224,138,.16)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
+          <strong style="color:${htmlEsc(p.color || '#ffe08a')}">${htmlEsc(p.name)}</strong>
+          <span style="font-size:.72em;color:#ffe08a">${p.points || 0} 分</span>
+        </div>
+        <div class="btn-row" style="gap:6px;flex-wrap:wrap">
+          ${Object.entries(SHINDO_ACTION_LABELS).map(([action,label])=>`<button class="btn-action" style="font-size:.74em;padding:7px 10px" onclick="confirmShindoPrediction(${playerIdx},${i},'${action}')">${label}</button>`).join('')}
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="btn-row" style="margin-top:14px"><button class="btn-end" onclick="document.getElementById('hero-skill-confirm').remove()">取消</button></div>
+  </div>`;
+  document.body.appendChild(box);
+}
+
+window.confirmShindoPrediction = function(playerIdx, targetIdx, action) {
+  if (!canUseShindoSkill(playerIdx)) { toast(shindoSkillBlockMessage(playerIdx)); return; }
+  if (!SHINDO_ACTION_LABELS[action]) { toast('♟ 找不到預測行動'); return; }
+  const target = G.players[targetIdx];
+  if (!target || targetIdx === playerIdx || (target.points || 0) < SHINDO_TARGET_MIN_POINTS) {
+    toast(shindoSkillBlockMessage(playerIdx));
+    return;
+  }
+  document.getElementById('hero-skill-confirm')?.remove();
+  runConfirmedHeroSkill(playerIdx, () => doShindoPrediction(playerIdx, targetIdx, action), {
+    showcaseFile:'shindo_神之一手.png',
+    rightImagePath:'heros/第二段動畫右.jpg'
+  });
+};
+
+function doShindoPrediction(playerIdx, targetIdx, action) {
+  const actor = G.players[playerIdx];
+  const target = G.players[targetIdx];
+  if (!actor || !target || !SHINDO_ACTION_LABELS[action]) return;
+  G.heroShindoPrediction = {
+    id:makeRemoteAnimId('shindo-predict'),
+    actorIdx:playerIdx,
+    actorSerial:actor.serial || actor.name || '',
+    targetIdx,
+    targetSerial:target.serial || target.name || '',
+    action,
+    turnCount:G.turnCount || 0
+  };
+  addLog('skill', `發動「神之一手」，佐為開始預測 ${target.name} 的下一步（內容保密）`, playerIdx);
+  toast(`♟ 佐為已開始預測 ${target.name} 的下一步`);
+  renderAndSyncSkill();
 }
 
 // ── Hero skill activation ─────────────────────────────────────────────────
@@ -7041,6 +7208,9 @@ function activateHeroSkill(playerIdx) {
   if (hero.id === 15 && !canUseShiyuanSkill(playerIdx)) {
     toast(shiyuanSkillBlockMessage(playerIdx)); return;
   }
+  if (hero.id === 16 && !canUseShindoSkill(playerIdx)) {
+    toast(shindoSkillBlockMessage(playerIdx)); return;
+  }
 
   // Satoshi: show target picker first, skip standard confirm
   if (hero.id === 7) { showGemSwapTargetPicker(playerIdx); return; }
@@ -7051,6 +7221,7 @@ function activateHeroSkill(playerIdx) {
   if (hero.id === 13) { showTierShufflePicker(playerIdx); return; }
   if (hero.id === 14) { showDVExpectedAnswerPicker(playerIdx); return; }
   if (hero.id === 15) { showShiyuanTargetPicker(playerIdx); return; }
+  if (hero.id === 16) { showShindoPredictionPicker(playerIdx); return; }
 
   // Show confirm
   const box = document.createElement('div');
@@ -7209,13 +7380,20 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
   if (!overlay) { onDone(); return; }
 
   const fullSrc     = imgAsset(`heros/${hero.key}_full.jpg`);
-  const avatarSrc   = heroImgSrc(hero.key);
+  const avatarSrc   = heroAnimationImgSrc(hero);
   const showcaseFile = options.showcaseFile || HERO_SHOWCASE[hero.key];
   const showcaseSrc  = showcaseFile ? imgAsset(`heros/skill_showcases/${showcaseFile}`) : '';
-  const showCutout   = options.hideCutout !== true && !options.cutoutFile;
-  const cutoutFile   = showCutout ? (HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`) : '';
-  const cutoutSrc    = cutoutFile ? imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`) : '';
+  const showCutout   = options.hideCutout !== true && (!!options.rightImagePath || !options.cutoutFile);
+  const cutoutFile   = showCutout && !options.rightImagePath ? (HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`) : '';
+  const cutoutSrc    = options.rightImagePath ? imgAsset(options.rightImagePath) : (cutoutFile ? imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`) : '');
   warmAssetUrls([showcaseSrc, cutoutSrc, avatarSrc], {priority:'high', decode:true});
+  if (hero.key === 'shindo') {
+    const avatar = document.querySelector(`.pi-card[data-player="${playerIdx}"] .pi-hero-avatar`);
+    if (avatar) {
+      avatar.src = avatarSrc;
+      avatar.alt = heroDisplayName(hero, playerIdx);
+    }
+  }
 
   overlay.innerHTML = `
     <div class="hero-overlay-bg"></div>
@@ -7326,6 +7504,9 @@ function executeHeroSkill(hero, playerIdx) {
       break;
     case 14: // 離婚辦事處書記官 你還愛我嗎 — handled by picker
       showDVExpectedAnswerPicker(playerIdx);
+      break;
+    case 16: // 進藤光 神之一手 — handled by picker
+      showShindoPredictionPicker(playerIdx);
       break;
     default:
       addLog('skill', `發動「${hero.skill}」`, playerIdx);
@@ -8317,7 +8498,7 @@ function _buildG(names, serials=[], opts={}) {
     ui:{pending:{w:0,u:0,g:0,r:0,k:0}, acted:false, pendCard:null, pendGold:false, muskActive:false, muskCardDone:false, muskGemDone:false},
     log:[],
     aiTelemetry:[],
-    heroes:null, heroUsed:null, heroBuffett:null, heroDVPrompt:null, heroActedThisTurn:null,
+    heroes:null, heroUsed:null, heroBuffett:null, heroDVPrompt:null, heroShindoPrediction:null, heroShindoFailed:{}, heroShindoNotice:null, heroActedThisTurn:null,
     virtualGemSupply:{},
     openingDealt:false,
   };
@@ -8528,6 +8709,7 @@ function makeActionSnapshot(pl, pending={}) {
     gems:{...pl.gems},
     bank:{...G.bank},
     pending:{...pending},
+    turnActions:[...((G.ui && G.ui.turnActions) || [])],
     muskCardDone:!!(G.ui && G.ui.muskCardDone),
     muskGemDone:!!(G.ui && G.ui.muskGemDone),
     reserved:[...pl.reserved],
@@ -8648,6 +8830,37 @@ function canBuy(pl,card) {
   CI.forEach(c=>need+=Math.max(0,(e[c]||0)-(pl.gems[c]||0)));
   return need<=(pl.gems.gold||0);
 }
+
+function hasShindoInsight() {
+  const idx = activeViewIdx();
+  const hero = idx >= 0 ? getPlayerHero(idx) : null;
+  return !!(hero && hero.key === 'shindo');
+}
+
+function shindoCompletionRate(pl, card) {
+  if (!pl || !card) return 0;
+  const e = effCost(pl, card);
+  const rawRequired = CI.reduce((sum,c)=>sum + ((card.cost && card.cost[c]) || 0), 0);
+  if (rawRequired <= 0) return 100;
+  let covered = 0;
+  let short = 0;
+  CI.forEach(c => {
+    const need = e[c] || 0;
+    const have = Math.max(0, Number(pl.gems && pl.gems[c]) || 0);
+    covered += Math.min(need, have);
+    short += Math.max(0, need - have);
+  });
+  covered += Math.min(short, Math.max(0, Number(pl.gems && pl.gems.gold) || 0));
+  return Math.max(0, Math.min(100, Math.round(covered / rawRequired * 100)));
+}
+
+function shindoInsightHtml(card) {
+  if (!hasShindoInsight() || !G || !G.players || !card) return '';
+  return `<div class="shindo-insight" title="進藤光：寶石代幣完成率（含金幣萬能抵扣）">${
+    G.players.map((pl,i)=>`<div class="shindo-insight-row" style="color:${htmlEsc(pl.color || '#ffe08a')}"><b>P${i+1}</b><span>${shindoCompletionRate(pl, card)}%</span></div>`).join('')
+  }</div>`;
+}
+
 function hasMuskableCard(playerIdx) {
   const pl=G.players[playerIdx];
   if (!pl) return false;
@@ -9134,6 +9347,7 @@ function execBuy(card, fromRes) {
   const gained = (card.pts||0) + (_passiveHero ? 1 : 0);
   const passiveText = _passiveHero ? `；${_passiveHero.skill}公開觸發，額外+1分` : '';
   addLog('buy', `${fromRes?'從預留牌購買':'購買'} ${cardLogName(card)}，支付 ${gemListLog(paid)||'免費'}，獲得${gained}分${passiveText}`, G.cur);
+  rememberTurnAction('buy');
   if (fromRes){ pl.reserved=pl.reserved.filter(c=>c.id!==card.id); }
   const muskBuy = G.ui.muskActive && !G.ui.muskCardDone;
   if (muskBuy) { G.ui.muskCardDone = true; }
@@ -9187,6 +9401,7 @@ function execReserve(card, tier, bi) {
     ? `預留 ${cardLogName(card)}`
     : `從${tierLabel(card.tier)}牌堆預留1張牌`;
   addLog('reserve', `${reserveText}，${gotGold?`拿取${gemToken('gold',1)}`:`未拿到${gemIconToken('gold')}`}`, G.cur);
+  rememberTurnAction('reserve');
   closeM('m-card');
   const reserveNeedsReturn = gsum(pl.gems)>10;
   const liveAnim = markCardActionAnim('reserve', G.cur, card, animSource, refillPreview);
@@ -9462,6 +9677,7 @@ function normaliseFollowHeroOptions(options={}) {
   const out = {};
   if (options && typeof options.showcaseFile === 'string') out.showcaseFile = options.showcaseFile;
   if (options && typeof options.cutoutFile === 'string') out.cutoutFile = options.cutoutFile;
+  if (options && typeof options.rightImagePath === 'string') out.rightImagePath = options.rightImagePath;
   return out;
 }
 
@@ -9655,6 +9871,70 @@ function playSyncedRemoteAnim(anim) {
   });
 }
 
+function rememberTurnAction(type) {
+  if (!G || !G.ui || !type) return;
+  G.ui.turnActions = Array.isArray(G.ui.turnActions) ? G.ui.turnActions : [];
+  if (!G.ui.turnActions.includes(type)) G.ui.turnActions.push(type);
+}
+
+function shindoPredictionPlayerIndex(pred, fieldIdx, fieldSerial) {
+  if (!pred || !G || !G.players) return -1;
+  const serial = normaliseSerial(pred[fieldSerial] || '');
+  if (serial) {
+    const idx = G.players.findIndex(p => normaliseSerial(p && (p.serial || p.name)) === serial);
+    if (idx >= 0) return idx;
+  }
+  const idx = Number(pred[fieldIdx]);
+  return Number.isFinite(idx) && G.players[idx] ? idx : -1;
+}
+
+function showShindoNotice(msg, id=null) {
+  const key = id || msg;
+  if (key && _lastShindoNoticeId === key) return;
+  if (key) _lastShindoNoticeId = key;
+  toast(msg, 5000);
+}
+
+function syncShindoNotice() {
+  const notice = G && G.heroShindoNotice;
+  if (!notice || !notice.msg) return;
+  showShindoNotice(notice.msg, notice.id || notice.ts || notice.msg);
+}
+
+function announceShindoPrediction(msg) {
+  const notice = {id:makeRemoteAnimId('shindo-notice'), msg, ts:Date.now()};
+  G.heroShindoNotice = notice;
+  showShindoNotice(msg, notice.id);
+}
+
+function resolveShindoPredictionForTurn(playerIdx, observedTypes=null) {
+  const pred = G && G.heroShindoPrediction;
+  if (!pred) return false;
+  const targetIdx = shindoPredictionPlayerIndex(pred, 'targetIdx', 'targetSerial');
+  if (targetIdx !== playerIdx) return false;
+  const actorIdx = shindoPredictionPlayerIndex(pred, 'actorIdx', 'actorSerial');
+  const actor = G.players && G.players[actorIdx];
+  const types = Array.isArray(observedTypes)
+    ? observedTypes
+    : (Array.isArray(G.ui && G.ui.turnActions) ? G.ui.turnActions : []);
+  const success = !!(pred.action && types.includes(pred.action));
+  G.heroShindoPrediction = null;
+
+  if (!actor) return false;
+  if (success) {
+    actor.points = (actor.points || 0) + 1;
+    if (!G.lastRound && actor.points >= 15) { G.lastRound = true; G.lastStarter = actorIdx; }
+    addLog('skill', `佐為預測成功，進藤光獲得1分`, actorIdx);
+    announceShindoPrediction('佐為預測成功，進藤光獲得1分');
+  } else {
+    G.heroShindoFailed = G.heroShindoFailed || {};
+    G.heroShindoFailed[actorIdx] = true;
+    addLog('skill', `佐為預測失敗，回歸初段棋手盡疼胱`, actorIdx);
+    announceShindoPrediction('佐為預測失敗，回歸初段棋手盡疼胱');
+  }
+  return true;
+}
+
 // ── Take gems ─────────────────────────────────────────────────────────────
 // [Change 4] Block confirmation when player takes fewer gems than possible
 function execTakeGems() {
@@ -9687,6 +9967,7 @@ function execTakeGems() {
     CI.forEach(c=>{ pl.gems[c]=(pl.gems[c]||0)+(take[c]||0); G.bank[c]-=(take[c]||0); });
     G.ui.pending={w:0,u:0,g:0,r:0,k:0};
     addLog('take', `拿取 ${gemListLog(take)}`, G.cur);
+    rememberTurnAction('take');
     if (gsum(pl.gems)>10){ render(); showRetMod(muskTake ? {mode:'musk-gem'} : {}); }
     else if (muskTake) { finishMuskGemStep('寶石'); }
     else { afterAct(); render(); }
@@ -9694,6 +9975,7 @@ function execTakeGems() {
 }
 
 function afterAct() {
+  resolveShindoPredictionForTurn(G.cur);
   clearActionSnapshot();
   deactivateAllZones();
   checkMissions();
@@ -9924,6 +10206,7 @@ function autoTakeGemsOnTimeout(turnCtx=currentTurnContext()) {
       return;
     }
     addLog('take', `時間到，系統自動拿取 ${got}`, playerIdx);
+    rememberTurnAction('take');
     toast(`⌛ ${livePl.name} 時間到，系統自動拿取 ${got}`);
     afterAct();
     render();
@@ -9944,10 +10227,13 @@ function skipCurrentTurn(reason='timeout', turnCtx=null) {
       pl.gems=snap.gems; G.bank=snap.bank;
       pl.reserved=snap.reserved;
       G.board=snap.board; G.decks=snap.decks;
+      G.ui.turnActions=[...(snap.turnActions || [])];
       if (snap.log) G.log=snap.log;
     }
     clearActionSnapshot();
   }
+  rememberTurnAction('skip');
+  resolveShindoPredictionForTurn(G.cur);
   addLog('skip', label, G.cur);
   toast(`⌛ ${pl.name} ${label}`);
   closeTimeoutActionPanels();
@@ -10076,6 +10362,7 @@ function takeGold() {
     pl.gems.gold=(pl.gems.gold||0)+1;
     G.ui.pendGold=false;
     addLog('take', `拿取 ${gemToken('gold',1)}`, G.cur);
+    rememberTurnAction('take');
     if (muskTake) finishMuskGemStep('金幣');
     else afterAct();
   });
@@ -10092,11 +10379,13 @@ function tryEnd() {
       toast('請先確認或清除已選的寶石');
       return;
     }
+    resolveShindoPredictionForTurn(G.cur);
     checkMissions();
     advanceTurn();
     return;
   }
   if (!G.ui.acted){ toast('請先執行行動（取寶石、購買或預留）'); return; }
+  resolveShindoPredictionForTurn(G.cur);
   checkMissions();
   advanceTurn();
 }
@@ -11400,6 +11689,7 @@ function aiExecBuy(action) {
   if (action.fromRes) pl.reserved = pl.reserved.filter(c => c.id !== card.id);
   else fillBoard(card);
   addLog('buy', `AI 購買 ${cardLogName(card)}，支付 ${gemListLog(paid) || '免費'}${passiveText}`, G.cur);
+  rememberTurnAction('buy');
   G.ui.acted = true;
   afterAct();
   return true;
@@ -11414,6 +11704,7 @@ function aiExecReserve(action) {
   if (gotGold) { pl.gems.gold = (pl.gems.gold || 0) + 1; G.bank.gold--; }
   fillBoard(card);
   addLog('reserve', `AI 預留 ${cardLogName(card)}，${gotGold ? `拿取${gemToken('gold',1)}` : `未拿到${gemIconToken('gold')}`}`, G.cur);
+  rememberTurnAction('reserve');
   aiAutoReturnExcess(G.cur);
   G.ui.acted = true;
   afterAct();
@@ -11433,6 +11724,7 @@ function aiExecTake(selection) {
     G.bank[c] -= take[c];
   });
   addLog('take', `AI 拿取 ${gemListLog(take)}`, G.cur);
+  rememberTurnAction('take');
   aiAutoReturnExcess(G.cur);
   G.ui.acted = true;
   afterAct();
@@ -11677,7 +11969,7 @@ function rCards() {
     G.board[t].forEach((card,bi)=>{
       if (!card){ h+=`<div class="card-empty-slot" data-tier="${t}" data-slot="${bi}"></div>`; return; }
       const face = boardCardFace(card, pl);
-      h+=`<div class="dev-card t${t} ${face.stateClass} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" draggable="true" ondragstart="dragChatCard(event,${card.id})" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">${face.html}</div>`;
+      h+=`<div class="dev-card t${t} ${face.stateClass} ${cardArtClass(card)}" style="${cardBgStyle(card)}" data-card-id="${card.id}" data-tier="${t}" data-slot="${bi}" draggable="true" ondragstart="dragChatCard(event,${card.id})" onmouseenter="hoverCard(${t},${bi})" onmouseleave="hoverCard(null,null)" onclick="openBoardCard(${card.id},${t},${bi})">${face.html}${shindoInsightHtml(card)}</div>`;
     });
     h+='</div>';
   });
@@ -11761,7 +12053,8 @@ function rPlayers() {
       (hero.id === 7 && !G.players.some((op,oi) => oi!==i && gsum(op.gems)<=4)) ||
       (hero.id === 8 && !G.players.some((op,oi) => oi!==i && coloredGemSum(op.gems)>0)) ||
       (hero.id === 14 && !canUseDVSkill(i)) ||
-      (hero.id === 15 && !canUseShiyuanSkill(i))
+      (hero.id === 15 && !canUseShiyuanSkill(i)) ||
+      (hero.id === 16 && !canUseShindoSkill(i))
     );
     const canControlThisPlayer = !isSpectator() && (!onlineMode || canControlPlayerIdx(i));
     const canUseSkill = canControlThisPlayer && hero && !hero.passive && cur && usesLeft > 0 && !alreadyActedHero && !skillBlocked;
@@ -11774,11 +12067,11 @@ function rPlayers() {
       ? `<span class="pi-hero-order-badge order-${actionOrder}" title="行動順序 ${actionOrder}">${actionOrder}</span>`
       : '';
     const heroAvatarEl = hero ? `
-      <img class="pi-hero-avatar${avatarExtraClass}" src="${heroImgSrc(hero.key)}" ${avatarOnclick}
-        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(hero.name)}">
+      <img class="pi-hero-avatar${avatarExtraClass}" src="${heroPlayerImgSrc(hero, i)}" ${avatarOnclick}
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="${htmlEsc(heroDisplayName(hero, i))}">
       <span class="pi-hero-avatar-fallback${avatarExtraClass}" style="display:none;" ${avatarOnclick}>${HERO_EMOJI[hero.key]||'👤'}</span>
       ${orderBadge}
-      <div class="pi-hero-tooltip">${heroSkillDetailHtml(hero, usesLeft)}</div>
+      <div class="pi-hero-tooltip">${heroSkillDetailHtml(hero, usesLeft, i)}</div>
     ` : '';
     const memberH = isCoopGame() ? `<div class="team-member-list">${
       (p.members || []).map(member => {
@@ -12012,6 +12305,7 @@ function cancelRet() {
   G.board=snap.board; G.decks=snap.decks;
   if (snap.log) G.log=snap.log;
   G.ui.pending=snap.pending; G.ui.acted=false;
+  G.ui.turnActions=[...(snap.turnActions || [])];
   G.ui.pendCard=null; G.ui.pendGold=false;
   if (G.ui.muskActive) {
     G.ui.muskCardDone=!!snap.muskCardDone;
@@ -12171,7 +12465,7 @@ function showOverMod() {
     const heroEmoji = hero ? (HERO_EMOJI[hero.key] || '👤') : '👤';
     const avatarHtml = hero
       ? `<div class="over-avatar-wrap" style="color:${htmlEsc(p.color)}">
-          <img class="over-avatar" src="${heroImgSrc(hero.key)}" alt="${htmlEsc(hero.name)}"
+          <img class="over-avatar" src="${heroPlayerImgSrc(hero, idx)}" alt="${htmlEsc(heroDisplayName(hero, idx))}"
             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
           <span class="over-avatar-fallback">${heroEmoji}</span>
         </div>`
@@ -12184,7 +12478,7 @@ function showOverMod() {
       <div class="over-info">
         <div class="over-player" style="color:${htmlEsc(p.color)}">${isW?'🏆 ':''}${htmlEsc(p.name)}</div>
         ${memberNames}
-        <div class="over-hero">${hero?htmlEsc(hero.name):'未選角色'}</div>
+        <div class="over-hero">${hero?htmlEsc(heroDisplayName(hero, idx)):'未選角色'}</div>
         <div class="over-meta">
           <span>牌 ${p.cards.length} 張</span>
           <span>任務 ${claimed} 個</span>
@@ -12229,6 +12523,7 @@ window.showSkillBlockReason = function(heroId, playerIdx) {
     8: `🎯 沒有持有五色寶石的對手可做空`,
     14: dvSkillBlockMessage(playerIdx),
     15: shiyuanSkillBlockMessage(playerIdx),
+    16: shindoSkillBlockMessage(playerIdx),
   };
   toast(msgs[heroId] || '⚠ 目前條件不足，技能無法發動');
 };
@@ -12851,10 +13146,10 @@ function hideResTooltip() {
   document.getElementById('res-tip').style.display = 'none';
 }
 
-function toast(msg) {
+function toast(msg, duration=2800) {
   const el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('on');
-  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('on'),2800);
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('on'),duration);
 }
 </script>
 
