@@ -6310,6 +6310,19 @@ const MISSION_DB = [
 // ── Parse data ───────────────────────────────────────────────────────────
 let _cid = 0;
 const ALL_CARDS  = RAW.map(r => ({id:_cid++, tier:r[0], pts:r[1], bonus:CI[r[2]], cost:{w:r[3],u:r[4],g:r[5],r:r[6],k:r[7]}}));
+function cardRawGemCost(card) {
+  if (!card || !card.cost) return 0;
+  return CI.reduce((sum,c) => sum + Math.max(0, Number(card.cost[c]) || 0), 0);
+}
+const CARD_MIN_COST_BY_POINTS = {};
+const CARD_MIN_COST_BY_TIER_POINTS = {};
+ALL_CARDS.forEach(card => {
+  const pts = Number(card.pts) || 0;
+  const rawCost = cardRawGemCost(card);
+  const tierKey = `${card.tier || 0}:${pts}`;
+  CARD_MIN_COST_BY_POINTS[pts] = Math.min(CARD_MIN_COST_BY_POINTS[pts] ?? rawCost, rawCost);
+  CARD_MIN_COST_BY_TIER_POINTS[tierKey] = Math.min(CARD_MIN_COST_BY_TIER_POINTS[tierKey] ?? rawCost, rawCost);
+});
 const CARD_ART_VERSION = 'gem-webp-fast-v2';
 const GEM_CARD_ART = {};
 const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
@@ -11250,14 +11263,16 @@ function aiReserveActions(pl, plan=null) {
         (score.completesMission ? 130 : 0) +
         (score.winSoon ? 110 : 0) +
         routePressure * 0.65 +
-        (card.pts || 0) * 36) * (learn.reserve || 1) -
+        (card.pts || 0) * 36 +
+        Math.max(-90, score.cpScore || 0) * 0.32) * (learn.reserve || 1) -
       missing * 32 -
       Math.max(0, turns - 2) * 48 -
       reservedPenalty;
-    const ownRouteReserve = routeFit === 0 && turns <= 1 && reserveUrgency > 520 / Math.max(0.55, learn.reserve || 1) && reservedCount === 0 && (score.winSoon || score.completesMission || (card.pts || 0) >= 4);
+    const cpUseful = (score.cpScore || 0) >= -35 || score.winSoon || score.completesMission;
+    const ownRouteReserve = routeFit === 0 && turns <= 1 && reserveUrgency > 520 / Math.max(0.55, learn.reserve || 1) && reservedCount === 0 && cpUseful && (score.winSoon || score.completesMission || (card.pts || 0) >= 4);
     const blockGate = Math.max(0.72, learn.block || 1);
     const tacticalBlock = blockInfo.critical || (blockInfo.tenpai && reserveUrgency > 620 / blockGate) || (blockInfo.mission && reserveUrgency > 760 / blockGate) || (blockInfo.route && reserveUrgency > 980 / blockGate);
-    const tacticalScore = reservedCount === 0 && turns <= 1 && ((score.winSoon && ((card.pts || 0) >= 3 || score.completesMission)) || (score.completesMission && (card.pts || 0) >= 2) || ((card.pts || 0) >= 4 && score.value > 900));
+    const tacticalScore = reservedCount === 0 && turns <= 1 && cpUseful && ((score.winSoon && ((card.pts || 0) >= 3 || score.completesMission)) || (score.completesMission && (card.pts || 0) >= 2) || ((card.pts || 0) >= 4 && score.value > 900));
     if (tacticalBlock || tacticalScore || ownRouteReserve) {
       actions.push({
         type:'reserve', card, t, bi,
@@ -11329,12 +11344,13 @@ function aiEvaluateTake(pl, selection, plan=null) {
     const beforeMissing = aiCardMissing(pl, t.card).goldAdjusted;
     const afterMissing = aiCardMissing(after, t.card).goldAdjusted;
     const progress = Math.max(0, beforeMissing - afterMissing);
+    const cpMul = 1 + aiClamp((t.cpScore || 0) / 520, -0.32, 0.74);
     if (progress > 0) {
       const closeMul = beforeMissing <= 3 ? 1.45 : beforeMissing <= 5 ? 1.1 : 0.82;
-      value += progress * Math.max(30, 76 - idx * 10) * closeMul * (learn.take || 1);
+      value += progress * Math.max(30, 76 - idx * 10) * closeMul * cpMul * (learn.take || 1);
     }
     if (!canBuy(pl, t.card) && canBuy(after, t.card)) {
-      value += (170 + (t.projectedPts || 0) * 62 * (learn.points || 1) + (t.missionGain || 0) * 76 * (learn.missions || 1)) * (learn.take || 1);
+      value += (170 + (t.projectedPts || 0) * 62 * (learn.points || 1) + (t.missionGain || 0) * 76 * (learn.missions || 1) + Math.max(-40, t.cpScore || 0) * 0.38) * cpMul * (learn.take || 1);
     }
   });
 
@@ -11381,7 +11397,7 @@ function aiTargetCards(pl) {
       const missing = aiCardMissing(pl, item.card);
       return {...item, ...score, missing};
     })
-    .sort((a,b) => (b.value - b.missing.goldAdjusted * 24) - (a.value - a.missing.goldAdjusted * 24));
+    .sort((a,b) => (b.value + (b.cpScore || 0) * 0.22 - b.missing.goldAdjusted * 24) - (a.value + (a.cpScore || 0) * 0.22 - a.missing.goldAdjusted * 24));
 }
 
 function aiBestTargetCard(pl) {
@@ -11472,6 +11488,7 @@ function aiRouteCardValue(pl, card, playerIdx, depth=0) {
   const missionPts = aiCompletedMissionPoints(pl, card, playerIdx);
   const missing = aiCardMissing(pl, card);
   const turns = aiTurnsToBuy(pl, card);
+  const cp = aiCardCpStats(pl, card, playerIdx);
   const demand = aiColorDemand(pl);
   const missionNeed = aiMissionBonusNeed(pl, card.bonus);
   const winBonus = ((pl.points || 0) + projectedPts + missionPts >= 15) ? 2600 : 0;
@@ -11485,6 +11502,7 @@ function aiRouteCardValue(pl, card, playerIdx, depth=0) {
     missionNeed * 2.4 * (learn.missions || 1) +
     Math.min(180, (demand[card.bonus] || 0) * 2.1) * (learn.engine || 1) +
     earlyEngine * (learn.engine || 1) +
+    cp.score * (projectedPts > 0 ? Math.max(0.8, learn.points || 1) : Math.max(0.62, learn.engine || 1)) +
     (card.tier || 1) * 22 -
     missing.goldAdjusted * 58 -
     missing.total * 13 -
@@ -11530,12 +11548,15 @@ function aiFallbackGemColors(pl, avail) {
 
 function aiColorDemand(pl) {
   const demand = Object.fromEntries(CI.map(c => [c, 0]));
+  const playerIdx = G.players.indexOf(pl);
   const addCardDemand = (card, weight) => {
     if (!card) return;
+    const cp = aiCardCpStats(pl, card, playerIdx);
+    const cpWeight = 0.66 + aiClamp((cp.score + 140) / 420, 0, 1.05);
     CI.forEach(c => {
       const rawNeed = Math.max(0, (card.cost && card.cost[c]) || 0);
       const gap = Math.max(0, rawNeed - (pl.bonuses[c] || 0));
-      demand[c] += gap * weight;
+      demand[c] += gap * weight * cpWeight;
     });
   };
   (pl.reserved || []).forEach(card => addCardDemand(card, 5.5));
@@ -11582,15 +11603,71 @@ function aiGemKeepScores(pl, preferred=null) {
   const target = preferred || aiBestTargetCard(pl);
   if (target?.card) {
     const missing = aiCardMissing(pl, target.card);
+    const cp = aiCardCpStats(pl, target.card, G.players.indexOf(pl));
+    const cpNeedBoost = 1 + aiClamp(cp.score / 420, -0.28, 0.72);
     CI.forEach(c => {
-      scores[c] += (missing.shorts[c] || 0) * 24;
-      scores[c] += ((target.card.cost && target.card.cost[c]) || 0) * 3;
+      scores[c] += (missing.shorts[c] || 0) * 24 * cpNeedBoost;
+      scores[c] += ((target.card.cost && target.card.cost[c]) || 0) * 3 * cpNeedBoost;
     });
     scores.gold = 58 + missing.goldAdjusted * 22 + (target.winNow ? 999 : 0);
   } else {
     scores.gold = 42;
   }
   return scores;
+}
+
+function aiClamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function aiCardCpStats(pl, card, playerIdx = G.players.indexOf(pl)) {
+  if (!card) return {score:0, ratio:0, pointDensity:0, rawCost:0, minCost:0, tierMinCost:0, scoringPts:0};
+  const rawCost = Math.max(1, cardRawGemCost(card));
+  const printedPts = Math.max(0, Number(card.pts) || 0);
+  const projectedPts = Number.isFinite(playerIdx) && playerIdx >= 0 ? projectedCardPoints(playerIdx, card) : printedPts;
+  const missionPts = pl ? aiCompletedMissionPoints(pl, card, playerIdx) : 0;
+  const scoringPts = Math.max(0, projectedPts + missionPts * 0.72);
+  const refPts = printedPts > 0 ? printedPts : Math.max(0, Math.min(5, Math.round(scoringPts)));
+  const minCost = Math.max(1, CARD_MIN_COST_BY_POINTS[refPts] ?? CARD_MIN_COST_BY_POINTS[printedPts] ?? rawCost);
+  const tierMinCost = Math.max(1, CARD_MIN_COST_BY_TIER_POINTS[`${card.tier || 0}:${printedPts}`] ?? minCost);
+  const missing = pl ? aiCardMissing(pl, card) : {total:rawCost, goldAdjusted:rawCost};
+  const turns = pl ? aiTurnsToBuy(pl, card) : 3;
+  const bestDensity = refPts > 0 ? refPts / minCost : 0;
+  const pointDensity = scoringPts / rawCost;
+  const ratio = bestDensity > 0 ? pointDensity / bestDensity : (CARD_MIN_COST_BY_POINTS[0] || 3) / rawCost;
+  const tierRatio = printedPts > 0 ? tierMinCost / rawCost : ratio;
+  const tempoDensity = scoringPts > 0 ? scoringPts / Math.max(1, missing.goldAdjusted + 1 + turns * 0.7) : 0;
+  let score;
+  if (scoringPts > 0) {
+    score =
+      (ratio - 0.72) * 245 +
+      (tierRatio - 0.92) * 70 +
+      aiClamp(pointDensity * 360, 0, 160) +
+      aiClamp(tempoDensity * 115, 0, 150) -
+      Math.max(0, rawCost - minCost) * 13 -
+      Math.max(0, turns - 1) * 18;
+    if (ratio >= 0.96) score += 92;
+    else if (ratio >= 0.82) score += 38;
+    else if (ratio < 0.55) score -= 126;
+  } else {
+    const engineRatio = (CARD_MIN_COST_BY_POINTS[0] || 3) / rawCost;
+    score = (engineRatio - 0.68) * 94 - Math.max(0, rawCost - (CARD_MIN_COST_BY_POINTS[0] || 3)) * 10;
+    if ((card.tier || 1) === 1 && rawCost <= (CARD_MIN_COST_BY_POINTS[0] || 3) + 1) score += 42;
+  }
+  if (pl && canBuy(pl, card)) score += 26;
+  score -= Math.max(0, missing.goldAdjusted) * 8;
+  return {
+    score:aiClamp(score, -260, 360),
+    ratio,
+    tierRatio,
+    pointDensity,
+    tempoDensity,
+    rawCost,
+    minCost,
+    tierMinCost,
+    scoringPts,
+    turns,
+  };
 }
 
 function aiCardMissing(pl, card) {
@@ -11616,7 +11693,8 @@ function aiCardScore(pl, card, opts={}) {
   const learn = aiLearningWeights();
   const playerIdx = Number.isFinite(opts.playerIdx) ? opts.playerIdx : G.players.indexOf(pl);
   const projectedPts = Number.isFinite(playerIdx) && playerIdx >= 0 ? projectedCardPoints(playerIdx, card) : (card.pts || 0);
-  const totalCost = CI.reduce((sum,c) => sum + ((card.cost && card.cost[c]) || 0), 0);
+  const totalCost = cardRawGemCost(card);
+  const cp = aiCardCpStats(pl, card, playerIdx);
   const missing = aiCardMissing(pl, card);
   const turns = aiTurnsToBuy(pl, card);
   const missionGain = aiMissionGain(pl, card);
@@ -11642,6 +11720,7 @@ function aiCardScore(pl, card, opts={}) {
     bonusScarcity * (learn.engine || 1) +
     reservedFit * (learn.engine || 1) +
     engineCard * (learn.engine || 1) +
+    cp.score * (projectedPts > 0 ? Math.max(0.75, learn.points || 1) : Math.max(0.65, learn.engine || 1)) +
     affordability +
     (card.tier || 1) * 10 +
     Math.min(620, opponentThreat * 0.35 * (learn.block || 1)) +
@@ -11650,7 +11729,7 @@ function aiCardScore(pl, card, opts={}) {
     missing.goldAdjusted * 48 -
     missing.total * 10 -
     Math.max(0, turns - 2) * 62 * (learn.tempo || 1);
-  return {value, missionGain, projectedPts, winNow, winSoon, completesMission:completedMissionPts > 0, routePressure, turns};
+  return {value, missionGain, projectedPts, winNow, winSoon, completesMission:completedMissionPts > 0, routePressure, turns, cpScore:cp.score, cpRatio:cp.ratio, pointDensity:cp.pointDensity};
 }
 
 function aiMissionGain(pl, card) {
@@ -11793,7 +11872,8 @@ function aiGemCoverageValue(pl, after, selection, plan=null) {
     const routeIdx = aiCardRouteIndex(item.card, plan);
     const routeBonus = routeIdx >= 0 ? 1.55 - routeIdx * 0.16 : 1;
     const missionBonus = item.completesMission ? 1.45 : 1;
-    value += progress * Math.max(18, 52 - idx * 4) * routeBonus * missionBonus;
+    const cpBonus = 1 + aiClamp((item.cpScore || 0) / 520, -0.28, 0.72);
+    value += progress * Math.max(18, 52 - idx * 4) * routeBonus * missionBonus * cpBonus;
   });
   const demand = aiColorDemand(pl);
   CI.forEach(c => {
@@ -11812,11 +11892,12 @@ function aiOpponentRoutePressure(card, selfIdx) {
     const projectedPts = projectedCardPoints(idx, card);
     const missionPts = aiCompletedMissionPoints(op, card, idx);
     const missionNeed = aiMissionBonusNeed(op, card.bonus);
+    const cp = aiCardCpStats(op, card, idx);
     const close = Math.max(0, 220 - turns * 45 - missing.goldAdjusted * 22);
     const pointPressure = (op.points || 0) >= 9 ? projectedPts * 80 : projectedPts * 42;
     pressure = Math.max(
       pressure,
-      close + pointPressure + missionPts * 180 + missionNeed * 0.95 + ((op.points || 0) >= 12 ? 90 : 0)
+      close + pointPressure + missionPts * 180 + missionNeed * 0.95 + Math.max(-50, cp.score) * 0.3 + ((op.points || 0) >= 12 ? 90 : 0)
     );
   });
   return pressure;
@@ -11835,6 +11916,7 @@ function aiOpponentIntentValue(card, selfIdx) {
     const coloredHeld = Math.max(1, coloredGemSum(op.gems || {}));
     const fitRatio = effTotal > 0 ? heldForCard / Math.max(1, effTotal) : 1;
     const concentration = heldForCard / coloredHeld;
+    const cp = aiCardCpStats(op, card, idx);
     const points = projectedCardPoints(idx, card);
     const missionPts = aiCompletedMissionPoints(op, card, idx);
     const route = aiStrategicPlan(op);
@@ -11848,6 +11930,7 @@ function aiOpponentIntentValue(card, selfIdx) {
       concentration * 95 +
       points * ((op.points || 0) >= 8 ? 105 : 64) +
       missionPts * 210 +
+      Math.max(-70, cp.score) * 0.38 +
       Math.min(120, (op.points || 0) * 13) +
       (gsum(op.gems || {}) >= 8 ? 70 : 0) +
       (canBuy(op, card) ? 650 : 0) +
@@ -11874,6 +11957,7 @@ function aiOpponentBlockInfo(card, selfIdx) {
     const missing = aiCardMissing(op, card);
     const turns = aiTurnsToBuy(op, card);
     const routeIdx = aiCardRouteIndex(card, aiStrategicPlan(op));
+    const cp = aiCardCpStats(op, card, idx);
     const canNow = canBuy(op, card);
     const winNow = canNow && afterPts >= 15 && pointGain > 0;
     const winSoon = turns <= 2 && afterPts >= 15 && pointGain > 0;
@@ -11891,6 +11975,7 @@ function aiOpponentBlockInfo(card, selfIdx) {
       baseIntent * 0.42 +
       points * 95 +
       missionPts * 220 +
+      Math.max(-80, cp.score) * 0.46 +
       (afterPts >= 12 ? 260 : 0) +
       (routeIdx >= 0 ? 260 - routeIdx * 70 : 0) +
       (canNow ? 240 : 0);
@@ -11914,11 +11999,12 @@ function aiOpponentThreatValue(card, selfIdx) {
     const missing = aiCardMissing(op, card);
     const turns = aiTurnsToBuy(op, card);
     const missionSwing = aiCompletedMissionPoints(op, card, idx);
+    const cp = aiCardCpStats(op, card, idx);
     if (canBuy(op, card)) {
       if ((op.points || 0) + pts >= 15) threat = Math.max(threat, 12000);
-      else threat = Math.max(threat, pts * 135 + missionSwing * 190 + (op.points || 0) * 10 + 90);
+      else threat = Math.max(threat, pts * 135 + missionSwing * 190 + Math.max(-45, cp.score) * 0.28 + (op.points || 0) * 10 + 90);
     } else if (turns <= 1 && missing.goldAdjusted <= 3) {
-      threat = Math.max(threat, pts * 90 + missionSwing * 130 + (op.points || 0) * 7 + 45);
+      threat = Math.max(threat, pts * 90 + missionSwing * 130 + Math.max(-45, cp.score) * 0.2 + (op.points || 0) * 7 + 45);
     }
   });
   return threat;
