@@ -87,8 +87,8 @@ body {
 /* ── Game layout ─────────────────────────────── */
 #screen-game { display:none; flex-direction:column; min-height:100vh; }
 @media (min-width:761px) {
-  body.in-game { overflow:hidden; }
-  #screen-game { height:100vh; height:100dvh; min-height:0; overflow:hidden; }
+  body.in-game { overflow-x:auto; overflow-y:auto; }
+  #screen-game { min-height:100vh; min-height:100dvh; height:auto; overflow:visible; }
 }
 
 /* Header */
@@ -119,10 +119,11 @@ body {
 }
 @media (min-width:761px) {
   #g-main {
+    flex:1 0 auto;
     min-height:0;
     padding:4px 10px 6px;
     overflow-x:auto;
-    overflow-y:hidden;
+    overflow-y:visible;
   }
 }
 
@@ -1606,11 +1607,22 @@ body[data-card-mode="home"] #card-mode-toggle .card-mode-home-icon { display:blo
   max-height:calc(100vh - 48px);
   overflow:auto;
   box-sizing:border-box;
+  position:relative;
   background:linear-gradient(160deg,#1c1c3a,#2a1a3a);
   border:2px solid rgba(140,90,255,.32);
   border-radius:18px;
   padding:24px;
   box-shadow:0 0 60px rgba(100,50,255,.22);
+}
+#m-over .over-download {
+  position:absolute; top:14px; right:14px;
+  border:1px solid rgba(255,204,68,.45); border-radius:8px;
+  padding:7px 11px; cursor:pointer;
+  background:rgba(255,204,68,.12); color:#ffe08a;
+  font-size:.78em; font-weight:900; letter-spacing:.6px;
+}
+#m-over .over-download:hover {
+  background:rgba(255,204,68,.2); border-color:#ffcc44; color:white;
 }
 #m-over .over-title {
   font-size:1.35em; font-weight:900; color:#ffcc44; margin-bottom:12px;
@@ -3339,8 +3351,8 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   </div>
   <div class="wait-list" id="wait-list"></div>
   <button id="wait-ready" class="btn-online" onclick="toggleReady()" style="display:none;margin-top:4px">準備</button>
-  <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="display:none;margin-top:4px">開始遊戲 ✦</button>
-  <button class="btn-online" onclick="backToLobby()">← 離開房間</button>
+  <button id="wait-start" class="btn-online primary" onclick="hostStart()" disabled style="display:none;margin-top:4px">開始遊戲</button>
+  <button class="btn-online" onclick="backToLobby()">離開房間</button>
 </div>
 
 <!-- Setup -->
@@ -3353,7 +3365,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     <button class="btn-num" onclick="setN(4)">4人</button>
   </div>
   <div class="player-inputs" id="pinputs"></div>
-  <button class="btn-start" onclick="startGame()">開始遊戲 ✦</button>
+  <button class="btn-start" onclick="startGame()">開始遊戲</button>
   <button class="btn-online" onclick="backToLobby()">← 返回</button>
   <div style="font-size:.72em;opacity:.38;max-width:300px;text-align:center;line-height:1.6">
     你是玩家1，其餘玩家由 AI 操作。練習模式不計入寶石天梯榜。<br>率先達到 15 聲望點獲勝。
@@ -3588,6 +3600,7 @@ const CARD_ART_SECRET_COMMAND = 'iamotaku';
 const CARD_ART_CLASSIC_COMMAND = 'classic';
 const AI_LEARN_STORAGE_KEY = 'splendor-ai-learning-v1';
 const AI_MATCH_LOG_STORAGE_KEY = 'splendor-ai-match-logs-v1';
+const AI_AUTO_LEARNING_ENABLED = false;
 const AI_LEARN_BATCH_SIZE = 5;
 const AI_MATCH_LOG_LIMIT = 50;
 const TURN_LIMIT_SECONDS = 45;
@@ -11553,6 +11566,7 @@ function aiClampWeight(name, value) {
 }
 
 function aiLearningProfile() {
+  if (!AI_AUTO_LEARNING_ENABLED) return aiLearningDefaults();
   if (_aiLearnProfileCache) return _aiLearnProfileCache;
   const base = aiLearningDefaults();
   try {
@@ -11578,6 +11592,7 @@ function aiLearningWeights() {
 }
 
 function aiSaveLearningProfile(profile) {
+  if (!AI_AUTO_LEARNING_ENABLED) return;
   if (!profile) return;
   Object.keys(profile.weights || {}).forEach(k => { profile.weights[k] = aiClampWeight(k, profile.weights[k]); });
   profile.history = Array.isArray(profile.history) ? profile.history.slice(-24) : [];
@@ -11611,13 +11626,80 @@ function aiSaveMatchLogs(store) {
   try { localStorage.setItem(AI_MATCH_LOG_STORAGE_KEY, JSON.stringify(store)); } catch(e) {}
 }
 
+function aiCompactActionForLog(action) {
+  if (!action) return null;
+  return {
+    type:action.type || 'none',
+    value:Math.round(action.value || 0),
+    card:action.card ? aiExportCardSnapshot(action.card) : null,
+    selection:action.selection ? {...action.selection} : null,
+    routeFit:!!action.routeFit,
+    blockWin:!!action.blockWin,
+    blockUrgent:!!action.blockUrgent,
+    blockTenpai:!!action.blockTenpai,
+    blockMission:!!action.blockMission,
+    blockRoute:!!action.blockRoute,
+    completesMission:!!action.completesMission,
+    winNow:!!action.winNow,
+    winSoon:!!action.winSoon,
+    projectedPts:action.projectedPts || 0,
+    missionGain:Math.round((action.missionGain || 0) * 100) / 100,
+    turns:action.turns ?? null,
+    cpScore:Math.round(action.cpScore || 0)
+  };
+}
+
+function aiTopActionsForLog(actions, limit=5) {
+  return [...(actions || [])]
+    .filter(Boolean)
+    .sort((a,b) => (b.value || 0) - (a.value || 0))
+    .slice(0, limit)
+    .map(aiCompactActionForLog);
+}
+
+function aiDecisionCandidatesForLog(pl, chosen) {
+  try {
+    if (!pl || !G || !G.players || G.players[G.cur] !== pl) return null;
+    const plan = aiStrategicPlan(pl);
+    const buys = aiBuyActions(pl, plan);
+    const reserves = aiReserveActions(pl, plan);
+    const takes = aiTakeActions(pl, plan);
+    const all = [...buys, ...reserves, ...takes]
+      .filter(Boolean)
+      .sort((a,b) => (b.value || 0) - (a.value || 0));
+    const chosenId = chosen?.card?.id ?? null;
+    const chosenRank = all.findIndex(a =>
+      a.type === chosen?.type &&
+      (chosenId == null || a.card?.id === chosenId) &&
+      (!chosen?.selection || JSON.stringify(a.selection || {}) === JSON.stringify(chosen.selection || {}))
+    );
+    return {
+      plan:{
+        score:Math.round(plan?.score || 0),
+        turns:plan?.turns || 0,
+        target:plan?.target ? aiExportCardSnapshot(plan.target) : null,
+        route:(plan?.cards || []).slice(0, 4).map(aiExportCardSnapshot)
+      },
+      chosenRank:chosenRank >= 0 ? chosenRank + 1 : null,
+      topOverall:aiTopActionsForLog(all, 8),
+      topBuy:aiTopActionsForLog(buys, 5),
+      topReserve:aiTopActionsForLog(reserves, 5),
+      topTake:aiTopActionsForLog(takes, 5)
+    };
+  } catch(e) {
+    return {error:String(e && e.message || e)};
+  }
+}
+
 function aiRecordTurnDecision(action) {
   if (!G || !isPracticeAi(G.cur) || !action) return;
   if (!Array.isArray(G.aiTelemetry)) G.aiTelemetry = [];
   const card = action.card || null;
+  const playerIdx = G.cur;
+  const pl = G.players && G.players[playerIdx];
   G.aiTelemetry.push({
     turn:G.turnCount || 0,
-    playerIdx:G.cur,
+    playerIdx,
     type:action.type || 'none',
     cardId:card ? card.id : null,
     tier:card ? card.tier : null,
@@ -11630,6 +11712,7 @@ function aiRecordTurnDecision(action) {
     blockRoute:!!action.blockRoute,
     completesMission:!!action.completesMission,
     winSoon:!!action.winSoon,
+    decision:aiDecisionCandidatesForLog(pl, action),
   });
   if (G.aiTelemetry.length > 260) G.aiTelemetry = G.aiTelemetry.slice(-260);
 }
@@ -11776,7 +11859,167 @@ function aiBuildMatchLog(key, winnerIdxs, winnerIdx, analyses) {
   };
 }
 
+function aiExportCardSnapshot(card) {
+  if (!card) return null;
+  return {
+    id:card.id,
+    tier:card.tier || 0,
+    pts:card.pts || 0,
+    bonus:card.bonus || '',
+    cost:{...(card.cost || {})},
+    effectKey:cardEffectKey(card)
+  };
+}
+
+function aiExportMissionSnapshot(m) {
+  if (!m) return null;
+  return {
+    name:m.name || '',
+    desc:m.desc || '',
+    pts:m.pts || 0,
+    req:{...(m.req || {})},
+    mark:m.mark || '',
+    claimedBy:m.claimedBy ?? null
+  };
+}
+
+function aiExportPlayerSnapshot(p, idx, winnerIdxs) {
+  const heroId = G.heroes && G.heroes[idx];
+  const hero = heroId ? HEROES.find(h => h.id === heroId) : null;
+  return {
+    idx,
+    name:p?.name || '',
+    serial:p?.serial || '',
+    ai:isPracticeAi(idx),
+    winner:winnerIdxs.has(idx),
+    tenpai:isPlayerTenpai(idx),
+    hero:hero ? {
+      id:hero.id,
+      key:hero.key,
+      name:hero.name,
+      skill:hero.skill,
+      usesLeft:G.heroUsed ? G.heroUsed[idx] : null
+    } : null,
+    points:p?.points || 0,
+    cards:(p?.cards || []).map(aiExportCardSnapshot),
+    reserved:(p?.reserved || []).map(aiExportCardSnapshot),
+    bonuses:{...(p?.bonuses || {})},
+    gems:{...(p?.gems || {})},
+    shiyuanChicken:p?.shiyuanChicken || 0,
+    actionStats:aiPlayerActionStats(idx),
+    missionPoints:aiMissionPointsFor(idx)
+  };
+}
+
+function aiExportBoardSnapshot() {
+  return {
+    1:((G.board && G.board[1]) || []).map(aiExportCardSnapshot),
+    2:((G.board && G.board[2]) || []).map(aiExportCardSnapshot),
+    3:((G.board && G.board[3]) || []).map(aiExportCardSnapshot)
+  };
+}
+
+function aiExportThreatSnapshot() {
+  return (G.players || []).map((p, idx) => {
+    const boardWins = [];
+    [1,2,3].forEach(t => ((G.board && G.board[t]) || []).forEach((card, slot) => {
+      if (card && playerCanReach15WithCard(idx, card)) boardWins.push({tier:t, slot, card:aiExportCardSnapshot(card)});
+    }));
+    const reservedWins = (p?.reserved || [])
+      .map((card, slot) => ({slot, card}))
+      .filter(item => item.card && playerCanReach15WithCard(idx, item.card))
+      .map(item => ({slot:item.slot, card:aiExportCardSnapshot(item.card)}));
+    return {
+      idx,
+      name:p?.name || '',
+      ai:isPracticeAi(idx),
+      points:p?.points || 0,
+      tenpai:isPlayerTenpai(idx),
+      boardWins,
+      reservedWins
+    };
+  });
+}
+
+function buildAiBattleExportLog() {
+  if (!G || !G.players) return null;
+  if (!G.winners || !G.winners.length) G.winners = computeWinners();
+  const winnerIdxs = new Set((G.winners || []).map(w => G.players.indexOf(w)).filter(i => i >= 0));
+  const winnerIdx = [...winnerIdxs][0] ?? -1;
+  const analyses = winnerIdx < 0 ? [] : (G.players || [])
+    .map((p, idx) => ({p, idx}))
+    .filter(({idx}) => isPracticeAi(idx) && !winnerIdxs.has(idx))
+    .map(({idx}) => aiAnalyzeAiLoss(idx, winnerIdx));
+  const matchLog = aiBuildMatchLog(aiLearningGameKey(), winnerIdxs, winnerIdx, analyses);
+  return {
+    version:1,
+    exportedAt:new Date().toISOString(),
+    exportedAtLocal:new Date().toLocaleString('zh-TW', {hour12:false}),
+    purpose:'splendor-ai-battle-review',
+    mode:{
+      practiceMode:!!practiceMode,
+      onlineMode:!!onlineMode,
+      hasPracticeAi:hasPracticeAiPlayers(),
+      cardArtMode:cardArtMode || 'classic'
+    },
+    summary:{
+      turnCount:G.turnCount || 0,
+      normalEnd:!!G.normalEnd,
+      winners:[...winnerIdxs].map(idx => ({idx, name:G.players[idx]?.name || '', points:G.players[idx]?.points || 0})),
+      ranking:rankedRows().map(({p, idx}, rank) => ({rank:rank + 1, idx, name:p.name || '', points:p.points || 0, cards:(p.cards || []).length}))
+    },
+    game:{
+      numP:G.numP,
+      cur:G.cur,
+      lastRound:!!G.lastRound,
+      lastStarter:G.lastStarter,
+      bank:{...(G.bank || {})},
+      players:(G.players || []).map((p, idx) => aiExportPlayerSnapshot(p, idx, winnerIdxs)),
+      board:aiExportBoardSnapshot(),
+      deckCounts:{1:(G.decks?.[1] || []).length, 2:(G.decks?.[2] || []).length, 3:(G.decks?.[3] || []).length},
+      missions:(G.missions || []).map(aiExportMissionSnapshot),
+      threats:aiExportThreatSnapshot()
+    },
+    ai:{
+      learningWeights:{...(aiLearningWeights() || {})},
+      learningReport:AI_AUTO_LEARNING_ENABLED ? (G.aiLearningReport || aiLearnFromFinishedGame() || null) : null,
+      telemetry:(G.aiTelemetry || []).slice(),
+      analyses
+    },
+    logs:{
+      actions:(G.log || []).slice(),
+      compactBattleLog:(G.log || []).slice(-120).map(aiCompactBattleLogEntry)
+    },
+    matchLog
+  };
+}
+
+function aiBattleLogFileName(payload) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const winner = payload?.summary?.winners?.[0]?.name || 'unknown';
+  const safeWinner = String(winner).replace(/[\\/:*?"<>|\s]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 28) || 'unknown';
+  return `splendor-ai-log-${safeWinner}-${stamp}.json`;
+}
+
+function downloadAiBattleLog() {
+  const payload = buildAiBattleExportLog();
+  if (!payload) {
+    alert('目前沒有可匯出的 AI 對戰日誌');
+    return;
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = aiBattleLogFileName(payload);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1200);
+}
+
 function aiStoreFinishedMatchLog(matchLog) {
+  if (!AI_AUTO_LEARNING_ENABLED) return {store:aiMatchLogDefaults(), matchLog, added:false};
   const store = aiLoadMatchLogs();
   const existing = store.logs.find(log => log && log.key === matchLog.key);
   if (existing) return {store, matchLog:existing, added:false};
@@ -11833,6 +12076,7 @@ function aiApplyBatchLearning(store, batchLogs) {
 }
 
 function aiLearnFromFinishedGame() {
+  if (!AI_AUTO_LEARNING_ENABLED) return null;
   if (!G || !G.over || !G.normalEnd || onlineMode || !hasPracticeAiPlayers()) return G?.aiLearningReport || null;
   if (!G.winners || !G.winners.length) G.winners = computeWinners();
   const key = aiLearningGameKey();
@@ -11884,13 +12128,13 @@ function aiLearningReportHtml(report) {
     const reasons = (report.reasons || []).slice(0, 3).map(aiReasonLabel).join('、');
     return `<div class="over-ai-learn">
       <div class="over-ai-learn-title">AI 對戰資料已保存</div>
-      <div>已累積 ${pending}/${batchSize} 場，滿 ${batchSize} 場後才批次分析並優化權重。</div>
+      <div>已累積 ${pending}/${batchSize} 場，下一次正常結算會自動分析並優化權重。</div>
       <small>${reasons ? `本局觀察：${htmlEsc(reasons)}` : '本局先作為樣本保存，避免單場牌運造成誤判。'}</small>
     </div>`;
   }
   if (!report.updated && report.batchReady) {
     return `<div class="over-ai-learn">
-      <div class="over-ai-learn-title">AI 批次分析完成</div>
+      <div class="over-ai-learn-title">AI 自動分析完成</div>
       <div>已讀取 ${report.gamesUsed || 0} 場對戰 log；這批 AI 沒有明確敗因，權重先不調整。</div>
       <small>資料已標記為分析完成，後續會繼續累積新樣本。</small>
     </div>`;
@@ -11900,8 +12144,8 @@ function aiLearningReportHtml(report) {
   const reasons = (report.reasons || []).slice(0, 4).map(aiReasonLabel).join('、');
   const deltaText = aiLearningDeltaText(report.deltas) || '微幅保持';
   return `<div class="over-ai-learn">
-    <div class="over-ai-learn-title">AI 批次模型優化</div>
-    <div>已彙整 ${report.gamesUsed || 0} 場對戰 log；${aiNames || 'AI'} 主要敗因：${htmlEsc(reasons || '終局效率不足')}</div>
+      <div class="over-ai-learn-title">AI 自動模型優化</div>
+    <div>已分析本局對戰 log；${aiNames || 'AI'} 主要敗因：${htmlEsc(reasons || '終局效率不足')}</div>
     <small>已更新下一場權重：${htmlEsc(deltaText)}</small>
   </div>`;
 }
@@ -13611,7 +13855,7 @@ function showOverMod() {
   document.getElementById('turn-notif')?.classList.remove('on');
   ['m-card','m-ret'].forEach(id=>{ const el=document.getElementById(id); if (el) el.style.display='none'; });
   if (!G.winners || !G.winners.length) G.winners=computeWinners();
-  const aiLearnHtml = aiLearningReportHtml(aiLearnFromFinishedGame() || G.aiLearningReport);
+  const aiLearnHtml = AI_AUTO_LEARNING_ENABLED ? aiLearningReportHtml(aiLearnFromFinishedGame() || G.aiLearningReport) : '';
   const sorted=rankedRows();
   const winnerIdxs = new Set((G.winners||[]).map(w=>G.players.indexOf(w)).filter(i=>i>=0));
   const medals=['🥇','🥈','🥉',''];
@@ -13659,9 +13903,13 @@ function showOverMod() {
   const overButtonText = isSpectator()
     ? '離開觀戰'
     : (onlineMode && roomCode ? '回到房間' : '再玩一次');
+  const aiLogButton = (practiceMode || hasPracticeAiPlayers())
+    ? '<button type="button" class="over-download" onclick="downloadAiBattleLog()">下載日誌</button>'
+    : '';
   over.className = 'm-overlay game-over-overlay';
   over.style.display = 'grid';
   over.innerHTML=`<section class="over-box" onclick="event.stopPropagation()">
+    ${aiLogButton}
     <div class="over-title">🎊 遊戲結束！</div>
     <div class="over-winner">🏆 ${wn} 獲勝！</div>
     <div style="font-size:.78em;color:rgba(255,255,255,.62);margin:-6px 0 12px;text-align:center">${ladderNote}</div>
