@@ -4113,8 +4113,8 @@ function ensureLogoutConfirmModal() {
     <div class="logout-confirm-box" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="logout-confirm-title">
       <div id="logout-confirm-title" class="logout-confirm-title">是否要登出？</div>
       <div class="logout-confirm-actions">
-        <button type="button" class="btn-start logout-confirm-btn secondary" onclick="closeLogoutConfirm()">取消</button>
-        <button type="button" class="btn-start logout-confirm-btn" onclick="confirmLogoutSerial()">確認</button>
+        <button type="button" class="btn-start logout-confirm-btn" onclick="confirmLogoutSerial()">是</button>
+        <button type="button" class="btn-start logout-confirm-btn secondary" onclick="closeLogoutConfirm()">否</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
