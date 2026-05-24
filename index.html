@@ -3839,10 +3839,27 @@ function setCardArtMode(mode, opts={}) {
   }
   updateCardModeUi();
   if (opts.refresh !== false) refreshCardArtModeView();
+  warmCardArtModeAssets(cardArtMode, {priority:'normal', includeAll:cardArtMode === 'classic'});
+  if (cardArtMode === 'home') warmCardArtModeAssets('classic', {priority:'normal', includeAll:true});
 }
 function refreshCardArtModeView() {
   if (typeof G !== 'undefined' && G && G.board && typeof render === 'function') render();
   if (typeof renderChatMessages === 'function') renderChatMessages();
+}
+let _cardArtSwitchSeq = 0;
+function switchCardArtMode(mode, opts={}) {
+  const target = normaliseCardArtMode(mode);
+  const seq = ++_cardArtSwitchSeq;
+  const changing = target !== cardArtMode;
+  const warm = changing && opts.preload !== false
+    ? warmCardArtModeAssets(target, {priority:'high', decode:true, includeAll:false, deadlineMs:opts.deadlineMs || 900})
+    : Promise.resolve([]);
+  return warm.then(() => {
+    if (seq !== _cardArtSwitchSeq) return false;
+    setCardArtMode(target, opts);
+    if (opts.toast) toast(`卡牌模式：${selectedCardArtModeLabel()}`);
+    return true;
+  });
 }
 function closeCardModeMenu() {
   const picker = document.getElementById('card-mode-picker');
@@ -3854,23 +3871,27 @@ function toggleCardModeMenu(e) {
   const picker = document.getElementById('card-mode-picker');
   if (!picker) return;
   picker.classList.toggle('open');
+  if (picker.classList.contains('open')) {
+    warmCardArtModeAssets(cardArtMode === 'home' ? 'classic' : 'home', {priority:'high', decode:true, includeAll:false, deadlineMs:1200});
+  }
   updateCardModeUi();
 }
 function selectCardMode(mode, e) {
   if (e) e.preventDefault();
-  setCardArtMode(mode);
   closeCardModeMenu();
+  switchCardArtMode(mode);
 }
 function handleCardArtSecretCommand(text) {
   const command = String(text || '').trim().toLowerCase();
+  let mode = '';
   if (command === CARD_ART_SECRET_COMMAND) {
-    setCardArtMode('home', {persist:false});
+    mode = 'home';
   } else if (command === CARD_ART_CLASSIC_COMMAND) {
-    setCardArtMode('classic', {persist:false});
+    mode = 'classic';
   } else {
     return false;
   }
-  toast(`卡牌模式：${selectedCardArtModeLabel()}`);
+  switchCardArtMode(mode, {persist:false, toast:true});
   return true;
 }
 function bindCardModeOutsideClose() {
@@ -6863,7 +6884,7 @@ const CARD_ART_VERSION = 'gem-webp-fast-v2';
 const GEM_CARD_ART = {};
 const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
 CI.forEach(c => {
-  GEM_CARD_ART[c] = Array.from({length:18}, (_,i)=>`${GEM_FOLDER[c]}/gem-${c}-${String(i+1).padStart(2,'0')}.jpg`);
+  GEM_CARD_ART[c] = Array.from({length:18}, (_,i)=>`${GEM_FOLDER[c]}/gem-${c}-${String(i+1).padStart(2,'0')}.webp`);
 });
 const HOME_CARD_ART_VERSION = 'home-color-number-v1';
 const HOME_CARD_ART_FOLDER = 'art/home';
@@ -7368,13 +7389,45 @@ function coreGameAssetUrls() {
 }
 
 function cardArtUrl(card) {
-  const name = card ? cardVisualArtName(card) : '';
+  return cardArtUrlForMode(card, cardArtMode);
+}
+
+function cardArtUrlForMode(card, mode) {
+  const name = card ? cardVisualArtNameForMode(card, mode) : '';
   return cardArtAssetUrl(name);
 }
 
 function allCardArtUrls() {
-  const source = cardArtMode === 'home' ? HOME_CARD_ART_BY_ID : CARD_ART_BY_ID;
+  return allCardArtUrlsForMode(cardArtMode);
+}
+
+function allCardArtUrlsForMode(mode) {
+  const target = normaliseCardArtMode(mode);
+  const source = target === 'home' ? HOME_CARD_ART_BY_ID : CARD_ART_BY_ID;
   return Array.from(new Set(Object.values(source).filter(Boolean).map(name => cardArtAssetUrl(name))));
+}
+
+function currentBoardCardsForWarmup() {
+  if (typeof G === 'undefined' || !G || !G.board) return [];
+  const cards = [];
+  [3,2,1].forEach(tier => {
+    toArr(G.board[tier]).forEach(card => { if (card) cards.push(card); });
+  });
+  return cards;
+}
+
+function warmCardArtModeAssets(mode, options={}) {
+  const target = normaliseCardArtMode(mode);
+  const boardUrls = currentBoardCardsForWarmup().map(card => cardArtUrlForMode(card, target));
+  const includeAll = options.includeAll === true || (target === 'classic' && options.includeAll !== false);
+  const allUrls = includeAll ? allCardArtUrlsForMode(target) : [];
+  const urls = Array.from(new Set([...boardUrls, ...allUrls].filter(Boolean)));
+  if (!urls.length) return Promise.resolve([]);
+  return warmAssetUrlsWithDeadline(
+    urls,
+    {priority:options.priority || 'normal', decode:!!options.decode},
+    options.deadlineMs || (options.priority === 'high' ? 1400 : 4200)
+  );
 }
 
 function heroAssetUrls(hero, includeSkill=false) {
@@ -12843,12 +12896,16 @@ function homeCardArtName(card) {
   return card ? (HOME_CARD_ART_BY_ID[card.id] || '') : '';
 }
 
-function cardVisualArtName(card) {
-  if (cardArtMode === 'home') {
+function cardVisualArtNameForMode(card, mode) {
+  if (normaliseCardArtMode(mode) === 'home') {
     const home = homeCardArtName(card);
     if (home) return home;
   }
   return cardArtName(card);
+}
+
+function cardVisualArtName(card) {
+  return cardVisualArtNameForMode(card, cardArtMode);
 }
 
 function cardArtAssetUrl(name) {
