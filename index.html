@@ -6886,7 +6886,7 @@ const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
 CI.forEach(c => {
   GEM_CARD_ART[c] = Array.from({length:18}, (_,i)=>`${GEM_FOLDER[c]}/gem-${c}-${String(i+1).padStart(2,'0')}.webp`);
 });
-const HOME_CARD_ART_VERSION = 'home-color-number-v1';
+const HOME_CARD_ART_VERSION = 'home-webp-fast-v1';
 const HOME_CARD_ART_FOLDER = 'art/home';
 const HOME_GEM_TIER_FILES = {
   w: {
@@ -7496,6 +7496,7 @@ function warmKnownGameStateAssets(options={}) {
   const priority = options.priority || 'high';
   if (G && G.heroPool) warmHeroPoolAssets(G.heroPool, {priority:'normal'});
   if (G && G.heroes) warmSelectedHeroAssets({priority});
+  warmCardArtModeAssets(cardArtMode === 'home' ? 'classic' : 'home', {priority:'normal', includeAll:false, deadlineMs:1400});
   return warmKnownOpeningBoardAssets({priority, decode:true, deadlineMs:options.deadlineMs || 2200});
 }
 
@@ -12910,7 +12911,7 @@ function cardVisualArtName(card) {
 
 function cardArtAssetUrl(name) {
   if (!name) return '';
-  if (String(name).startsWith('art/')) return `${name}?v=${HOME_CARD_ART_VERSION}`;
+  if (String(name).startsWith('art/')) return `${String(name).replace(/\.(png|jpe?g)$/i, '.webp')}?v=${HOME_CARD_ART_VERSION}`;
   return `${imgAsset(`splendor-card-art/${name}`)}?v=${CARD_ART_VERSION}`;
 }
 
