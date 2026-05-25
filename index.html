@@ -18,7 +18,10 @@
   --board-gap:8px;
   --mission-logo-size:60px;
   --table-surface-image:url('splendor-card-art/table-surface-frame.webp');
-  --mission-parchment-image:url('splendor-card-art/mission-parchment-pinned-v7.webp?v=pinned7');
+  --mission-parchment-gold-image:url('splendor-card-art/mission-parchment-pinned-yellow-v5.webp?v=pin-map5');
+  --mission-parchment-silver-image:url('splendor-card-art/mission-parchment-pinned-white-v5.webp?v=pin-map5');
+  --mission-parchment-copper-image:url('splendor-card-art/mission-parchment-pinned-brown-v5.webp?v=pin-map5');
+  --mission-parchment-image:var(--mission-parchment-gold-image);
 }
 body {
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -305,7 +308,8 @@ body {
 
 /* Mission cards */
 .mission-card {
-  position:relative; border-radius:7px; padding:6px 9px 7px 11px; flex:1; min-width:0;
+  --mission-parchment-current:var(--mission-parchment-gold-image);
+  position:relative; border-radius:7px; padding:6px 13px 7px 11px; flex:0 0 256px; min-width:256px; max-width:256px;
   display:flex; flex-direction:column; min-height:92px;
   border:0;
   background:transparent;
@@ -314,11 +318,14 @@ body {
   overflow:visible;
 }
 .mission-card::before {
-  content:""; position:absolute; inset:-8px -5px -8px -4px;
+  content:""; position:absolute; inset:-8px -24px -8px -4px;
   pointer-events:none;
-  background:var(--mission-parchment-image) center / 100% 100% no-repeat;
+  background:var(--mission-parchment-current) center / 100% 100% no-repeat;
   z-index:0;
 }
+.mission-card.mission-pts-1 { --mission-parchment-current:var(--mission-parchment-copper-image); }
+.mission-card.mission-pts-2 { --mission-parchment-current:var(--mission-parchment-silver-image); }
+.mission-card.mission-pts-3 { --mission-parchment-current:var(--mission-parchment-gold-image); }
 .mission-card > * { position:relative; z-index:1; }
 .mission-layout {
   display:flex; align-items:flex-start; gap:8px;
@@ -335,14 +342,15 @@ body {
     0 1px 0 rgba(255,224,156,.58),
     0 1px 2px rgba(61,24,4,.32);
 }
+.mission-card.mission-pts-2 .mission-score { font-size:1.58em; line-height:.86; }
 .mission-logo {
   width:var(--mission-logo-size); height:var(--mission-logo-size);
   display:block; object-fit:contain; object-position:center;
   filter:drop-shadow(0 2px 2px rgba(45,20,4,.35));
 }
 .mission-copy {
-  flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;
-  padding-top:15px;
+  flex:1; min-width:0; display:grid; grid-template-rows:18px 22px 15px auto; row-gap:1px;
+  padding-top:5px;
 }
 .mission-card.claimed {
   border-color:rgba(79,44,15,.62); opacity:.78;
@@ -355,9 +363,13 @@ body {
   padding:1px 6px; border-radius:3px; z-index:2;
   background:rgba(136,24,14,.08);
 }
-.mission-top { display:flex; justify-content:space-between; align-items:flex-start; gap:7px; position:relative; z-index:1; }
+.mission-top {
+  display:flex; justify-content:center; align-items:flex-start; gap:7px;
+  width:calc(100% - 35px); min-height:18px; position:relative; z-index:1;
+}
 .mission-name {
-  font-size:.64em; font-weight:500; color:#2b1607; letter-spacing:.4px;
+  display:block; width:100%; text-align:center;
+  font-size:.82em; font-weight:500; color:#2b1607; letter-spacing:.4px;
   text-shadow:0 1px 0 rgba(255,225,151,.45);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
@@ -366,9 +378,12 @@ body {
   min-height:0; position:relative; z-index:1;
   text-shadow:0 1px 0 rgba(255,229,161,.28);
 }
-.mission-icons { display:flex; gap:3px; flex-wrap:wrap; margin-top:0; position:relative; z-index:1; }
+.mission-icons {
+  display:flex; gap:3px; flex-wrap:nowrap; align-items:center; min-height:22px;
+  margin-top:0; position:relative; z-index:1; white-space:nowrap;
+}
 .mission-token {
-  display:inline-flex; align-items:center; gap:2px; padding:1px 5px;
+  display:inline-flex; align-items:center; gap:2px; padding:1px 5px; flex:0 0 auto;
   border-radius:10px;
   background:linear-gradient(180deg,rgba(70,34,8,.18),rgba(45,22,6,.11));
   border:1px solid rgba(61,31,6,.24);
@@ -2026,7 +2041,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 /* Top bar: missions above card area */
 #g-top-bar { display:flex; justify-content:center; width:100%; margin-top:-2px; }
-#g-missions{ display:flex; gap:22px; flex-wrap:nowrap; justify-content:center; max-width:100%; overflow:visible; padding-top:18px; }
+#g-missions{ display:flex; gap:22px; flex-wrap:nowrap; justify-content:center; max-width:100%; overflow:visible; padding:18px 28px 0 12px; }
 
 @media (min-width:761px) and (max-height:900px) {
   :root {
@@ -2040,8 +2055,8 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   #g-right { gap:4px; padding:6px 22px 10px; }
   #g-cards { gap:4px; }
-  .mission-card { min-height:88px; padding:5px 8px 6px 10px; }
-  .mission-name { font-size:.6em; }
+  .mission-card { min-height:88px; padding:5px 12px 6px 10px; flex-basis:246px; min-width:246px; max-width:246px; }
+  .mission-name { font-size:.74em; }
   .mission-desc { font-size:.51em; }
   .mission-score { font-size:1.36em; }
   .mission-pin { width:36px; height:41px; top:-17px; right:-13px; }
@@ -2064,7 +2079,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   #g-main { padding-top:3px; padding-bottom:4px; }
   #g-right { gap:4px; padding:5px 18px 8px; }
   #g-cards { gap:4px; }
-  .mission-card { min-height:82px; padding:5px 8px 5px 9px; }
+  .mission-card { min-height:82px; padding:5px 11px 5px 9px; flex-basis:238px; min-width:238px; max-width:238px; }
   .mission-desc { min-height:0; }
   .mission-score { font-size:1.28em; }
   .mp-bar { height:3px; }
@@ -2082,7 +2097,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   #g-right { padding:3px 16px 2px; }
   .mission-card { min-height:76px; }
-  .mission-name { font-size:.56em; }
+  .mission-name { font-size:.7em; }
   .mission-desc { font-size:.48em; }
   .mission-token { font-size:.52em; }
 }
@@ -2515,13 +2530,13 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   #g-top-bar { justify-content:flex-start; overflow:visible; }
   #g-missions {
     justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; overflow-y:visible;
-    padding-top:18px; padding-bottom:4px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+    padding:18px 28px 4px 10px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
   }
   .mission-card {
-    min-width:214px; max-width:236px; flex:0 0 214px;
+    min-width:256px; max-width:268px; flex:0 0 256px;
     min-height:92px; padding:6px 8px 7px; scroll-snap-align:start;
   }
-  .mission-name { font-size:.6em; }
+  .mission-name { font-size:.74em; }
   .mission-desc { font-size:.53em; min-height:0; }
   .mission-score { font-size:1.34em; }
   .mp-row { grid-template-columns:30px minmax(46px,1fr) 30px; font-size:.5em; }
@@ -2650,7 +2665,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   #g-players.players-4 { gap:6px; }
   #g-players .pi-timer-outer, #g-players .pi-card { min-width:0; }
-  .mission-card { min-width:210px; flex-basis:210px; }
+  .mission-card { min-width:256px; flex-basis:256px; }
   .card-top { padding:3px 4px; }
   .card-pts { font-size:1.02em; max-width:calc(var(--card-w) - 30px); }
   .card-body { padding:calc(var(--card-bar-h) + 4px) 3px 4px; }
@@ -4499,7 +4514,7 @@ function renderLadder(data) {
       wins:Number(row.wins || 0),
       heroCounts: hasHeroCounts(row.heroCounts) ? row.heroCounts : previewHeroCountsForLadder(serial),
     };
-  }).filter(row => row.points > 0)
+  }).filter(row => row.games > 0 || row.points !== 0)
     .sort((a,b) => b.points - a.points || b.wins - a.wins || a.serial.localeCompare(b.serial)).slice(0,30);
   if (!rows.length) {
     list.innerHTML = '<div class="ladder-empty">目前沒有寶石天梯榜資料</div>';
@@ -7369,7 +7384,7 @@ const HERO_SPECIAL_SKILL_ASSETS = {
   shindo: {
     showcase:['shindo_神之一手.png'],
     cutout:['shindo_sai_cutout.png'],
-    assetPaths:['heros/第二段動畫右.jpg','heros/shindo_failed.jpg','heros/shindo_sai_active.jpg']
+    assetPaths:['heros/shindo_failed.jpg','heros/shindo_sai_active.jpg']
   }
 };
 
@@ -7568,13 +7583,10 @@ function heroAssetUrls(hero, includeSkill=false) {
   const urls = [heroImgSrc(hero.key)];
   if (!includeSkill) return urls;
   const showcaseFile = HERO_SHOWCASE[hero.key];
-  const cutoutFile = HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`;
   if (showcaseFile) urls.push(imgAsset(`heros/skill_showcases/${showcaseFile}`));
-  urls.push(imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`));
   const special = HERO_SPECIAL_SKILL_ASSETS[hero.key];
   if (special) {
     (special.showcase || []).forEach(name => urls.push(imgAsset(`heros/skill_showcases/${name}`)));
-    (special.cutout || []).forEach(name => urls.push(imgAsset(`heros/skill_showcases/_cutouts/${name}`)));
     (special.assetPaths || []).forEach(path => urls.push(imgAsset(path)));
   }
   return urls;
@@ -8328,8 +8340,7 @@ window.confirmShindoPrediction = function(playerIdx, targetIdx, action) {
   }
   document.getElementById('hero-skill-confirm')?.remove();
   runConfirmedHeroSkill(playerIdx, () => doShindoPrediction(playerIdx, targetIdx, action), {
-    showcaseFile:'shindo_神之一手.png',
-    rightImagePath:'heros/第二段動畫右.jpg'
+    showcaseFile:'shindo_神之一手.png'
   });
 };
 
@@ -8566,10 +8577,8 @@ function playHeroAnimation(hero, playerIdx, onDone, options={}) {
   const avatarSrc   = heroAnimationImgSrc(hero);
   const showcaseFile = options.showcaseFile || HERO_SHOWCASE[hero.key];
   const showcaseSrc  = showcaseFile ? imgAsset(`heros/skill_showcases/${showcaseFile}`) : '';
-  const showCutout   = options.hideCutout !== true && (!!options.rightImagePath || !options.cutoutFile);
-  const cutoutFile   = showCutout && !options.rightImagePath ? (HERO_CUTOUT[hero.key] || `${hero.key}_cutout.png`) : '';
-  const cutoutSrc    = options.rightImagePath ? imgAsset(options.rightImagePath) : (cutoutFile ? imgAsset(`heros/skill_showcases/_cutouts/${cutoutFile}`) : '');
-  warmAssetUrls([showcaseSrc, cutoutSrc, avatarSrc], {priority:'high', decode:true});
+  const showCutout   = false;
+  warmAssetUrls([showcaseSrc, avatarSrc], {priority:'high', decode:true});
   if (hero.key === 'shindo') {
     const avatar = document.querySelector(`.pi-card[data-player="${playerIdx}"] .pi-hero-avatar`);
     if (avatar) {
@@ -11339,16 +11348,32 @@ function rankedRows() {
 }
 
 function rankRewardFor(position, total) {
-  return Math.max(1, total - position);
+  const tables = {
+    2: [5, -5],
+    3: [5, 0, -5],
+    4: [10, 5, -5, -10],
+  };
+  const table = tables[Number(total)] || [];
+  return Number(table[position]) || 0;
+}
+
+function isRankedLadderGame() {
+  if (isSpectator() || isRoomGuest()) return false;
+  if (!onlineMode || !db || !roomCode || !G || !G.over || !G.normalEnd) return false;
+  if (practiceMode || hasPracticeAiPlayers()) return false;
+  if (isCoopGame()) return false;
+  const players = (G.players || []).filter(Boolean);
+  if (![2,3,4].includes(players.length)) return false;
+  return players.every(p => !p.ai && !/^AI\b/i.test(String(p.name || '')));
 }
 
 async function awardLadderPointsOnce() {
-  if (isSpectator() || isRoomGuest()) return;
-  if (!onlineMode || !db || !roomCode || !G || !G.over || !G.normalEnd) return;
+  if (!isRankedLadderGame()) return;
   const gate = db.ref(`rooms/${roomCode}/ladderAwarded`);
   gate.transaction(cur => cur ? undefined : {by:currentSerial || 'unknown', at:Date.now()}, async (err, committed) => {
     if (err || !committed) return;
     const rows = rankedRows();
+    if (![2,3,4].includes(rows.length)) return;
     const winners = (G.winners && G.winners.length ? G.winners : computeWinners()) || [];
     const winnerIdxs = new Set(winners.map(w => G.players.indexOf(w)).filter(i => i >= 0));
     const jobs = [];
@@ -11356,9 +11381,7 @@ async function awardLadderPointsOnce() {
       const reward = rankRewardFor(position, rows.length);
       const hero = G.heroes ? getPlayerHero(idx) : null;
       const won = winnerIdxs.has(idx);
-      const serials = isCoopGame()
-        ? (p.members || []).map(m => serialKey(m.serial || m.name)).filter(Boolean)
-        : [serialKey(p.serial || p.name)].filter(Boolean);
+      const serials = [serialKey(p.serial || p.name)].filter(Boolean);
       serials.forEach(serial => {
         jobs.push(db.ref(`ladder/${serial}`).transaction(cur => {
           const row = cur || {};
@@ -13570,7 +13593,8 @@ function rMissions() {
   G.missions.forEach((m,i)=>{
     const claimed=m.claimedBy!==null;
     const claimer=claimed?G.players[m.claimedBy]:null;
-    h+=`<div class="mission-card ${claimed?'claimed':''}">
+    const ptsClass = `mission-pts-${Math.max(1, Math.min(3, Number(m.pts) || 1))}`;
+    h+=`<div class="mission-card ${ptsClass} ${claimed?'claimed':''}">
       <div class="mission-layout">
         <div class="mission-side">
           <span class="mission-score">${m.pts}</span>
