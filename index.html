@@ -18,9 +18,9 @@
   --board-gap:8px;
   --mission-logo-size:60px;
   --table-surface-image:url('splendor-card-art/table-surface-frame.webp');
-  --mission-parchment-gold-image:url('splendor-card-art/mission-parchment-pinned-yellow-v5.webp?v=pin-map5');
-  --mission-parchment-silver-image:url('splendor-card-art/mission-parchment-pinned-white-v5.webp?v=pin-map5');
-  --mission-parchment-copper-image:url('splendor-card-art/mission-parchment-pinned-brown-v5.webp?v=pin-map5');
+  --mission-parchment-gold-image:url('splendor-card-art/mission-parchment-pinned-yellow-v7.webp?v=pin-map7');
+  --mission-parchment-silver-image:url('splendor-card-art/mission-parchment-pinned-white-v6.webp?v=pin-map6');
+  --mission-parchment-copper-image:url('splendor-card-art/mission-parchment-pinned-brown-v6.webp?v=pin-map6');
   --mission-parchment-image:var(--mission-parchment-gold-image);
 }
 body {
@@ -309,7 +309,7 @@ body {
 /* Mission cards */
 .mission-card {
   --mission-parchment-current:var(--mission-parchment-gold-image);
-  position:relative; border-radius:7px; padding:6px 13px 7px 11px; flex:0 0 256px; min-width:256px; max-width:256px;
+  position:relative; border-radius:7px; padding:6px 12px 7px 10px; flex:0 0 218px; min-width:218px; max-width:218px;
   display:flex; flex-direction:column; min-height:92px;
   border:0;
   background:transparent;
@@ -328,7 +328,7 @@ body {
 .mission-card.mission-pts-3 { --mission-parchment-current:var(--mission-parchment-gold-image); }
 .mission-card > * { position:relative; z-index:1; }
 .mission-layout {
-  display:flex; align-items:flex-start; gap:8px;
+  display:flex; align-items:flex-start; gap:5px;
   flex:1; min-width:0; position:relative; z-index:1;
 }
 .mission-side {
@@ -369,7 +369,7 @@ body {
 }
 .mission-name {
   display:block; width:100%; text-align:center;
-  font-size:.82em; font-weight:500; color:#2b1607; letter-spacing:.4px;
+  font-size:.94em; font-weight:500; color:#2b1607; letter-spacing:.4px;
   text-shadow:0 1px 0 rgba(255,225,151,.45);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
@@ -383,7 +383,7 @@ body {
   margin-top:0; position:relative; z-index:1; white-space:nowrap;
 }
 .mission-token {
-  display:inline-flex; align-items:center; gap:2px; padding:1px 5px; flex:0 0 auto;
+  display:inline-flex; align-items:center; gap:2px; padding:1px 4px; flex:0 0 auto;
   border-radius:10px;
   background:linear-gradient(180deg,rgba(70,34,8,.18),rgba(45,22,6,.11));
   border:1px solid rgba(61,31,6,.24);
@@ -2055,7 +2055,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   #g-right { gap:4px; padding:6px 22px 10px; }
   #g-cards { gap:4px; }
-  .mission-card { min-height:88px; padding:5px 12px 6px 10px; flex-basis:246px; min-width:246px; max-width:246px; }
+  .mission-card { min-height:88px; padding:5px 11px 6px 9px; flex-basis:209px; min-width:209px; max-width:209px; }
   .mission-name { font-size:.74em; }
   .mission-desc { font-size:.51em; }
   .mission-score { font-size:1.36em; }
@@ -2079,7 +2079,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   #g-main { padding-top:3px; padding-bottom:4px; }
   #g-right { gap:4px; padding:5px 18px 8px; }
   #g-cards { gap:4px; }
-  .mission-card { min-height:82px; padding:5px 11px 5px 9px; flex-basis:238px; min-width:238px; max-width:238px; }
+  .mission-card { min-height:82px; padding:5px 10px 5px 8px; flex-basis:202px; min-width:202px; max-width:202px; }
   .mission-desc { min-height:0; }
   .mission-score { font-size:1.28em; }
   .mp-bar { height:3px; }
@@ -2533,7 +2533,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     padding:18px 28px 4px 10px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
   }
   .mission-card {
-    min-width:256px; max-width:268px; flex:0 0 256px;
+    min-width:218px; max-width:230px; flex:0 0 218px;
     min-height:92px; padding:6px 8px 7px; scroll-snap-align:start;
   }
   .mission-name { font-size:.74em; }
@@ -2665,7 +2665,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   #g-players.players-4 { gap:6px; }
   #g-players .pi-timer-outer, #g-players .pi-card { min-width:0; }
-  .mission-card { min-width:256px; flex-basis:256px; }
+  .mission-card { min-width:218px; flex-basis:218px; }
   .card-top { padding:3px 4px; }
   .card-pts { font-size:1.02em; max-width:calc(var(--card-w) - 30px); }
   .card-body { padding:calc(var(--card-bar-h) + 4px) 3px 4px; }
@@ -3353,7 +3353,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 <!-- Ladder -->
 <div id="screen-ladder" style="display:none">
   <div class="setup-title">寶石天梯榜</div>
-  <div class="setup-sub">線上多人正常結算才會累積積分</div>
+  <div class="setup-sub">一般真人對戰正常結算才會累積積分</div>
   <div id="ladder-list" class="ladder-panel">
     <div class="ladder-empty">讀取寶石天梯榜中...</div>
   </div>
@@ -7027,7 +7027,7 @@ ALL_CARDS.forEach(card => {
   CARD_MIN_COST_BY_TIER_POINTS[tierKey] = Math.min(CARD_MIN_COST_BY_TIER_POINTS[tierKey] ?? rawCost, rawCost);
 });
 const CARD_ART_VERSION = 'gem-webp-fast-v2';
-const MISSION_ICON_VERSION = 'mission-icons-v8';
+const MISSION_ICON_VERSION = 'mission-icons-v9';
 const MISSION_PIN_VERSION = 'pin-v2';
 const GEM_CARD_ART = {};
 const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
@@ -14226,7 +14226,7 @@ function showOverMod() {
   }).join('');
   const wn=G.winners.map(p=>htmlEsc(p.name)).join('、');
   const ladderNote = onlineMode
-    ? (G.normalEnd ? '本局為正常結算，寶石天梯榜積分會自動登錄。' : '本局不是正常結算，寶石天梯榜不計分。')
+    ? (isRankedLadderGame() ? '本局為一般真人對戰，寶石天梯榜積分會自動登錄。' : '本局不符合天梯計分條件，寶石天梯榜不計分。')
     : ((practiceMode || hasPracticeAiPlayers()) ? '練習模式不計入寶石天梯榜。' : '本機遊戲不計入寶石天梯榜。');
   const over = document.getElementById('m-over');
   const overButtonAction = isSpectator()
