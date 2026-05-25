@@ -16,6 +16,7 @@
   --deck-icon-w:120px;
   --deck-icon-h:148px;
   --board-gap:8px;
+  --mission-logo-size:44px;
   --table-surface-image:url('splendor-card-art/table-surface-frame.webp');
   --mission-parchment-image:url('splendor-card-art/mission-parchment.webp');
 }
@@ -305,7 +306,7 @@ body {
 /* Mission cards */
 .mission-card {
   position:relative; border-radius:7px; padding:6px 9px 7px 11px; flex:1; min-width:0;
-  display:flex; flex-direction:column; min-height:96px;
+  display:flex; flex-direction:column; min-height:88px;
   border:1.5px solid rgba(97,54,17,.78);
   background:
     linear-gradient(180deg,rgba(255,244,190,.18),rgba(91,43,8,.08)),
@@ -331,6 +332,27 @@ body {
   z-index:0;
 }
 .mission-card > * { position:relative; z-index:1; }
+.mission-layout {
+  display:flex; align-items:flex-start; gap:8px;
+  flex:1; min-width:0; position:relative; z-index:1;
+}
+.mission-side {
+  width:var(--mission-logo-size); flex:0 0 var(--mission-logo-size);
+  display:flex; flex-direction:column; align-items:center; gap:1px;
+}
+.mission-score {
+  font-size:1.5em; font-weight:900; color:#fff;
+  line-height:.92; font-family:Georgia,'Times New Roman',serif;
+  text-shadow:0 1px 4px rgba(0,0,0,.9);
+}
+.mission-logo {
+  width:var(--mission-logo-size); height:var(--mission-logo-size);
+  display:block; object-fit:contain; object-position:center;
+  filter:drop-shadow(0 2px 2px rgba(45,20,4,.35));
+}
+.mission-copy {
+  flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;
+}
 .mission-card.claimed {
   border-color:rgba(79,44,15,.62); opacity:.78;
   filter:saturate(.72) sepia(.08);
@@ -342,30 +364,38 @@ body {
   padding:1px 6px; border-radius:3px; z-index:2;
   background:rgba(136,24,14,.08);
 }
-.mission-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; position:relative; z-index:1; }
+.mission-top { display:flex; justify-content:space-between; align-items:flex-start; gap:7px; position:relative; z-index:1; }
 .mission-name {
   font-size:.64em; font-weight:900; color:#211006; letter-spacing:.6px;
   text-shadow:0 1px 0 rgba(255,225,151,.45);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.mission-pts  {
-  font-size:.92em; font-weight:900; color:#ffedbc; flex-shrink:0;
+.mission-pin {
+  width:18px; height:18px; flex:0 0 18px; margin:-2px 1px 0 0;
+  position:relative; border-radius:50%;
   background:
-    radial-gradient(circle at 35% 28%,#d85d32 0%,#8c2f1a 48%,#4f160d 100%);
-  border:1.5px solid rgba(255,211,128,.48);
-  border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+    radial-gradient(circle at 35% 26%,#ffd2bf 0 12%,transparent 13%),
+    radial-gradient(circle at 42% 38%,#f05b42 0%,#ad1e18 58%,#5e0908 100%);
+  border:1px solid rgba(92,8,6,.7);
   box-shadow:
-    inset 0 1px 0 rgba(255,229,170,.26),
-    inset 0 -5px 8px rgba(53,10,6,.45),
-    0 2px 5px rgba(46,16,4,.32);
-  text-shadow:0 1px 2px rgba(0,0,0,.5);
+    inset 0 1px 0 rgba(255,214,190,.36),
+    inset 0 -3px 5px rgba(70,5,4,.55),
+    0 2px 4px rgba(63,23,4,.34);
+  transform:rotate(-10deg);
+}
+.mission-pin::after {
+  content:""; position:absolute; left:8px; top:13px; width:2px; height:13px;
+  border-radius:999px; background:linear-gradient(180deg,#5f4a34,#21150c);
+  transform:rotate(18deg); transform-origin:top;
+  box-shadow:0 1px 1px rgba(0,0,0,.38);
+  z-index:-1;
 }
 .mission-desc {
-  font-size:.54em; color:#35200b; margin-top:1px; line-height:1.22;
-  min-height:2.2em; position:relative; z-index:1;
+  font-size:.54em; color:#35200b; margin-top:0; line-height:1.16;
+  min-height:0; position:relative; z-index:1;
   text-shadow:0 1px 0 rgba(255,229,161,.28);
 }
-.mission-icons { display:flex; gap:3px; flex-wrap:wrap; margin-top:3px; position:relative; z-index:1; }
+.mission-icons { display:flex; gap:3px; flex-wrap:wrap; margin-top:0; position:relative; z-index:1; }
 .mission-token {
   display:inline-flex; align-items:center; gap:2px; padding:1px 5px;
   border-radius:10px;
@@ -1105,7 +1135,7 @@ body > .dev-card .card-top .gem-img.gem-img-k {
 .cost-n,
 .g-cnt,
 .pick-badge,
-.mission-pts,
+.mission-score,
 .mission-token span:not(.mission-mark),
 .noble-pts,
 .deck-n,
@@ -1984,7 +2014,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
 
 /* Top bar: missions above card area */
 #g-top-bar { display:flex; justify-content:center; width:100%; margin-top:-2px; }
-#g-missions{ display:flex; gap:5px; flex-wrap:nowrap; justify-content:center; max-width:100%; overflow:hidden; }
+#g-missions{ display:flex; gap:12px; flex-wrap:nowrap; justify-content:center; max-width:100%; overflow:hidden; }
 
 @media (min-width:761px) and (max-height:900px) {
   :root {
@@ -1994,13 +2024,15 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --deck-w:130px;
     --deck-h:190px;
     --board-gap:7px;
+    --mission-logo-size:40px;
   }
   #g-right { gap:4px; padding:6px 22px 10px; }
   #g-cards { gap:4px; }
-  .mission-card { min-height:92px; padding:5px 8px 6px 10px; }
+  .mission-card { min-height:82px; padding:5px 8px 6px 10px; }
   .mission-name { font-size:.6em; }
-  .mission-desc { font-size:.51em; min-height:2.05em; }
-  .mission-pts { width:26px; height:26px; font-size:.86em; }
+  .mission-desc { font-size:.51em; }
+  .mission-score { font-size:1.36em; }
+  .mission-pin { width:16px; height:16px; flex-basis:16px; }
   .mission-icons { margin-top:2px; }
   .mission-token { font-size:.56em; }
   .mission-progress { padding-top:3px; }
@@ -2015,13 +2047,14 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --deck-w:117px;
     --deck-h:171px;
     --board-gap:5px;
+    --mission-logo-size:36px;
   }
   #g-main { padding-top:3px; padding-bottom:4px; }
   #g-right { gap:4px; padding:5px 18px 8px; }
   #g-cards { gap:4px; }
-  .mission-card { min-height:84px; padding:5px 8px 5px 9px; }
-  .mission-desc { min-height:1.9em; }
-  .mission-pts { width:24px; height:24px; }
+  .mission-card { min-height:76px; padding:5px 8px 5px 9px; }
+  .mission-desc { min-height:0; }
+  .mission-score { font-size:1.28em; }
   .mp-bar { height:3px; }
 }
 
@@ -2033,9 +2066,10 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     --deck-w:107px;
     --deck-h:157px;
     --board-gap:4px;
+    --mission-logo-size:33px;
   }
   #g-right { padding:3px 16px 2px; }
-  .mission-card { min-height:78px; }
+  .mission-card { min-height:72px; }
   .mission-name { font-size:.56em; }
   .mission-desc { font-size:.48em; }
   .mission-token { font-size:.52em; }
@@ -2472,12 +2506,12 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
     padding-bottom:4px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
   }
   .mission-card {
-    min-width:184px; max-width:202px; flex:0 0 184px;
-    min-height:106px; padding:6px 8px 7px; scroll-snap-align:start;
+    min-width:214px; max-width:236px; flex:0 0 214px;
+    min-height:92px; padding:6px 8px 7px; scroll-snap-align:start;
   }
   .mission-name { font-size:.6em; }
-  .mission-desc { font-size:.53em; min-height:2.35em; }
-  .mission-pts { width:27px; height:27px; font-size:.9em; }
+  .mission-desc { font-size:.53em; min-height:0; }
+  .mission-score { font-size:1.34em; }
   .mp-row { grid-template-columns:30px minmax(46px,1fr) 30px; font-size:.5em; }
 
   #g-cards {
@@ -2604,7 +2638,7 @@ body.trump-deal-running #g-cards .deck-box.intro-dealing-source {
   }
   #g-players.players-4 { gap:6px; }
   #g-players .pi-timer-outer, #g-players .pi-card { min-width:0; }
-  .mission-card { min-width:171px; flex-basis:171px; }
+  .mission-card { min-width:210px; flex-basis:210px; }
   .card-top { padding:3px 4px; }
   .card-pts { font-size:1.02em; max-width:calc(var(--card-w) - 30px); }
   .card-body { padding:calc(var(--card-bar-h) + 4px) 3px 4px; }
@@ -6855,26 +6889,26 @@ const RAW = [
 // ── Mission cards ────────────────────────────────────────────────────────
 // check(player) → true if condition met; claimedBy = player index or null
 const MISSION_DB = [
-  {name:'白塔徵召',   desc:'王室徵求白色寶石卡 3 張', pts:2, req:{w:3}, check:p=>(p.bonuses.w||0)>=3},
-  {name:'藍港契約',   desc:'王室徵求藍色寶石卡 3 張', pts:2, req:{u:3}, check:p=>(p.bonuses.u||0)>=3},
-  {name:'翠庭供貨',   desc:'王室徵求綠色寶石卡 3 張', pts:2, req:{g:3}, check:p=>(p.bonuses.g||0)>=3},
-  {name:'赤焰印令',   desc:'王室徵求紅色寶石卡 3 張', pts:2, req:{r:3}, check:p=>(p.bonuses.r||0)>=3},
-  {name:'紫晶密令',   desc:'王室徵求紫色寶石卡 3 張', pts:2, req:{k:3}, check:p=>(p.bonuses.k||0)>=3},
+  {name:'白塔徵召',   desc:'王室徵求白色寶石卡 3 張', pts:1, req:{w:3}, check:p=>(p.bonuses.w||0)>=3},
+  {name:'藍港契約',   desc:'王室徵求藍色寶石卡 3 張', pts:1, req:{u:3}, check:p=>(p.bonuses.u||0)>=3},
+  {name:'翠庭供貨',   desc:'王室徵求綠色寶石卡 3 張', pts:1, req:{g:3}, check:p=>(p.bonuses.g||0)>=3},
+  {name:'赤焰印令',   desc:'王室徵求紅色寶石卡 3 張', pts:1, req:{r:3}, check:p=>(p.bonuses.r||0)>=3},
+  {name:'紫晶密令',   desc:'王室徵求紫色寶石卡 3 張', pts:1, req:{k:3}, check:p=>(p.bonuses.k||0)>=3},
   {name:'白藍雙璧',   desc:'白色與藍色加成各 2 張', pts:2, req:{w:2,u:2}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.u||0)>=2},
   {name:'藍綠海路',   desc:'藍色與綠色加成各 2 張', pts:2, req:{u:2,g:2}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.g||0)>=2},
   {name:'綠紅邊境',   desc:'綠色與紅色加成各 2 張', pts:2, req:{g:2,r:2}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.r||0)>=2},
   {name:'紅紫軍需',   desc:'紅色與紫色加成各 2 張', pts:2, req:{r:2,k:2}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.k||0)>=2},
   {name:'紫白密約',   desc:'紫色與白色加成各 2 張', pts:2, req:{k:2,w:2}, check:p=>(p.bonuses.k||0)>=2&&(p.bonuses.w||0)>=2},
-  {name:'鑽翠珠冠',   desc:'白色 2 張，綠色 1 張，藍色 1 張', pts:2, req:{w:2,g:1,u:1}, check:p=>(p.bonuses.w||0)>=2&&(p.bonuses.g||0)>=1&&(p.bonuses.u||0)>=1},
-  {name:'海焰徽章',   desc:'藍色 2 張，紅色 1 張，紫色 1 張', pts:2, req:{u:2,r:1,k:1}, check:p=>(p.bonuses.u||0)>=2&&(p.bonuses.r||0)>=1&&(p.bonuses.k||0)>=1},
-  {name:'翡翠王令',   desc:'綠色 2 張，白色 1 張，紅色 1 張', pts:2, req:{g:2,w:1,r:1}, check:p=>(p.bonuses.g||0)>=2&&(p.bonuses.w||0)>=1&&(p.bonuses.r||0)>=1},
-  {name:'赤紫護符',   desc:'紅色 2 張，藍色 1 張，紫色 1 張', pts:2, req:{r:2,u:1,k:1}, check:p=>(p.bonuses.r||0)>=2&&(p.bonuses.u||0)>=1&&(p.bonuses.k||0)>=1},
-  {name:'五色通緝',   desc:'五種顏色加成各至少 1 張', pts:3, req:{w:1,u:1,g:1,r:1,k:1}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=1)},
-  {name:'王室寶庫',   desc:'五種顏色加成各至少 2 張', pts:4, req:{w:2,u:2,g:2,r:2,k:2}, check:p=>CI.every(c=>(p.bonuses[c]||0)>=2)},
-  {name:'純色行會',   desc:'任一顏色加成達到 4 張', pts:3, mark:'任一色×4', check:p=>CI.some(c=>(p.bonuses[c]||0)>=4)},
-  {name:'商隊總管',   desc:'合計擁有 8 張寶石卡', pts:3, mark:'寶石卡×8', check:p=>p.cards.length>=8},
-  {name:'上城資助',   desc:'擁有 3 張中級或高級寶石卡', pts:3, mark:'Ⅱ/Ⅲ×3', check:p=>p.cards.filter(c=>c.tier>=2).length>=3},
-  {name:'貴族獻禮',   desc:'聲望點累積至少 6 分', pts:1, mark:'聲望≥6', check:p=>p.points>=6},
+  {name:'瑪麗女王',   desc:'綠色與紅色加成各 4 張', pts:3, req:{g:4,r:4}, check:p=>(p.bonuses.g||0)>=4&&(p.bonuses.r||0)>=4},
+  {name:'馬基維利',   desc:'白色與藍色加成各 4 張', pts:3, req:{w:4,u:4}, check:p=>(p.bonuses.w||0)>=4&&(p.bonuses.u||0)>=4},
+  {name:'伊莎貝拉',   desc:'紫色與白色加成各 4 張', pts:3, req:{k:4,w:4}, check:p=>(p.bonuses.k||0)>=4&&(p.bonuses.w||0)>=4},
+  {name:'蘇萊曼大帝', desc:'綠色與藍色加成各 4 張', pts:3, req:{g:4,u:4}, check:p=>(p.bonuses.g||0)>=4&&(p.bonuses.u||0)>=4},
+  {name:'亨利八世',   desc:'紫色與綠色加成各 4 張', pts:3, req:{k:4,g:4}, check:p=>(p.bonuses.k||0)>=4&&(p.bonuses.g||0)>=4},
+  {name:'查理五世',   desc:'紫色、紅色、白色加成各 3 張', pts:3, req:{k:3,r:3,w:3}, check:p=>(p.bonuses.k||0)>=3&&(p.bonuses.r||0)>=3&&(p.bonuses.w||0)>=3},
+  {name:'凱薩琳王后', desc:'綠色、紅色、藍色加成各 3 張', pts:3, req:{g:3,r:3,u:3}, check:p=>(p.bonuses.g||0)>=3&&(p.bonuses.r||0)>=3&&(p.bonuses.u||0)>=3},
+  {name:'安妮女爵',   desc:'綠色、白色、藍色加成各 3 張', pts:3, req:{g:3,w:3,u:3}, check:p=>(p.bonuses.g||0)>=3&&(p.bonuses.w||0)>=3&&(p.bonuses.u||0)>=3},
+  {name:'伊莉莎白',   desc:'白色、紫色、藍色加成各 3 張', pts:3, req:{w:3,k:3,u:3}, check:p=>(p.bonuses.w||0)>=3&&(p.bonuses.k||0)>=3&&(p.bonuses.u||0)>=3},
+  {name:'法蘭索瓦一世', desc:'綠色、紫色、紅色加成各 3 張', pts:3, req:{g:3,k:3,r:3}, check:p=>(p.bonuses.g||0)>=3&&(p.bonuses.k||0)>=3&&(p.bonuses.r||0)>=3},
 ];
 
 // ── Parse data ───────────────────────────────────────────────────────────
@@ -6894,6 +6928,7 @@ ALL_CARDS.forEach(card => {
   CARD_MIN_COST_BY_TIER_POINTS[tierKey] = Math.min(CARD_MIN_COST_BY_TIER_POINTS[tierKey] ?? rawCost, rawCost);
 });
 const CARD_ART_VERSION = 'gem-webp-fast-v2';
+const MISSION_ICON_VERSION = 'mission-icons-v3';
 const GEM_CARD_ART = {};
 const GEM_FOLDER = {w:'white', u:'blue', g:'green', r:'red', k:'black'};
 CI.forEach(c => {
@@ -11639,6 +11674,10 @@ function aiCompactActionForLog(action) {
     blockTenpai:!!action.blockTenpai,
     blockMission:!!action.blockMission,
     blockRoute:!!action.blockRoute,
+    refillWin:!!action.refillWin,
+    refillUrgent:!!action.refillUrgent,
+    refillRiskValue:Math.round(action.refillRiskValue || 0),
+    refillCard:action.refillCard ? aiExportCardSnapshot(action.refillCard) : null,
     completesMission:!!action.completesMission,
     winNow:!!action.winNow,
     winSoon:!!action.winSoon,
@@ -11710,6 +11749,10 @@ function aiRecordTurnDecision(action) {
     blockTenpai:!!action.blockTenpai,
     blockMission:!!action.blockMission,
     blockRoute:!!action.blockRoute,
+    refillWin:!!action.refillWin,
+    refillUrgent:!!action.refillUrgent,
+    refillRiskValue:Math.round(action.refillRiskValue || 0),
+    refillCardId:action.refillCard ? action.refillCard.id : null,
     completesMission:!!action.completesMission,
     winSoon:!!action.winSoon,
     decision:aiDecisionCandidatesForLog(pl, action),
@@ -12187,11 +12230,11 @@ function choosePracticeAiAction() {
   const immediateWin = aiPickValuable(buys.filter(a => a.winNow));
   if (immediateWin) return immediateWin;
 
-  const blockWin = aiPickValuable(reserves.filter(a => a.blockWin));
+  const blockWin = aiPickValuable(reserves.filter(a => a.blockWin && !a.refillWin));
   if (blockWin) return blockWin;
 
-  const plannedBuy = aiPickValuable(buys.filter(a => a.routeFit || a.completesMission));
-  const decisiveBlock = aiPickValuable(reserves.filter(a => a.blockTenpai || a.blockMission));
+  const plannedBuy = aiPickValuable(buys.filter(a => (a.routeFit || a.completesMission) && !a.refillWin));
+  const decisiveBlock = aiPickValuable(reserves.filter(a => (a.blockTenpai || a.blockMission) && !a.refillWin));
   const blockMargin = 520 / Math.max(0.72, learn.block || 1);
   if (decisiveBlock && (!plannedBuy || decisiveBlock.value >= (plannedBuy.value || 0) + blockMargin || ((plannedBuy.projectedPts || 0) <= 0 && decisiveBlock.value >= (plannedBuy.value || 0) + blockMargin * 0.5))) {
     return decisiveBlock;
@@ -12201,15 +12244,18 @@ function choosePracticeAiAction() {
   const bestBuy = aiPickValuable(buys);
   const bestReserve = aiPickValuable(reserves);
   const bestTake = aiPickValuable(takes);
-  if (bestBuy) {
+  const bestBuyFatalRefill = !!(bestBuy && bestBuy.refillWin && !bestBuy.winNow);
+  if (bestBuy && !bestBuyFatalRefill) {
     if (gsum(pl.gems || {}) >= 8) return bestBuy;
     if (bestBuy.projectedPts > 0 || bestBuy.missionGain >= 0.65) return bestBuy;
     if (!bestTake || bestBuy.value >= (bestTake.value || 0) - 90) return bestBuy;
   }
-  if (bestReserve?.blockWin) return bestReserve;
-  if (bestReserve?.blockUrgent && bestReserve.value >= (bestTake?.value || 0) + blockMargin && bestReserve.value >= (bestBuy?.value || 0) + blockMargin * 0.5) return bestReserve;
+  if (bestBuyFatalRefill && bestBuy.value >= (bestTake?.value || 0) + blockMargin && bestBuy.value >= (bestReserve?.value || 0) + blockMargin) return bestBuy;
+  if (bestReserve?.blockWin && !bestReserve.refillWin) return bestReserve;
+  if (bestReserve?.blockWin && bestReserve.value >= (bestTake?.value || 0) + blockMargin && bestReserve.value >= (bestBuy?.value || 0) + blockMargin * 0.5) return bestReserve;
+  if (bestReserve?.blockUrgent && !bestReserve.refillWin && bestReserve.value >= (bestTake?.value || 0) + blockMargin && bestReserve.value >= (bestBuy?.value || 0) + blockMargin * 0.5) return bestReserve;
   const reserveMargin = 560 / Math.max(0.55, learn.reserve || 1);
-  if (bestReserve && (bestReserve.winSoon || bestReserve.completesMission) && bestReserve.value >= (bestTake?.value || 0) + reserveMargin && bestReserve.value >= (bestBuy?.value || 0) + reserveMargin * 0.5) return bestReserve;
+  if (bestReserve && !bestReserve.refillWin && (bestReserve.winSoon || bestReserve.completesMission) && bestReserve.value >= (bestTake?.value || 0) + reserveMargin && bestReserve.value >= (bestBuy?.value || 0) + reserveMargin * 0.5) return bestReserve;
   return bestTake || bestBuy || bestReserve || null;
 }
 
@@ -12238,12 +12284,20 @@ function aiBuyActions(pl, plan=null) {
       const after = aiPlayerAfterBuy(pl, card, playerIdx);
       const future = aiBestFutureCardValue(after, playerIdx, card.id);
       const routeFit = aiCardRouteIndex(card, plan);
+      const blockInfo = aiOpponentBlockInfo(card, playerIdx);
+      const refillRisk = aiRefillRiskInfo(t, playerIdx);
+      const refillPenalty = aiRefillRiskPenalty(refillRisk, score, blockInfo);
       actions.push({
         type:'buy', card, fromRes:false, t, bi,
         ...score,
+        refillWin:refillRisk.critical,
+        refillUrgent:refillRisk.urgent,
+        refillRiskValue:refillRisk.value,
+        refillCard:refillRisk.card,
         routeFit:routeFit >= 0,
         value:score.value + 145 + (routeFit >= 0 ? 500 - routeFit * 90 : 0) +
-          (aiPositionValue(after, playerIdx) - stateBefore) * 0.42 + future * 0.10
+          (aiPositionValue(after, playerIdx) - stateBefore) * 0.42 + future * 0.10 -
+          refillPenalty
       });
     }
   }));
@@ -12263,6 +12317,8 @@ function aiReserveActions(pl, plan=null) {
     const routeBlock = aiOpponentRoutePressure(card, playerIdx);
     const intentBlock = aiOpponentIntentValue(card, playerIdx);
     const blockInfo = aiOpponentBlockInfo(card, playerIdx);
+    const refillRisk = aiRefillRiskInfo(t, playerIdx);
+    const refillPenalty = aiRefillRiskPenalty(refillRisk, score, blockInfo);
     const routeFit = aiCardRouteIndex(card, plan);
     const turns = aiTurnsToBuy(pl, card);
     const goldBonus = (G.bank.gold || 0) > 0 ? 74 : 0;
@@ -12283,7 +12339,8 @@ function aiReserveActions(pl, plan=null) {
         Math.max(-90, score.cpScore || 0) * 0.32) * (learn.reserve || 1) -
       missing * 32 -
       Math.max(0, turns - 2) * 48 -
-      reservedPenalty;
+      reservedPenalty -
+      refillPenalty;
     const cpUseful = (score.cpScore || 0) >= -35 || score.winSoon || score.completesMission;
     const ownRouteReserve = routeFit === 0 && turns <= 1 && reserveUrgency > 520 / Math.max(0.55, learn.reserve || 1) && reservedCount === 0 && cpUseful && (score.winSoon || score.completesMission || (card.pts || 0) >= 4);
     const blockGate = Math.max(0.72, learn.block || 1);
@@ -12299,6 +12356,10 @@ function aiReserveActions(pl, plan=null) {
         blockMission:blockInfo.mission,
         blockRoute:blockInfo.route,
         blockIntent:intentBlock,
+        refillWin:refillRisk.critical,
+        refillUrgent:refillRisk.urgent,
+        refillRiskValue:refillRisk.value,
+        refillCard:refillRisk.card,
         routeFit:routeFit >= 0,
         value:score.value * 0.55 + reserveUrgency
       });
@@ -12720,8 +12781,9 @@ function aiCardScore(pl, card, opts={}) {
   const bonusScarcity = 28 - Math.min(22, (pl.bonuses[card.bonus] || 0) * 4);
   const routePressure = Math.min(260, (colorDemand[card.bonus] || 0) * 2.45 + missionNeed * 1.45);
   const opponentThreat = Number.isFinite(playerIdx) && playerIdx >= 0 ? aiOpponentThreatValue(card, playerIdx) : 0;
-  const winNow = (pl.points || 0) + projectedPts >= 15;
-  const winSoon = (pl.points || 0) + projectedPts >= 12;
+  const totalScoringGain = projectedPts + completedMissionPts;
+  const winNow = (pl.points || 0) + totalScoringGain >= 15;
+  const winSoon = (pl.points || 0) + totalScoringGain >= 12;
   const reservedFit = (pl.reserved || []).some(c => c && c.bonus === card.bonus) ? 12 : 0;
   const earlyEngine = (pl.points || 0) < 7 && (pl.cards || []).length < 8 ? 42 : 0;
   const tempo = ((pl.points || 0) >= 8 ? projectedPts * 34 : projectedPts * 12) * (learn.tempo || 1);
@@ -13007,6 +13069,86 @@ function aiOpponentBlockInfo(card, selfIdx) {
   return info;
 }
 
+function aiRefillRiskInfo(tier, selfIdx) {
+  const info = {
+    value:0,
+    critical:false,
+    urgent:false,
+    card:null,
+    opponentIdx:null,
+    opponentName:'',
+    pointGain:0,
+    turns:null,
+    canNow:false
+  };
+  const deck = G && G.decks ? G.decks[tier] : null;
+  const card = Array.isArray(deck) && deck.length ? deck[deck.length - 1] : null;
+  if (!card) return info;
+
+  (G.players || []).forEach((op, idx) => {
+    if (!op || idx === selfIdx || op.disconnected || op.offline) return;
+    const opPts = op.points || 0;
+    const points = projectedCardPoints(idx, card);
+    const missionPts = aiCompletedMissionPoints(op, card, idx);
+    const pointGain = points + missionPts;
+    if (pointGain <= 0) return;
+
+    const afterPts = opPts + pointGain;
+    const missing = aiCardMissing(op, card);
+    const turns = aiTurnsToBuy(op, card);
+    const canNow = canBuy(op, card);
+    const cp = aiCardCpStats(op, card, idx);
+    const routeIdx = aiCardRouteIndex(card, aiStrategicPlan(op));
+    const immediateWin = canNow && afterPts >= 15;
+    const nextTurnWin = turns <= 1 && afterPts >= 15;
+    const highPointTenpai = opPts >= 11 && turns <= 1 && (points >= 4 || pointGain >= 4);
+    const missionTenpai = opPts >= 9 && turns <= 1 && missionPts >= 2 && afterPts >= 13;
+    const routeTenpai = routeIdx === 0 && opPts >= 10 && turns <= 1 && (afterPts >= 14 || pointGain >= 3);
+    const critical = immediateWin;
+    const urgent = critical || nextTurnWin || highPointTenpai || missionTenpai || routeTenpai;
+    if (!urgent) return;
+
+    let value =
+      Math.max(0, 980 - missing.goldAdjusted * 120 - turns * 140) +
+      opPts * 95 +
+      points * 260 +
+      missionPts * 480 +
+      Math.max(-70, cp.score) * 0.55 +
+      (routeIdx >= 0 ? 520 - routeIdx * 120 : 0) +
+      (canNow ? 1200 : 0) +
+      (gsum(op.gems || {}) >= 8 ? 180 : 0);
+    if (critical) value += 32000;
+    else if (nextTurnWin) value += 12000;
+    else value += 4200;
+
+    if (value > info.value) {
+      info.value = value;
+      info.critical = critical;
+      info.urgent = urgent;
+      info.card = card;
+      info.opponentIdx = idx;
+      info.opponentName = op.name || '';
+      info.pointGain = pointGain;
+      info.turns = turns;
+      info.canNow = canNow;
+    } else {
+      info.critical = info.critical || critical;
+      info.urgent = info.urgent || urgent;
+    }
+  });
+  return info;
+}
+
+function aiRefillRiskPenalty(refillRisk, actionScore={}, blockInfo={}) {
+  if (!refillRisk || !refillRisk.urgent || !refillRisk.card) return 0;
+  if (actionScore.winNow) return 0;
+  const blocksVisibleWin = !!(blockInfo && blockInfo.critical);
+  const base = refillRisk.critical ? 34000 : Math.min(12000, Math.max(4600, refillRisk.value * 0.72));
+  const blockDiscount = blocksVisibleWin ? 0.48 : 1;
+  const ownTempoDiscount = actionScore.winSoon ? 0.72 : 1;
+  return base * blockDiscount * ownTempoDiscount;
+}
+
 function aiOpponentThreatValue(card, selfIdx) {
   let threat = 0;
   (G.players || []).forEach((op, idx) => {
@@ -13261,6 +13403,12 @@ function missionProgressHtml(m) {
   </div>`;
 }
 
+function missionIconSrc(m) {
+  const idx = Math.max(0, MISSION_DB.findIndex(d=>d.name===m.name));
+  const n = String(idx + 1).padStart(2, '0');
+  return `splendor-card-art/mission-icons/mission-icon-${n}.webp?v=${MISSION_ICON_VERSION}`;
+}
+
 // Mission card display
 function rMissions() {
   if (!G.missions||!G.missions.length) return;
@@ -13269,14 +13417,21 @@ function rMissions() {
     const claimed=m.claimedBy!==null;
     const claimer=claimed?G.players[m.claimedBy]:null;
     h+=`<div class="mission-card ${claimed?'claimed':''}">
-      <div class="mission-top">
-        <span class="mission-name">懸賞令${i+1}：${m.name}</span>
-        <span class="mission-pts">${m.pts}</span>
+      <div class="mission-layout">
+        <div class="mission-side">
+          <span class="mission-score">${m.pts}</span>
+          <img class="mission-logo" src="${missionIconSrc(m)}" alt="" aria-hidden="true" loading="eager" decoding="async">
+        </div>
+        <div class="mission-copy">
+          <div class="mission-top">
+            <span class="mission-name">${m.name}</span>
+            <span class="mission-pin" aria-hidden="true"></span>
+          </div>
+          <div class="mission-icons">${missionReqHtml(m)}</div>
+          <div class="mission-desc">${m.desc}</div>
+          ${claimed?`<div class="mission-winner" style="color:${claimer.color}">✓ ${claimer.name}達成</div>`:''}
+        </div>
       </div>
-      <div class="mission-icons">${missionReqHtml(m)}</div>
-      <div class="mission-desc">${m.desc}</div>
-      ${missionProgressHtml(m)}
-      ${claimed?`<div class="mission-winner" style="color:${claimer.color}">✓ ${claimer.name}達成</div>`:''}
     </div>`;
   });
   document.getElementById('g-missions').innerHTML=h;
