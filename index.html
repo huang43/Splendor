@@ -11067,13 +11067,15 @@ function playRemoteCardAction(anim) {
   const temp = makeRemoteActionSourceCard(card, remoteCardSourceRect(source, playerIdx));
   const label = `${G.players[playerIdx].name} ${anim.action === 'reserve' ? '預留寶石卡！' : '購得寶石卡！'}`;
   return new Promise(resolve=>{
-    const finish = () => playFollowHeroAnim(anim.followHero, playerIdx, ()=>resolve(true));
+    const finish = () => {
+      restoreSlot();
+      playFollowHeroAnim(anim.followHero, playerIdx, ()=>resolve(true));
+    };
     animateCardAcquired(card, playerIdx, label, ()=>{
       temp.remove();
       if (refill && refill.newCard) {
         animateRemoteRefillFromDeck(refill, finish);
       } else {
-        if (source.kind !== 'board') restoreSlot();
         finish();
       }
     }, temp);
