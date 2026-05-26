@@ -7621,6 +7621,34 @@ function warmSelectedHeroAssets(options={}) {
   });
 }
 
+function missionParchmentAssetUrl(points) {
+  const pts = Math.max(1, Math.min(3, Number(points) || 1));
+  if (pts === 1) return 'splendor-card-art/mission-parchment-pinned-brown-v6.webp?v=pin-map6';
+  if (pts === 2) return 'splendor-card-art/mission-parchment-pinned-white-v6.webp?v=pin-map6';
+  return 'splendor-card-art/mission-parchment-pinned-yellow-v7.webp?v=pin-map7';
+}
+
+function missionAssetUrlsForGame(missions) {
+  const list = Array.isArray(missions)
+    ? missions
+    : (typeof G !== 'undefined' && G && Array.isArray(G.missions) ? G.missions : []);
+  const urls = new Set();
+  list.forEach(m => {
+    urls.add(missionParchmentAssetUrl(m && m.pts));
+    urls.add(missionIconSrc(m));
+  });
+  return Array.from(urls).filter(Boolean);
+}
+
+function warmMissionAssets(options={}) {
+  const urls = missionAssetUrlsForGame(options.missions);
+  if (!urls.length) return Promise.resolve([]);
+  return warmAssetUrls(urls, {
+    priority:options.priority || 'normal',
+    decode:!!options.decode
+  });
+}
+
 function warmKnownOpeningBoardAssets(options={}) {
   if (!G || !G.board) return Promise.resolve([]);
   return warmAssetUrlsWithDeadline(
@@ -7633,6 +7661,7 @@ function warmKnownOpeningBoardAssets(options={}) {
 function prepareOpeningBoardWarmup(options={}) {
   if (!G) return Promise.resolve([]);
   if (!G.openingDealt) ensureOpeningBoardDealt();
+  warmMissionAssets({priority:'normal'});
   return warmKnownOpeningBoardAssets(options);
 }
 
@@ -7641,6 +7670,7 @@ function warmKnownGameStateAssets(options={}) {
   const priority = options.priority || 'high';
   if (G && G.heroPool) warmHeroPoolAssets(G.heroPool, {priority:'normal'});
   if (G && G.heroes) warmSelectedHeroAssets({priority});
+  warmMissionAssets({priority:'normal'});
   warmCardArtModeAssets(cardArtMode === 'home' ? 'classic' : 'home', {priority:'normal', includeAll:false, deadlineMs:1400});
   return warmKnownOpeningBoardAssets({priority, decode:true, deadlineMs:options.deadlineMs || 2200});
 }
@@ -13588,7 +13618,15 @@ function missionPinSrc() {
 
 // Mission card display
 function rMissions() {
-  if (!G.missions||!G.missions.length) return;
+  const el = document.getElementById('g-missions');
+  if (!el) return;
+  if (!G.missions||!G.missions.length) {
+    if (el._missionHtml !== '') {
+      el._missionHtml = '';
+      el.innerHTML = '';
+    }
+    return;
+  }
   let h=``;
   G.missions.forEach((m,i)=>{
     const claimed=m.claimedBy!==null;
@@ -13598,7 +13636,7 @@ function rMissions() {
       <div class="mission-layout">
         <div class="mission-side">
           <span class="mission-score">${m.pts}</span>
-          <img class="mission-logo" src="${missionIconSrc(m)}" alt="" aria-hidden="true" loading="eager" decoding="async">
+          <img class="mission-logo" src="${missionIconSrc(m)}" alt="" aria-hidden="true" loading="eager" decoding="async" fetchpriority="low">
         </div>
         <div class="mission-copy">
           <div class="mission-top">
@@ -13611,7 +13649,9 @@ function rMissions() {
       </div>
     </div>`;
   });
-  document.getElementById('g-missions').innerHTML=h;
+  if (el._missionHtml === h) return;
+  el._missionHtml = h;
+  el.innerHTML=h;
 }
 
 function rBank() {
