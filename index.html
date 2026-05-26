@@ -11416,7 +11416,7 @@ async function awardLadderPointsOnce() {
         jobs.push(db.ref(`ladder/${serial}`).transaction(cur => {
           const row = cur || {};
           const heroCounts = row.heroCounts && typeof row.heroCounts === 'object' ? row.heroCounts : {};
-          row.points = (Number(row.points) || 0) + reward;
+          row.points = Math.max(0, (Number(row.points) || 0) + reward);
           row.games = (Number(row.games) || 0) + 1;
           row.wins = (Number(row.wins) || 0) + (won ? 1 : 0);
           if (hero && hero.key) heroCounts[hero.key] = (Number(heroCounts[hero.key]) || 0) + 1;
