@@ -4512,10 +4512,11 @@ function renderLadder(data) {
       points:Number(row.points || 0),
       games:Number(row.games || 0),
       wins:Number(row.wins || 0),
+      played:!!row.played,
       heroCounts: hasHeroCounts(row.heroCounts) ? row.heroCounts : previewHeroCountsForLadder(serial),
     };
-  }).filter(row => row.games > 0 || row.points !== 0)
-    .sort((a,b) => b.points - a.points || b.wins - a.wins || a.serial.localeCompare(b.serial)).slice(0,30);
+  }).filter(row => row.played || row.games > 0 || row.points !== 0)
+    .sort((a,b) => b.points - a.points || b.wins - a.wins || a.serial.localeCompare(b.serial));
   if (!rows.length) {
     list.innerHTML = '<div class="ladder-empty">目前沒有寶石天梯榜資料</div>';
     return;
@@ -11419,6 +11420,7 @@ async function awardLadderPointsOnce() {
           row.points = Math.max(0, (Number(row.points) || 0) + reward);
           row.games = (Number(row.games) || 0) + 1;
           row.wins = (Number(row.wins) || 0) + (won ? 1 : 0);
+          row.played = true;
           if (hero && hero.key) heroCounts[hero.key] = (Number(heroCounts[hero.key]) || 0) + 1;
           row.heroCounts = heroCounts;
           row.updatedAt = Date.now();
