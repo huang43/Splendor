@@ -1570,6 +1570,7 @@ body[data-card-mode="home"] #card-mode-toggle .card-mode-home-icon { display:blo
   background:linear-gradient(160deg,#1c1c3a,#2a1a3a); border:2px solid rgba(140,90,255,.28);
   border-radius:18px; padding:26px 30px; max-width:440px; width:92%;
   box-shadow:0 0 60px rgba(100,50,255,.18);
+  position:relative;
 }
 #m-card .m-box {
   width:min(94vw,760px);
@@ -1577,7 +1578,24 @@ body[data-card-mode="home"] #card-mode-toggle .card-mode-home-icon { display:blo
   max-height:92vh;
   overflow-y:auto;
 }
-.m-title { font-size:1.35em; font-weight:bold; color:#ffcc44; margin-bottom:14px; }
+.m-title { font-size:1.35em; font-weight:bold; color:#ffcc44; margin-bottom:14px; padding-right:62px; }
+.turn-modal-timer {
+  position:absolute; top:14px; right:16px; min-width:48px; height:34px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:999px; border:1px solid rgba(85,204,136,.52);
+  background:rgba(28,46,38,.86); color:#55cc88;
+  font-size:1.05em; font-weight:950; line-height:1;
+  font-variant-numeric:tabular-nums;
+  box-shadow:0 0 18px rgba(85,204,136,.12), inset 0 1px 0 rgba(255,255,255,.08);
+  pointer-events:none; z-index:4;
+}
+.turn-modal-timer::after {
+  content:'s'; font-size:.62em; font-weight:800; margin-left:2px; opacity:.68;
+}
+.turn-modal-timer.urgent {
+  border-color:rgba(255,68,68,.72); background:rgba(64,18,24,.9); color:#ff4444;
+  box-shadow:0 0 20px rgba(255,68,68,.2), inset 0 1px 0 rgba(255,255,255,.08);
+}
 .over-winner {
   font-size:1.08em; color:#ffcc44; margin-bottom:14px; font-weight:800;
 }
@@ -6807,6 +6825,14 @@ function gemPendingTotal(pending) {
   return CI.reduce((s,c)=>s+(Number(pending && pending[c])||0),0);
 }
 
+function availableColoredGemCount() {
+  return CI.filter(c => ((G && G.bank && G.bank[c]) || 0) > 0).length;
+}
+
+function requiredDifferentGemTakeCount() {
+  return Math.min(3, availableColoredGemCount());
+}
+
 function hasPreGemAction() {
   return !!(_preGemAction.pendGold || gemPendingTotal(_preGemAction.pending)>0);
 }
@@ -6865,7 +6891,8 @@ function preGemActionStatus(options={}) {
     return {ok:true, ready:true};
   }
   if (total>3) return {ok:false, ready:false, reason:'最多預選3枚寶石'};
-  if (requireComplete && total<3) {
+  const requiredDifferent = requiredDifferentGemTakeCount();
+  if (requireComplete && total<requiredDifferent) {
     const moreAvail = CI.filter(c=>(G.bank[c]||0)>0 && !(pending[c]||0));
     if (moreAvail.length>0) return {ok:true, ready:false, reason:'預選尚未取足，請補選或確認'};
   }
@@ -8806,6 +8833,7 @@ function checkBuffettReturn() {
     pl.gems[b.col] = (pl.gems[b.col]||0) + give;
     addVirtualGemSupply(b.col, give - 1);
     G.heroBuffett = null;
+    playGemIncomeSound();
     addLog('skill', `「長期投資」結算，憑空獲得 ${gemToken(b.col,give)}`, ownerIdx);
     render();
     if (!onlineMode || canViewOwnPlayerIdx(ownerIdx)) _showBuffettFinalModal(give, name);
@@ -9414,6 +9442,7 @@ window.doMungerReserve = function(playerIdx, tier) {
   if (gotGold) {
     G.bank.gold--;
     pl.gems.gold = (pl.gems.gold||0) + 1;
+    playGemIncomeSound();
   }
   addLog('reserve', `「預言家」從${tierLabel(tier)}牌堆免費預留1張牌，${gotGold?`拿取${gemToken('gold',1)}`:`未拿到${gemIconToken('gold')}`}（牌面不公開）`, playerIdx);
   if (gsum(pl.gems)>10) showRetMod({mode:'skill'});
@@ -9598,6 +9627,7 @@ window.doAllTierShuffle = function(playerIdx) {
     if (goldGain > 0) {
       G.bank.gold -= goldGain;
       pl.gems.gold = (pl.gems.gold||0) + goldGain;
+      playGemIncomeSound();
     }
     addLog('skill', `發動「TACO交易」，重洗並重發所有牌堆${goldGain ? `，拿取${gemToken('gold',goldGain)}` : `，未拿到${gemIconToken('gold')}`}`, playerIdx);
     render();
@@ -10684,7 +10714,7 @@ function execReserve(card, tier, bi) {
   window._retSnapshot = makeActionSnapshot(pl, G.ui.pending);
   pl.reserved.push(card);
   const gotGold = G.bank.gold>0;
-  if (gotGold){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; }
+  if (gotGold){ pl.gems.gold=(pl.gems.gold||0)+1; G.bank.gold--; playGemIncomeSound(); }
   const muskRes = G.ui.muskActive && !G.ui.muskCardDone;
   if (muskRes) { G.ui.muskCardDone = true; }
   else { G.ui.acted = true; }
@@ -10721,7 +10751,7 @@ function fillBoard(card) {
   return null;
 }
 
-function animateGemsToPlayer(selection, playerIdx, callback) {
+function animateGemsToPlayer(selection, playerIdx, callback, opts={}) {
   const entries=[];
   [...CI,'gold'].forEach(col=>{
     for(let i=0;i<(selection[col]||0);i++) entries.push(col);
@@ -10755,7 +10785,10 @@ function animateGemsToPlayer(selection, playerIdx, callback) {
     }, delay+30);
     setTimeout(()=>el.remove(), delay+780);
   });
-  setTimeout(callback, longest);
+  setTimeout(() => {
+    if (opts.sound !== false) playGemIncomeSound();
+    callback();
+  }, longest);
 }
 
 function gemSelectionEntries(selection) {
@@ -10834,7 +10867,11 @@ function animateGemTransfers(transfers, callback) {
     }, delay + 30);
     setTimeout(() => el.remove(), delay + 820);
   });
-  setTimeout(callback, longest + 60);
+  const hasPlayerIncome = transfers.some(t => t && t.to && t.to.type === 'player');
+  setTimeout(() => {
+    if (hasPlayerIncome) playGemIncomeSound();
+    callback();
+  }, longest + 60);
 }
 
 function animateGemsToBank(selection, fromPlayerIdx, callback) {
@@ -11241,11 +11278,12 @@ function execTakeGems() {
   const isSame=CI.some(c=>(p[c]||0)===2);
 
   // Must take 3 different OR 2 same — block suboptimal takes
-  if (!isSame && tot<3) {
+  const requiredDifferent = requiredDifferentGemTakeCount();
+  if (!isSame && tot<requiredDifferent) {
     const moreAvail=CI.filter(c=>(G.bank[c]||0)>0 && !(p[c]||0));
     if (moreAvail.length>0) {
-      const canAdd=Math.min(3-tot, moreAvail.length);
-      toast(`⚠ 還可以再取 ${canAdd} 枚不同色寶石（必須取足3枚不同色，或改選2枚同色）`);
+      const canAdd=Math.min(requiredDifferent-tot, moreAvail.length);
+      toast(`⚠ 還可以再取 ${canAdd} 枚不同色寶石（目前需取足 ${requiredDifferent} 枚不同色，或改選2枚同色）`);
       return; // Hard-block
     }
   }
@@ -11254,6 +11292,7 @@ function execTakeGems() {
   const take={...p};
   const muskTake = G.ui.muskActive && !G.ui.muskGemDone;
   window._retSnapshot = makeActionSnapshot(pl, take);
+  playGemIncomeSound();
   markGemFlyAnim(take, G.cur);
   G.ui.acted=true;
   render();
@@ -11265,7 +11304,7 @@ function execTakeGems() {
     if (gsum(pl.gems)>10){ render(); showRetMod(muskTake ? {mode:'musk-gem'} : {}); }
     else if (muskTake) { finishMuskGemStep('寶石'); }
     else { afterAct(); render(); }
-  });
+  }, {sound:false});
 }
 
 function afterAct() {
@@ -11663,7 +11702,7 @@ function clickBank(col) {
 function pendValid() {
   const p=G.ui.pending, tot=CI.reduce((s,c)=>s+(p[c]||0),0);
   if (!tot) return false;
-  return CI.some(c=>(p[c]||0)===2) ? tot===2 : tot<=3;
+  return CI.some(c=>(p[c]||0)===2) ? tot===2 : tot<=3 && tot>=requiredDifferentGemTakeCount();
 }
 
 function clearPend(){
@@ -11679,6 +11718,7 @@ function takeGold() {
   const pl=G.players[G.cur];
   if (gsum(pl.gems)>=10){ toast('寶石已達上限（10枚）'); return; }
   const muskTake = G.ui.muskActive && !G.ui.muskGemDone;
+  playGemIncomeSound();
   markGemFlyAnim({gold:1}, G.cur);
   G.ui.acted=true;
   render();
@@ -11690,7 +11730,7 @@ function takeGold() {
     rememberTurnAction('take');
     if (muskTake) finishMuskGemStep('金幣');
     else afterAct();
-  });
+  }, {sound:false});
 }
 
 function tryEnd() {
@@ -13437,7 +13477,7 @@ function aiExecReserve(action) {
   if (!pl || !card || pl.reserved.length >= 3) return false;
   pl.reserved.push(card);
   const gotGold = (G.bank.gold || 0) > 0;
-  if (gotGold) { pl.gems.gold = (pl.gems.gold || 0) + 1; G.bank.gold--; }
+  if (gotGold) { pl.gems.gold = (pl.gems.gold || 0) + 1; G.bank.gold--; playGemIncomeSound(); }
   fillBoard(card);
   addLog('reserve', `AI 預留 ${cardLogName(card)}，${gotGold ? `拿取${gemToken('gold',1)}` : `未拿到${gemIconToken('gold')}`}`, G.cur);
   rememberTurnAction('reserve');
@@ -13459,6 +13499,7 @@ function aiExecTake(selection) {
     pl.gems[c] = (pl.gems[c] || 0) + take[c];
     G.bank[c] -= take[c];
   });
+  playGemIncomeSound();
   addLog('take', `AI 拿取 ${gemListLog(take)}`, G.cur);
   rememberTurnAction('take');
   aiAutoReturnExcess(G.cur);
@@ -13692,7 +13733,7 @@ function rBank() {
   // Action buttons inside bank panel
   if (myTurn && pg) {
     h+=`<div class="bank-actions" style="display:flex;gap:5px;margin-top:8px">
-      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="takeGold()">確認領取金幣</button>
+      <button class="btn btn-go" data-sound="none" style="flex:1;font-size:.75em;padding:6px 4px" onclick="takeGold()">確認領取金幣</button>
       <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
     </div>`;
   } else if (preMode && hasPreGemAction()) {
@@ -13708,13 +13749,13 @@ function rBank() {
         ${preGemActionText()}<br><span style="opacity:.68">${preHint}</span>
       </div>
       <div style="display:flex;gap:5px">
-        <button class="btn btn-go btn-preconfirm" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="confirmPreGemAction()" ${preStatus.ready&&!preConfirmed?'':'disabled'}>${preConfirmed?'已確認預選寶石':'確認預選寶石'}</button>
+        <button class="btn btn-go btn-preconfirm" data-sound="none" style="flex:1;font-size:.75em;padding:6px 4px" onclick="confirmPreGemAction()" ${preStatus.ready&&!preConfirmed?'':'disabled'}>${preConfirmed?'已確認預選寶石':'確認預選寶石'}</button>
         <button class="btn btn-grey bank-clear-btn" style="font-size:.72em;padding:7px 8px" onclick="cancelPreGemAction()">取消</button>
       </div>
     </div>`;
   } else if (myTurn && tot>0) {
     h+=`<div class="bank-actions" style="display:flex;gap:5px;margin-top:8px">
-      <button class="btn btn-go" data-sound="treasure" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認領取寶石</button>
+      <button class="btn btn-go" data-sound="none" style="flex:1;font-size:.75em;padding:6px 4px" onclick="execTakeGems()" ${pendValid()?'':'disabled'}>確認領取寶石</button>
       <button class="btn btn-grey bank-clear-btn" style="font-size:.75em;padding:6px 8px" onclick="clearPend()">X</button>
     </div>`;
   }
@@ -13779,7 +13820,7 @@ function rBottom() {
       <div class="act-label">行動</div>
       ${tot?`<div class="pending-row">${pendH}</div>
         <div class="btn-row">
-          <button class="btn btn-go" data-sound="treasure" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認領取寶石</button>
+          <button class="btn btn-go" data-sound="none" onclick="execTakeGems()" ${pendValid()&&!G.ui.acted?'':'disabled'}>確認領取寶石</button>
           <button class="btn btn-grey" onclick="clearPend()">清除</button>
         </div>`:''}
       ${G.ui.muskActive?`<div style="font-size:.78em;color:#55ccff;margin:4px 0;text-align:center;padding:4px 8px;background:rgba(85,180,255,.12);border-radius:6px">🚀 工作狂：${G.ui.muskCardDone&&G.ui.muskGemDone?'已完成兩個動作':G.ui.muskCardDone?'已買/留牌，可再拿寶石':G.ui.muskGemDone?'已拿寶石，可再買牌/留牌':'可拿寶石＋買牌/留牌，順序不限'}</div>`:''}
@@ -13942,6 +13983,7 @@ function viewResCard(pi, ri) {
   ).join('');
   document.getElementById('m-card').style.display='flex';
   document.getElementById('m-card').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+    ${modalTurnTimerHtml()}
     <div class="m-title">預留牌（${p.name}）— ${tierN}</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       ${gemSVG(card.bonus,36)}
@@ -13978,6 +14020,7 @@ function showCardMod(card, fromRes) {
   const goldShort=CI.reduce((s,c)=>s+Math.max(0,(e[c]||0)-(pl.gems[c]||0)),0);
   document.getElementById('m-card').style.display='flex';
   document.getElementById('m-card').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+    ${modalTurnTimerHtml()}
     <div class="m-title">${fromRes?'預留牌':'寶石卡'} — ${tierN}</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       ${gemSVG(card.bonus,36)}
@@ -14027,6 +14070,7 @@ function showRetMod(opts={}) {
       </div>`;
     }).join('');
     document.getElementById('m-ret').innerHTML=`<div class="m-box" onclick="event.stopPropagation()">
+      ${modalTurnTimerHtml()}
       <div class="m-title" style="display:flex;align-items:center;justify-content:space-between">
         <span>歸還寶石代幣</span>
         ${mode==='skill'?'':`<button onclick="cancelRet()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.4em;line-height:1;padding:0 4px" title="取消行動">✕</button>`}
@@ -14403,7 +14447,7 @@ function showTurnNotification(playerIdx, callback) {
     skipCurrentTurn(G.players[playerIdx]?.offline ? 'offline' : 'timeout', turnCtx);
     return;
   }
-  playClick('turn');
+  playTurnNotificationSound(playerIdx, callback);
   const pl = G.players[playerIdx];
   const turnName = isCoopGame() ? `${pl.name}｜${activeTeamMemberName(playerIdx) || '隊員'}` : pl.name;
   const el = document.getElementById('turn-notif');
@@ -14656,13 +14700,35 @@ function _updateTimerEl() {
   const pct = (s / TURN_LIMIT_SECONDS * 100).toFixed(2);
   const wrap = document.getElementById('pi-timer-wrap');
   if (wrap) wrap.style.background = `conic-gradient(from 0deg,${color} ${pct}%,rgba(255,255,255,.08) ${pct}%)`;
+  updateModalTurnTimers(s);
+}
+
+function modalTurnTimerHtml() {
+  const s = Math.max(0, Number(_timerSec) || 0);
+  const urgent = s <= 10 ? ' urgent' : '';
+  return `<div class="turn-modal-timer${urgent}" data-turn-modal-timer aria-label="剩餘 ${s} 秒">${s}</div>`;
+}
+
+function updateModalTurnTimers(sec = Math.max(0, _timerSec)) {
+  const s = Math.max(0, Number(sec) || 0);
+  document.querySelectorAll('[data-turn-modal-timer]').forEach(el => {
+    el.textContent = String(s);
+    el.classList.toggle('urgent', s <= 10);
+    el.setAttribute('aria-label', `剩餘 ${s} 秒`);
+  });
 }
 
 // ── Sound Effects ─────────────────────────────────────────────────────────
 let _audioCtx = null;
 const OUT_GAME_CLICK_SRC = 'dragon-studio-button-press-382713.mp3';
+const TURN_NOTIFICATION_SRC = 'audio/universfield-new-notification-017-352293.mp3';
+const OTHER_TURN_NOTIFICATION_SRC = 'audio/freesound_community-beep-6-96243.mp3';
+const GEM_INCOME_SRC = 'audio/ksjsbwuil-cash-register-3-513916.mp3';
 const SFX_STORAGE_KEY = 'splendor-sfx-muted';
 let _outGameClickPool = [];
+let _turnNotificationAudio = null;
+let _otherTurnNotificationAudio = null;
+let _gemIncomeAudio = null;
 function sfxMuted() {
   try { return localStorage.getItem(SFX_STORAGE_KEY) === '1'; }
   catch(e) { return false; }
@@ -14805,6 +14871,53 @@ function playOutGameClick() {
     audio.volume = 0.82;
     audio.play().catch(()=>{});
   } catch(e) {}
+}
+
+function isOwnTurnNotification(playerIdx, callback) {
+  if (isSpectator() || isRoomGuest()) return false;
+  if (callback === startAiTurn || isPracticeAi(playerIdx)) return false;
+  if (onlineMode && roomCode) return canControlPlayerIdx(playerIdx);
+  if (practiceMode || hasPracticeAiPlayers()) return Number(playerIdx) === 0;
+  return true;
+}
+
+function playTurnNotificationSound(playerIdx, callback) {
+  if (sfxMuted()) return;
+  const ownTurn = isOwnTurnNotification(playerIdx, callback);
+  const src = ownTurn ? TURN_NOTIFICATION_SRC : OTHER_TURN_NOTIFICATION_SRC;
+  try {
+    let audio = ownTurn ? _turnNotificationAudio : _otherTurnNotificationAudio;
+    if (!audio) {
+      audio = new Audio(src);
+      audio.preload = 'auto';
+      if (ownTurn) _turnNotificationAudio = audio;
+      else _otherTurnNotificationAudio = audio;
+    }
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = ownTurn ? 0.86 : 0.56;
+    const played = audio.play();
+    if (played && typeof played.catch === 'function') played.catch(() => playClick('turn'));
+  } catch(e) {
+    playClick('turn');
+  }
+}
+
+function playGemIncomeSound() {
+  if (sfxMuted()) return;
+  try {
+    if (!_gemIncomeAudio) {
+      _gemIncomeAudio = new Audio(GEM_INCOME_SRC);
+      _gemIncomeAudio.preload = 'auto';
+    }
+    _gemIncomeAudio.pause();
+    _gemIncomeAudio.currentTime = 0;
+    _gemIncomeAudio.volume = 0.82;
+    const played = _gemIncomeAudio.play();
+    if (played && typeof played.catch === 'function') played.catch(() => playClick('treasure'));
+  } catch(e) {
+    playClick('treasure');
+  }
 }
 
 function gameScreenVisible() {
@@ -14950,6 +15063,8 @@ document.addEventListener('click', e => {
   if (bank) playClick('chip');
   if (card && !btn && !bank) playClick('mouse');
   if (btn) {
+    if (btn.dataset.sound === 'none') return;
+    if (btn.dataset.sound === 'gem-income') { playGemIncomeSound(); return; }
     if (btn.dataset.sound) playClick(btn.dataset.sound);
     else if (btn.classList.contains('btn-end')) playClick('end');
     else if (btn.classList.contains('btn-go') && btn.closest('#g-bank')) playClick('deposit');
