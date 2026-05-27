@@ -4507,15 +4507,17 @@ function renderLadder(data) {
   Object.keys(data || {}).forEach(k => seen.add(normaliseSerial(k)));
   const rows = Array.from(seen).map(serial => {
     const row = ladderEntry(data, serial);
+    const games = Number(row.games || 0);
+    const played = !!row.played || games > 0;
     return {
       serial,
-      points:Number(row.points || 0),
-      games:Number(row.games || 0),
+      points:played ? ladderDisplayPoints(row) : 0,
+      games,
       wins:Number(row.wins || 0),
-      played:!!row.played,
+      played,
       heroCounts: hasHeroCounts(row.heroCounts) ? row.heroCounts : previewHeroCountsForLadder(serial),
     };
-  }).filter(row => row.played || row.games > 0 || row.points !== 0)
+  }).filter(row => row.played || row.games > 0)
     .sort((a,b) => b.points - a.points || b.wins - a.wins || a.serial.localeCompare(b.serial));
   if (!rows.length) {
     list.innerHTML = '<div class="ladder-empty">目前沒有寶石天梯榜資料</div>';
@@ -4537,6 +4539,13 @@ function renderLadder(data) {
 function ladderEntry(data, serial) {
   const safeSerial = serialKey(serial);
   return (data && (data[serial] || data[safeSerial])) || {};
+}
+
+const LADDER_BASE_POINTS = 100;
+
+function ladderDisplayPoints(row) {
+  const raw = Number(row && row.points) || 0;
+  return raw + (row && row.baseApplied ? 0 : LADDER_BASE_POINTS);
 }
 
 function heroForLadderKey(key) {
@@ -11419,7 +11428,10 @@ async function awardLadderPointsOnce() {
         jobs.push(db.ref(`ladder/${serial}`).transaction(cur => {
           const row = cur || {};
           const heroCounts = row.heroCounts && typeof row.heroCounts === 'object' ? row.heroCounts : {};
-          row.points = Math.max(0, (Number(row.points) || 0) + reward);
+          const currentPoints = Number(row.points) || 0;
+          const basePoints = row.baseApplied ? currentPoints : currentPoints + LADDER_BASE_POINTS;
+          row.points = Math.max(0, basePoints + reward);
+          row.baseApplied = true;
           row.games = (Number(row.games) || 0) + 1;
           row.wins = (Number(row.wins) || 0) + (won ? 1 : 0);
           row.played = true;
